@@ -114,6 +114,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.admin.service.UserService;
 import org.apache.nifi.authorization.DownloadAuthorization;
 import org.apache.nifi.processor.DataUnit;
+import org.apache.nifi.reporting.ReportingTask;
+import org.apache.nifi.web.api.dto.DocumentedChildTypeDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -347,6 +349,24 @@ public class ControllerFacade implements ControllerServiceProvider {
     public Set<DocumentedTypeDTO> getFlowFileComparatorTypes() {
         return dtoFactory.fromDocumentedTypes(ExtensionManager.getExtensions(FlowFilePrioritizer.class));
     }
+    
+    /**
+     * Gets the ControllerService types that this controller supports.
+     * 
+     * @return 
+     */
+    public Set<DocumentedTypeDTO> getControllerServiceTypes() {
+        return dtoFactory.fromDocumentedTypes(ControllerService.class, ExtensionManager.getExtensions(ControllerService.class));
+    }
+    
+    /**
+     * Gets the ReportingTask types that this controller supports.
+     * 
+     * @return 
+     */
+    public Set<DocumentedTypeDTO> getReportingTaskTypes() {
+        return dtoFactory.fromDocumentedTypes(ReportingTask.class, ExtensionManager.getExtensions(ReportingTask.class));
+    }
 
     /**
      * Gets the counters for this controller.
@@ -371,6 +391,8 @@ public class ControllerFacade implements ControllerServiceProvider {
 
         return counter;
     }
+    
+    
 
     /**
      * Return the controller service for the specified identifier.

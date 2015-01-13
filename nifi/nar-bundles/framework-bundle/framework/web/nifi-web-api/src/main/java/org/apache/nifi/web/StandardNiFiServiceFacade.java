@@ -16,8 +16,6 @@
  */
 package org.apache.nifi.web;
 
-import org.apache.nifi.web.OptimisticLockingManager;
-import org.apache.nifi.web.ConfigurationSnapshot;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1637,6 +1635,16 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     @Override
     public Set<DocumentedTypeDTO> getProcessorTypes() {
         return controllerFacade.getFlowFileProcessorTypes();
+    }
+
+    @Override
+    public Set<DocumentedTypeDTO> getControllerServiceTypes() {
+        return controllerFacade.getControllerServiceTypes();
+    }
+
+    @Override
+    public Set<DocumentedTypeDTO> getReportingTaskTypes() {
+        return controllerFacade.getReportingTaskTypes();
     }
 
     @Override

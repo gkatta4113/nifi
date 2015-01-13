@@ -15,32 +15,32 @@
   limitations under the License.
 --%>
 <%@ page contentType="text/html" pageEncoding="UTF-8" session="false" %>
-<div id="new-processor-dialog">
+<div id="new-controller-service-dialog">
     <div class="dialog-content">
-        <div id="processor-type-filter-controls">
-            <div id="processor-type-filter-container">
-                <input type="text" id="processor-type-filter"/>
-                <div id="processor-type-filter-options"></div>
+        <div id="controller-service-type-filter-controls">
+            <div id="controller-service-type-filter-container">
+                <input type="text" id="controller-service-type-filter"/>
+                <div id="controller-service-type-filter-options"></div>
             </div>
-            <div id="processor-type-filter-status">
-                Displaying&nbsp;<span id="displayed-processor-types"></span>&nbsp;of&nbsp;<span id="total-processor-types"></span>
+            <div id="controller-service-type-filter-status">
+                Displaying&nbsp;<span id="displayed-controller-service-types"></span>&nbsp;of&nbsp;<span id="total-controller-service-types"></span>
             </div>
         </div>
-        <div id="processor-tag-cloud-container">
+        <div id="controller-service-tag-cloud-container">
             <div class="setting">
                 <div class="setting-name">Tags</div>
                 <div class="setting-field">
-                    <div id="processor-tag-cloud"></div>
+                    <div id="controller-service-tag-cloud"></div>
                 </div>
             </div>
         </div>
-        <div id="processor-types-container">
-            <div id="processor-types-table" class="unselectable"></div>
-            <div id="processor-description-container">
-                <div id="processor-type-name" class="ellipsis"></div>
-                <div id="processor-type-description" class="ellipsis multiline"></div>
-                <span class="hidden" id="selected-processor-name"></span>
-                <span class="hidden" id="selected-processor-type"></span>
+        <div id="controller-service-types-container">
+            <div id="controller-service-types-table" class="unselectable"></div>
+            <div id="controller-service-description-container">
+                <div id="controller-service-type-name" class="ellipsis"></div>
+                <div id="controller-service-type-description" class="ellipsis multiline"></div>
+                <span class="hidden" id="selected-controller-service-name"></span>
+                <span class="hidden" id="selected-controller-service-type"></span>
             </div>
         </div>
         <div class="clear"></div>
