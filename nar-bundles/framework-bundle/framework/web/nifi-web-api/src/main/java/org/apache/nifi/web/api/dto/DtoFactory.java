@@ -1128,6 +1128,56 @@ public final class DtoFactory {
 
         return types;
     }
+    
+    /**
+     * Identifies all baseTypes for the specified type that are assignable to the specified baseType.
+     * 
+     * @param baseType
+     * @param type
+     * @param baseTypes 
+     */
+    private void identifyBaseTypes(final Class baseType, final Class type, final Set<String> baseTypes) {
+        final Class[] interfaces = type.getInterfaces();
+        for (final Class i : interfaces) {
+            if (baseType.isAssignableFrom(i) && !baseType.equals(i)) {
+                baseTypes.add(i.getName());
+            }
+        }
+        
+        if (type.getSuperclass() != null) {
+            identifyBaseTypes(baseType, type.getSuperclass(), baseTypes);
+        }
+    }
+    
+    /**
+     * Gets the DocumentedTypeDTOs from the specified classes for the specified baseClass.
+     *
+     * @param baseClass
+     * @param classes
+     * @return
+     */
+    public Set<DocumentedTypeDTO> fromDocumentedTypes(final Class baseClass, final Set<Class> classes) {
+        final Set<DocumentedTypeDTO> types = new LinkedHashSet<>();
+        final Set<Class> sortedClasses = new TreeSet<>(CLASS_NAME_COMPARATOR);
+        sortedClasses.addAll(classes);
+
+        for (final Class<?> cls : sortedClasses) {
+            final DocumentedChildTypeDTO type = new DocumentedChildTypeDTO();
+            type.setType(cls.getName());
+            type.setDescription(getCapabilityDescription(cls));
+            type.setTags(getTags(cls));
+            
+            // identify the base types
+            final Set<String> baseTypes = new LinkedHashSet<>();
+            identifyBaseTypes(baseClass, cls, baseTypes);
+            type.setBaseType(baseTypes);
+            
+            // add this type
+            types.add(type);
+        }
+
+        return types;
+    }
 
     /**
      * Creates a ProcessorDTO from the specified ProcessorNode.

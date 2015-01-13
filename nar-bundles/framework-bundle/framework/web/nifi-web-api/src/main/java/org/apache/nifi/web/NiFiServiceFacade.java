@@ -243,7 +243,21 @@ public interface NiFiServiceFacade {
      * @return The list of available processor types
      */
     Set<DocumentedTypeDTO> getProcessorTypes();
-
+    
+    /**
+     * Returns the list of controller service types.
+     * 
+     * @return The list of available controller types
+     */
+    Set<DocumentedTypeDTO> getControllerServiceTypes();
+    
+    /**
+     * Returns the list of reporting task types.
+     * 
+     * @return The list of available reporting task types
+     */
+    Set<DocumentedTypeDTO> getReportingTaskTypes();
+    
     /**
      * Returns the list of prioritizer types.
      *
