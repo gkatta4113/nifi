@@ -126,6 +126,10 @@ div.nifi-tooltip {
     white-space: normal;
 }
 
+input.filter-list {
+    color: #888;
+}
+
 .table-cell {
     overflow: hidden;
     white-space: nowrap;
