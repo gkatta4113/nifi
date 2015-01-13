@@ -509,6 +509,7 @@ nf.Canvas = (function () {
         // listen for browser resize events to reset the graph size
         $(window).on('resize', function () {
             updateGraphSize();
+            nf.Settings.resetTableSize();
         }).on('keydown', function (evt) {
             // if a dialog is open, disable canvas shortcuts
             if ($('.dialog').is(':visible')) {
