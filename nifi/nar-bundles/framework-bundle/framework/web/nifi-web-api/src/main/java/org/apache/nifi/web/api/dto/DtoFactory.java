@@ -1136,6 +1136,7 @@ public final class DtoFactory {
      * @param type
      * @param baseTypes 
      */
+<<<<<<< HEAD:nifi/nar-bundles/framework-bundle/framework/web/nifi-web-api/src/main/java/org/apache/nifi/web/api/dto/DtoFactory.java
     private void identifyBaseTypes(final Class baseType, final Class type, final Set<Class> baseTypes, final  boolean recurse) {
         final Class[] interfaces = type.getInterfaces();
         for (final Class i : interfaces) {
@@ -1148,6 +1149,18 @@ public final class DtoFactory {
             if (type.getSuperclass() != null) {
                 identifyBaseTypes(baseType, type.getSuperclass(), baseTypes, recurse);
             }
+=======
+    private void identifyBaseTypes(final Class baseType, final Class type, final Set<String> baseTypes) {
+        final Class[] interfaces = type.getInterfaces();
+        for (final Class i : interfaces) {
+            if (baseType.isAssignableFrom(i) && !baseType.equals(i)) {
+                baseTypes.add(i.getName());
+            }
+        }
+        
+        if (type.getSuperclass() != null) {
+            identifyBaseTypes(baseType, type.getSuperclass(), baseTypes);
+>>>>>>> da18ce0... NIFI-250::nar-bundles/framework-bundle/framework/web/nifi-web-api/src/main/java/org/apache/nifi/web/api/dto/DtoFactory.java
         }
     }
     
@@ -1162,6 +1175,7 @@ public final class DtoFactory {
         final Set<DocumentedTypeDTO> types = new LinkedHashSet<>();
         final Set<Class> sortedClasses = new TreeSet<>(CLASS_NAME_COMPARATOR);
         sortedClasses.addAll(classes);
+<<<<<<< HEAD:nifi/nar-bundles/framework-bundle/framework/web/nifi-web-api/src/main/java/org/apache/nifi/web/api/dto/DtoFactory.java
         
         // identify all interfaces that extend baseClass for all classes
         final Set<Class> interfaces = new HashSet<>();
@@ -1217,6 +1231,22 @@ public final class DtoFactory {
             if (add) {
                 types.add(type);
             }
+=======
+
+        for (final Class<?> cls : sortedClasses) {
+            final DocumentedChildTypeDTO type = new DocumentedChildTypeDTO();
+            type.setType(cls.getName());
+            type.setDescription(getCapabilityDescription(cls));
+            type.setTags(getTags(cls));
+            
+            // identify the base types
+            final Set<String> baseTypes = new LinkedHashSet<>();
+            identifyBaseTypes(baseClass, cls, baseTypes);
+            type.setBaseType(baseTypes);
+            
+            // add this type
+            types.add(type);
+>>>>>>> da18ce0... NIFI-250::nar-bundles/framework-bundle/framework/web/nifi-web-api/src/main/java/org/apache/nifi/web/api/dto/DtoFactory.java
         }
 
         return types;

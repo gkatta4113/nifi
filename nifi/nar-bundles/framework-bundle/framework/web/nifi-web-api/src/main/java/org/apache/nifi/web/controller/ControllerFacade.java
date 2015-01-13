@@ -115,6 +115,10 @@ import org.apache.nifi.admin.service.UserService;
 import org.apache.nifi.authorization.DownloadAuthorization;
 import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.reporting.ReportingTask;
+<<<<<<< HEAD:nifi/nar-bundles/framework-bundle/framework/web/nifi-web-api/src/main/java/org/apache/nifi/web/controller/ControllerFacade.java
+=======
+import org.apache.nifi.web.api.dto.DocumentedChildTypeDTO;
+>>>>>>> da18ce0... NIFI-250::nar-bundles/framework-bundle/framework/web/nifi-web-api/src/main/java/org/apache/nifi/web/controller/ControllerFacade.java
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
