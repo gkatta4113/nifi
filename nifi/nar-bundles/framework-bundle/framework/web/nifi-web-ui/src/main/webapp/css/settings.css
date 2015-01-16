@@ -42,6 +42,12 @@
     cursor: pointer;
 }
 
+span.expansion-button {
+    width: 10px;
+    height: 10px;
+    float: left;
+}
+
 /* settings tabs */
 
 #settings-tabs-container {

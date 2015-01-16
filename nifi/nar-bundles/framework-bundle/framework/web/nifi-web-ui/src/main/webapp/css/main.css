@@ -138,6 +138,14 @@ input.filter-list {
     margin-top: 4px;
 }
 
+.collapsed {
+    background: transparent url(../images/iconTwistArrow.png) no-repeat scroll top left;
+}
+
+.expanded {
+    background: transparent url(../images/iconTwistArrow.png) no-repeat scroll top right;
+}
+
 input[type=text], textarea {
     background: white url(../images/bgInputText.png) repeat-x scroll top;
     border: 1px solid #ccc;
@@ -252,20 +260,6 @@ div.has-bulletins {
 /*
     Styles for status/history/user tables.
 */
-
-div.expansion-button {
-    width: 11px;
-    height: 11px;
-    margin-left: 5px;
-}
-
-div.collapsed {
-    background: transparent url(../images/buttonExpandCollapse.png) no-repeat scroll top left;
-}
-
-div.expanded {
-    background: transparent url(../images/buttonExpandCollapse.png) no-repeat scroll top right;
-}
 
 span.label, div.label {
     font-weight: bold;

@@ -115,7 +115,6 @@ import org.apache.nifi.admin.service.UserService;
 import org.apache.nifi.authorization.DownloadAuthorization;
 import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.reporting.ReportingTask;
-import org.apache.nifi.web.api.dto.DocumentedChildTypeDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
