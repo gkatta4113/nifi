@@ -138,6 +138,18 @@ nf.Settings = (function () {
         }
     };
     
+    var isParentExpanded = function (item) {
+        var documentedType = item;
+        while (documentedType.parent !== null) {
+            if (documentedType.parent.collapsed === true) {
+                return false;
+            }
+            documentedType = documentedType.parent;
+        }
+        
+        return true;
+    };
+    
     /**
      * Performs the filtering.
      * 
@@ -146,6 +158,10 @@ nf.Settings = (function () {
      * @returns {Boolean}       Whether or not to include the item
      */
     var filterControllerServiceTypes = function (item, args) {
+        if (!isParentExpanded(item)) {
+            return false;
+        }
+        
         // determine if the item matches the filter
         var matchesFilter = matchesRegex(item, args);
 
@@ -247,6 +263,47 @@ nf.Settings = (function () {
     };
     
     /**
+     * Formats the type by introducing expand/collapse where appropriate.
+     * 
+     * @param {type} row
+     * @param {type} cell
+     * @param {type} value
+     * @param {type} columnDef
+     * @param {type} dataContext
+     */
+    var typeFormatter = function (row, cell, value, columnDef, dataContext) {
+        var markup = '';
+        
+        var indent = 0;
+        var documentedType = dataContext;
+        while (documentedType.parent !== null) {
+            indent += 10;
+            documentedType = documentedType.parent;
+        }
+        
+        var padding = 3;
+        
+        // create the markup for the row
+        if (dataContext.children.length > 0) {
+            // determine how to render the expansion button
+            var expansionStyle = 'expanded';
+            if (dataContext.collapsed === true) {
+                expansionStyle = 'collapsed';
+            }
+            
+            markup += ('<span style="margin-top: 5px; margin-left: ' + indent + 'px;" class="expansion-button ' + expansionStyle + '"></span><span style="margin-left: ' + padding + 'px;">' + value + '</span>');
+        } else {
+            if (dataContext.parent === null) {
+                padding = 0;
+            }
+            
+            markup += ('<span style="margin-left: ' + (indent + padding) + 'px;">' + value + '</span>');
+        }
+        
+        return markup;
+    };
+    
+    /**
      * Initializes the new controller service dialog.
      */
     var initNewControllerServiceDialog = function () {
@@ -266,8 +323,8 @@ nf.Settings = (function () {
 
         // initialize the processor type table
         var controllerServiceTypesColumns = [
-            {id: 'type', name: 'Type', field: 'label', sortable: true, resizable: true},
-            {id: 'tags', name: 'Tags', field: 'tags', sortable: true, resizable: true}
+            {id: 'type', name: 'Type', field: 'label', formatter: typeFormatter, sortable: false, resizable: true},
+            {id: 'tags', name: 'Tags', field: 'tags', sortable: false, resizable: true}
         ];
         var controllerServiceTypesOptions = {
             forceFitColumns: true,
@@ -288,41 +345,67 @@ nf.Settings = (function () {
             property: $('#controller-service-type-filter-options').combo('getSelectedOption').value
         });
         controllerServiceTypesData.setFilter(filterControllerServiceTypes);
+        controllerServiceTypesData.getItemMetadata = function (index) {
+            var item = controllerServiceTypesData.getItem(index);
+            if (item && item.children.length > 0) {
+                return {
+                    selectable: false
+                };
+            } else {
+                return {};
+            }
+        };
 
         // initialize the sort
-        sort({
-            columnId: 'type',
-            sortAsc: true
-        }, controllerServiceTypesData);
+//        sort({
+//            columnId: 'type',
+//            sortAsc: true
+//        }, controllerServiceTypesData);
 
         // initialize the grid
         var controllerServiceTypesGrid = new Slick.Grid('#controller-service-types-table', controllerServiceTypesData, controllerServiceTypesColumns, controllerServiceTypesOptions);
         controllerServiceTypesGrid.setSelectionModel(new Slick.RowSelectionModel());
         controllerServiceTypesGrid.registerPlugin(new Slick.AutoTooltips());
         controllerServiceTypesGrid.setSortColumn('type', true);
-        controllerServiceTypesGrid.onSort.subscribe(function (e, args) {
-            sort({
-                columnId: args.sortCol.field,
-                sortAsc: args.sortAsc
-            }, controllerServiceTypesData);
-        });
+//        controllerServiceTypesGrid.onSort.subscribe(function (e, args) {
+//            sort({
+//                columnId: args.sortCol.field,
+//                sortAsc: args.sortAsc
+//            }, controllerServiceTypesData);
+//        });
         controllerServiceTypesGrid.onSelectedRowsChanged.subscribe(function (e, args) {
             if ($.isArray(args.rows) && args.rows.length === 1) {
-                var processorTypeIndex = args.rows[0];
-                var processorType = controllerServiceTypesGrid.getDataItem(processorTypeIndex);
+                var controllerServiceTypeIndex = args.rows[0];
+                var controllerServiceType = controllerServiceTypesGrid.getDataItem(controllerServiceTypeIndex);
 
-                // set the processor type description
-                if (nf.Common.isBlank(processorType.description)) {
-                    $('#controller-service-type-description').attr('title', '').html('<span class="unset">No description specified</span>');
-                } else {
-                    $('#controller-service-type-description').text(processorType.description).ellipsis();
+                // only allow selection of service implementations
+                if (controllerServiceType.children.length === 0) {
+                    // set the controller service type description
+                    if (nf.Common.isBlank(controllerServiceType.description)) {
+                        $('#controller-service-type-description').attr('title', '').html('<span class="unset">No description specified</span>');
+                    } else {
+                        $('#controller-service-type-description').text(controllerServiceType.description).ellipsis();
+                    }
+
+                    // populate the dom
+                    $('#controller-service-type-name').text(controllerServiceType.label).ellipsis();
+                    $('#selected-controller-service-name').text(controllerServiceType.label);
+                    $('#selected-controller-service-type').text(controllerServiceType.type);
                 }
-
-                // populate the dom
-                $('#controller-service-type-name').text(processorType.label).ellipsis();
-                $('#selected-controller-service-name').text(processorType.label);
-                $('#selected-controller-service-type').text(processorType.type);
             }
+        });
+        controllerServiceTypesGrid.onClick.subscribe(function (e, args) {
+            var item = controllerServiceTypesData.getItem(args.row);
+            if (item && item.children.length > 0) {
+                if (!item.collapsed) {
+                    item.collapsed = true;
+                } else {
+                    item.collapsed = false;
+                }
+                controllerServiceTypesData.updateItem(item.id, item);
+            }
+
+//                e.stopImmediatePropagation();
         });
 
         // wire up the dataview to the grid
@@ -348,30 +431,44 @@ nf.Settings = (function () {
             url: config.urls.controllerServiceTypes,
             dataType: 'json'
         }).done(function(response) {
+            var id = 0;
             var tags = [];
-            console.log(response);
 
             // begin the update
             controllerServiceTypesData.beginUpdate();
 
-            // go through each processor type
-            $.each(response.controllerServiceTypes, function (i, documentedType) {
-                var type = documentedType.type;
-
-                // create the row for the processor type
-                controllerServiceTypesData.addItem({
-                    id: i,
-                    label: nf.Common.substringAfterLast(type, '.'),
-                    type: type,
+            var addType = function (parentItem, documentedType) {
+                var item = {
+                    id: id++,
+                    label: nf.Common.substringAfterLast(documentedType.type, '.'),
+                    type: documentedType.type,
                     description: nf.Common.escapeHtml(documentedType.description),
                     tags: documentedType.tags.join(', '),
-                    baseType: documentedType.baseTypes
-                });
-
+                    parent: parentItem,
+                    children: [],
+                    collapsed: false
+                };
+                
+                // add the documented type
+                controllerServiceTypesData.addItem(item);
+                
                 // count the frequency of each tag for this type
                 $.each(documentedType.tags, function (i, tag) {
                     tags.push(tag.toLowerCase());
                 });
+                
+                // add each of its children
+                $.each(documentedType.childTypes, function (_, documentedChildType) {
+                    var childItem = addType(item, documentedChildType);
+                    item.children.push(childItem);
+                });
+                
+                return item;
+            };
+
+            // go through each processor type
+            $.each(response.controllerServiceTypes, function (i, documentedType) {
+                addType(null, documentedType);
             });
 
             // end the udpate
@@ -456,7 +553,6 @@ nf.Settings = (function () {
             url: config.urls.reportingTaskTypes,
             dataType: 'json'
         }).done(function(response) {
-            console.log(response);
         });
         
     };
@@ -552,7 +648,7 @@ nf.Settings = (function () {
         /**
          * Shows the details of the controller service at the specified row.
          * 
-         * @param {type} row
+         * @param {documentedType} row
          */
         showControllerServiceDetails: function (row) {
             
@@ -561,7 +657,7 @@ nf.Settings = (function () {
         /**
          * Shows the details of the reporting task at the specified row.
          * 
-         * @param {type} row
+         * @param {documentedType} row
          */
         showReportingTaskDetails: function (row) {
             

@@ -14,32 +14,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /*
-    Registration form styles.
+    Styles for the Nifi tag cloud.
 */
 
-#registration-pane {
-    z-index: 1299;
+ul.tag-cloud {
+    font-size: 90%;
+    padding: 2px;
+    margin-left: -5px;
+    overflow: hidden;
 }
 
-#registration-form {
-    margin-top: 10px;
-    width: 610px;
-}
-
-#expand-registration-button {
-    width: 10px;
-    height: 10px;
+ul.tag-cloud li {
     float: left;
-    margin-right: 5px;
+    list-style-type: none;
+    margin: 0 3px;
+    height: 20px;
+    line-height: 20px;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
-#expand-registration-text {
-    -webkit-user-select: none;
-    -moz-user-select: none;
+div.tag-cloud-separator {
+    height: 1px;
+    border-bottom: 1px solid #aaa;
+    margin: 3px 0;
 }
 
-#registration-justification {
-    width: 600px;
-    height: 200px;
+ul.tag-filter {
+    overflow: hidden;
+}
+
+ul.tag-filter li {
+    height: 18px;
+    line-height: 18px;
+    padding: 2px;
+}
+
+div.selected-tag-text {
+    float: left;
+}
+
+img.remove-selected-tag {
+    float: right;
+    margin-top: 1px;
 }

@@ -1136,16 +1136,18 @@ public final class DtoFactory {
      * @param type
      * @param baseTypes 
      */
-    private void identifyBaseTypes(final Class baseType, final Class type, final Set<String> baseTypes) {
+    private void identifyBaseTypes(final Class baseType, final Class type, final Set<Class> baseTypes, final  boolean recurse) {
         final Class[] interfaces = type.getInterfaces();
         for (final Class i : interfaces) {
             if (baseType.isAssignableFrom(i) && !baseType.equals(i)) {
-                baseTypes.add(i.getName());
+                baseTypes.add(i);
             }
         }
         
-        if (type.getSuperclass() != null) {
-            identifyBaseTypes(baseType, type.getSuperclass(), baseTypes);
+        if (recurse) {
+            if (type.getSuperclass() != null) {
+                identifyBaseTypes(baseType, type.getSuperclass(), baseTypes, recurse);
+            }
         }
     }
     
@@ -1160,20 +1162,61 @@ public final class DtoFactory {
         final Set<DocumentedTypeDTO> types = new LinkedHashSet<>();
         final Set<Class> sortedClasses = new TreeSet<>(CLASS_NAME_COMPARATOR);
         sortedClasses.addAll(classes);
-
+        
+        // identify all interfaces that extend baseClass for all classes
+        final Set<Class> interfaces = new HashSet<>();
         for (final Class<?> cls : sortedClasses) {
-            final DocumentedChildTypeDTO type = new DocumentedChildTypeDTO();
-            type.setType(cls.getName());
-            type.setDescription(getCapabilityDescription(cls));
-            type.setTags(getTags(cls));
+            identifyBaseTypes(baseClass, cls, interfaces, true);
+        }
+        
+        final Map<Class, DocumentedTypeDTO> lookup = new HashMap<>();
+        
+        // convert the interfaces to DTO form
+        for (final Class<?> i : interfaces) {
+            final DocumentedTypeDTO type = new DocumentedTypeDTO();
+            type.setType(i.getName());
+            type.setDescription(getCapabilityDescription(i));
+            type.setTags(getTags(i));
+            type.setChildTypes(new LinkedHashSet<DocumentedTypeDTO>());
+            lookup.put(i, type);
+        }
+
+        // include the interfaces
+        sortedClasses.addAll(interfaces);
+        
+        // get the DTO form for all interfaces and classes
+        for (final Class<?> cls : sortedClasses) {
+            boolean add = false;
+            
+            final DocumentedTypeDTO type;
+            if (lookup.containsKey(cls)) {
+                type = lookup.get(cls);
+                add = true;
+            } else {
+                type = new DocumentedTypeDTO();
+                type.setType(cls.getName());
+                type.setDescription(getCapabilityDescription(cls));
+                type.setTags(getTags(cls));
+            }
             
             // identify the base types
-            final Set<String> baseTypes = new LinkedHashSet<>();
-            identifyBaseTypes(baseClass, cls, baseTypes);
-            type.setBaseTypes(baseTypes);
+            final Set<Class> baseTypes = new LinkedHashSet<>();
+            identifyBaseTypes(baseClass, cls, baseTypes, false);
             
-            // add this type
-            types.add(type);
+            // include this type if it doesn't belong to another heirachary
+            if (baseTypes.isEmpty()) {
+                add = true;
+            }
+            
+            // get the DTO for each base type
+            for (final Class baseType : baseTypes) {
+                lookup.get(baseType).getChildTypes().add(type);
+            }
+            
+            // add if appropriate
+            if (add) {
+                types.add(type);
+            }
         }
 
         return types;
