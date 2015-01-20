@@ -1169,6 +1169,7 @@ public final class DtoFactory {
             identifyBaseTypes(baseClass, cls, interfaces, true);
         }
         
+        // build a lookup of all interfaces
         final Map<Class, DocumentedTypeDTO> lookup = new HashMap<>();
         
         // convert the interfaces to DTO form
@@ -1180,9 +1181,35 @@ public final class DtoFactory {
             type.setChildTypes(new LinkedHashSet<DocumentedTypeDTO>());
             lookup.put(i, type);
         }
+        
+        // move the interfaces into the appropriate hierarchy
+        for (final Class<?> i : interfaces) {
+            // identify the base types
+            final Set<Class> baseTypes = new LinkedHashSet<>();
+            identifyBaseTypes(baseClass, i, baseTypes, false);
+            
+            // move this interfaces into the hierarchy where appropriate
+            if (!baseTypes.isEmpty()) {
+                // get the DTO for each base type
+                for (final Class baseType : baseTypes) {
+                    final DocumentedTypeDTO parentInteface = lookup.get(baseType);
+                    final DocumentedTypeDTO childInterface = lookup.get(i);
+                    
+                    // include all parent tags in the respective children
+                    childInterface.getTags().addAll(parentInteface.getTags());
+                    
+                    // update the hierarchy
+                    parentInteface.getChildTypes().add(childInterface);
+                }
+                
+                // remove this interface from the lookup (this will only
+                // leave the interfaces that are ancestor roots)
+                lookup.remove(i);
+            }
+        }
 
         // include the interfaces
-        sortedClasses.addAll(interfaces);
+        sortedClasses.addAll(lookup.keySet());
         
         // get the DTO form for all interfaces and classes
         for (final Class<?> cls : sortedClasses) {
@@ -1203,14 +1230,20 @@ public final class DtoFactory {
             final Set<Class> baseTypes = new LinkedHashSet<>();
             identifyBaseTypes(baseClass, cls, baseTypes, false);
             
-            // include this type if it doesn't belong to another heirachary
+            // include this type if it doesn't belong to another hierarchy
             if (baseTypes.isEmpty()) {
                 add = true;
-            }
-            
-            // get the DTO for each base type
-            for (final Class baseType : baseTypes) {
-                lookup.get(baseType).getChildTypes().add(type);
+            } else {
+                // get the DTO for each base type
+                for (final Class baseType : baseTypes) {
+                    final DocumentedTypeDTO parentInteface = lookup.get(baseType);
+
+                    // include all parent tags in the respective children
+                    type.getTags().addAll(parentInteface.getTags());
+
+                    // update the hierarchy
+                    parentInteface.getChildTypes().add(type);
+                }
             }
             
             // add if appropriate
