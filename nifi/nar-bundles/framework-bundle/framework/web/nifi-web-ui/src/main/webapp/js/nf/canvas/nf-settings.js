@@ -111,7 +111,7 @@ nf.Settings = (function () {
      */
     var getControllerServiceTypeFilterText = function () {
         var filterText = '';
-        var filterField = $('#processor-type-filter');
+        var filterField = $('#controller-service-type-filter');
         if (!filterField.hasClass(config.styles.filterList)) {
             filterText = filterField.val();
         }
@@ -134,11 +134,21 @@ nf.Settings = (function () {
                 searchString: getControllerServiceTypeFilterText(),
                 property: $('#controller-service-type-filter-options').combo('getSelectedOption').value
             });
+            
+            // need to invalidate the entire table since parent elements may need to be 
+            // rerendered due to changes in their children
             controllerServiceTypesData.refresh();
+            controllerServiceTypesGrid.invalidate();
         }
     };
     
-    var isParentExpanded = function (item) {
+    /**
+     * Determines if all of the ancestors of the specified item are expanded.
+     * 
+     * @param {type} item
+     * @returns {Boolean}
+     */
+    var areAncestorsExpanded = function (item) {
         var documentedType = item;
         while (documentedType.parent !== null) {
             if (documentedType.parent.collapsed === true) {
@@ -151,6 +161,31 @@ nf.Settings = (function () {
     };
     
     /**
+     * Determines if the specified item is an ancestor.
+     * 
+     * @param {type} item
+     * @returns {Boolean}
+     */
+    var isAncestor = function (item) {
+        return item.children.length > 0;
+    };
+    
+    /**
+     * Clears the selected controller service type.
+     */
+    var clearControllerServiceSelection = function () {
+        // clear the selected row
+        $('#controller-service-type-description').text('');
+        $('#controller-service-type-name').text('');
+        $('#selected-controller-service-name').text('');
+        $('#selected-controller-service-type').text('');
+
+        // clear the active cell the it can be reselected when its included
+        var controllerServiceTypesGrid = $('#controller-service-types-table').data('gridInstance');
+        controllerServiceTypesGrid.resetActiveCell();
+    };
+    
+    /**
      * Performs the filtering.
      * 
      * @param {object} item     The item subject to filtering
@@ -158,8 +193,25 @@ nf.Settings = (function () {
      * @returns {Boolean}       Whether or not to include the item
      */
     var filterControllerServiceTypes = function (item, args) {
-        if (!isParentExpanded(item)) {
+        if (!areAncestorsExpanded(item)) {
+            // if this item is currently selected and its parent is not collapsed
+            if ($('#selected-controller-service-type').text() === item['type']) {
+                clearControllerServiceSelection();
+            }
+            
+            // update visibility flag
+            item.visible = false;
+            
             return false;
+        }
+        
+        // don't allow ancestors to be filtered out (unless any of their ancestors
+        // are collapsed)
+        if (isAncestor(item)) {
+            // update visibility flag
+            item.visible = false;
+            
+            return true;
         }
         
         // determine if the item matches the filter
@@ -180,17 +232,12 @@ nf.Settings = (function () {
 
         // if this row is currently selected and its being filtered
         if (matches === false && $('#selected-controller-service-type').text() === item['type']) {
-            // clear the selected row
-            $('#controller-service-type-description').text('');
-            $('#controller-service-type-name').text('');
-            $('#selected-controller-service-name').text('');
-            $('#selected-controller-service-type').text('');
-
-            // clear the active cell the it can be reselected when its included
-            var controllerServiceTypesGrid = $('#controller-service-types-table').data('gridInstance');
-            controllerServiceTypesGrid.resetActiveCell();
+            clearControllerServiceSelection();
         }
-
+        
+        // update visibility flag
+        item.visible = matches;
+        
         return matches;
     };
     
@@ -245,24 +292,6 @@ nf.Settings = (function () {
     };
     
     /**
-     * Sorts the specified data using the specified sort details.
-     * 
-     * @param {object} sortDetails
-     * @param {object} data
-     */
-    var sort = function (sortDetails, data) {
-        // defines a function for sorting
-        var comparer = function (a, b) {
-            var aString = nf.Common.isDefinedAndNotNull(a[sortDetails.columnId]) ? a[sortDetails.columnId] : '';
-            var bString = nf.Common.isDefinedAndNotNull(b[sortDetails.columnId]) ? b[sortDetails.columnId] : '';
-            return aString === bString ? 0 : aString > bString ? 1 : -1;
-        };
-
-        // perform the sort
-        data.sort(comparer, sortDetails.sortAsc);
-    };
-    
-    /**
      * Formats the type by introducing expand/collapse where appropriate.
      * 
      * @param {type} row
@@ -291,7 +320,15 @@ nf.Settings = (function () {
                 expansionStyle = 'collapsed';
             }
             
-            markup += ('<span style="margin-top: 5px; margin-left: ' + indent + 'px;" class="expansion-button ' + expansionStyle + '"></span><span style="margin-left: ' + padding + 'px;">' + value + '</span>');
+            // to calculate the number of visible children
+            var visibleChildren = 0;
+            $.each(dataContext.children, function(_, child) {
+                if (child.visible) {
+                    visibleChildren++;
+                }
+            });
+            
+            markup += ('<span style="margin-top: 5px; margin-left: ' + indent + 'px;" class="expansion-button ' + expansionStyle + '"></span><span class="ancestor-type" style="margin-left: ' + padding + 'px;">' + value + '</span><span class="ancestor-type-rollup">(' + visibleChildren + ' of ' + dataContext.children.length + ')</span>');
         } else {
             if (dataContext.parent === null) {
                 padding = 0;
@@ -320,6 +357,19 @@ nf.Settings = (function () {
                 applyControllerServiceTypeFilter();
             }
         });
+        
+        // define the function for filtering the list
+        $('#controller-service-type-filter').keyup(function () {
+            applyControllerServiceTypeFilter();
+        }).focus(function () {
+            if ($(this).hasClass(config.styles.filterList)) {
+                $(this).removeClass(config.styles.filterList).val('');
+            }
+        }).blur(function () {
+            if ($(this).val() === '') {
+                $(this).addClass(config.styles.filterList).val(config.filterText);
+            }
+        }).addClass(config.styles.filterList).val(config.filterText);
 
         // initialize the processor type table
         var controllerServiceTypesColumns = [
@@ -349,30 +399,34 @@ nf.Settings = (function () {
             var item = controllerServiceTypesData.getItem(index);
             if (item && item.children.length > 0) {
                 return {
-                    selectable: false
+                    selectable: false,
+                    columns: {
+                        0: {
+                            colspan: '*'
+                        }
+                    }
                 };
             } else {
                 return {};
             }
         };
-
-        // initialize the sort
-//        sort({
-//            columnId: 'type',
-//            sortAsc: true
-//        }, controllerServiceTypesData);
+        
+        var getVisibleControllerServiceCount = function () {
+            var count = 0;
+            for (var i = 0; i < controllerServiceTypesData.getLength(); i++) {
+                var item = controllerServiceTypesData.getItem(i);
+                if (item.children.length === 0) {
+                    count++;
+                }
+            }
+            return count;
+        };
 
         // initialize the grid
         var controllerServiceTypesGrid = new Slick.Grid('#controller-service-types-table', controllerServiceTypesData, controllerServiceTypesColumns, controllerServiceTypesOptions);
         controllerServiceTypesGrid.setSelectionModel(new Slick.RowSelectionModel());
         controllerServiceTypesGrid.registerPlugin(new Slick.AutoTooltips());
         controllerServiceTypesGrid.setSortColumn('type', true);
-//        controllerServiceTypesGrid.onSort.subscribe(function (e, args) {
-//            sort({
-//                columnId: args.sortCol.field,
-//                sortAsc: args.sortAsc
-//            }, controllerServiceTypesData);
-//        });
         controllerServiceTypesGrid.onSelectedRowsChanged.subscribe(function (e, args) {
             if ($.isArray(args.rows) && args.rows.length === 1) {
                 var controllerServiceTypeIndex = args.rows[0];
@@ -397,15 +451,19 @@ nf.Settings = (function () {
         controllerServiceTypesGrid.onClick.subscribe(function (e, args) {
             var item = controllerServiceTypesData.getItem(args.row);
             if (item && item.children.length > 0) {
-                if (!item.collapsed) {
-                    item.collapsed = true;
-                } else {
-                    item.collapsed = false;
+                // determine if there are rows currectly selected
+                var selectedIndex = controllerServiceTypesGrid.getSelectedRows();
+                if ($.isArray(selectedIndex) && selectedIndex.length === 1) {
+                    
                 }
-                controllerServiceTypesData.updateItem(item.id, item);
-            }
 
-//                e.stopImmediatePropagation();
+                // update the grid
+                item.collapsed = !item.collapsed;
+                controllerServiceTypesData.updateItem(item.id, item);
+                
+                // prevent selection within slickgrid
+                e.stopImmediatePropagation();
+            }
         });
 
         // wire up the dataview to the grid
@@ -414,13 +472,13 @@ nf.Settings = (function () {
             controllerServiceTypesGrid.render();
 
             // update the total number of displayed processors
-            $('#displayed-controller-service-types').text(args.current);
+            $('#displayed-controller-service-types').text(getVisibleControllerServiceCount());
         });
         controllerServiceTypesData.onRowsChanged.subscribe(function (e, args) {
             controllerServiceTypesGrid.invalidateRows(args.rows);
             controllerServiceTypesGrid.render();
         });
-        controllerServiceTypesData.syncGridSelection(controllerServiceTypesGrid, false);
+        controllerServiceTypesData.syncGridSelection(controllerServiceTypesGrid, true);
 
         // hold onto an instance of the grid
         $('#controller-service-types-table').data('gridInstance', controllerServiceTypesGrid);
@@ -446,7 +504,8 @@ nf.Settings = (function () {
                     tags: documentedType.tags.join(', '),
                     parent: parentItem,
                     children: [],
-                    collapsed: false
+                    collapsed: false,
+                    visible: true
                 };
                 
                 // add the documented type
@@ -466,7 +525,7 @@ nf.Settings = (function () {
                 return item;
             };
 
-            // go through each processor type
+            // go through each controller service type
             $.each(response.controllerServiceTypes, function (i, documentedType) {
                 addType(null, documentedType);
             });
@@ -475,7 +534,7 @@ nf.Settings = (function () {
             controllerServiceTypesData.endUpdate();
 
             // set the total number of processors
-            $('#total-controller-service-types, #displayed-controller-service-types').text(response.controllerServiceTypes.length);
+            $('#total-controller-service-types, #displayed-controller-service-types').text(getVisibleControllerServiceCount());
 
             // create the tag cloud
             $('#controller-service-tag-cloud').tagcloud({
