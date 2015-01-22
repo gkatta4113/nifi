@@ -68,6 +68,9 @@
     <bean id="processorDAO" class="org.apache.nifi.web.dao.impl.StandardProcessorDAO">
         <property name="flowController" ref="flowController"/>
     </bean>
+    <bean id="controllerServiceDAO" class="org.apache.nifi.web.dao.impl.StandardControllerServiceDAO">
+        <property name="flowController" ref="flowController"/>
+    </bean>
     <bean id="templateDAO" class="org.apache.nifi.web.dao.impl.StandardTemplateDAO">
         <property name="flowController" ref="flowController"/>
         <property name="snippetUtils" ref="snippetUtils"/>
@@ -94,6 +97,7 @@
         <property name="labelDAO" ref="labelDAO"/>
         <property name="funnelDAO" ref="funnelDAO"/>
         <property name="connectionDAO" ref="connectionDAO"/>
+        <property name="controllerServiceDAO" ref="controllerServiceDAO"/>
         <property name="templateDAO" ref="templateDAO"/>
         <property name="snippetDAO" ref="snippetDAO"/>
         <property name="auditService" ref="auditService"/>
@@ -122,6 +126,11 @@
         <property name="serviceFacade" ref="serviceFacade"/>
     </bean>
     <bean id="templateResource" class="org.apache.nifi.web.api.TemplateResource" scope="singleton">
+        <property name="serviceFacade" ref="serviceFacade"/>
+        <property name="properties" ref="nifiProperties"/>
+        <property name="clusterManager" ref="clusterManager"/>
+    </bean>
+    <bean id="controllerServiceResource" class="org.apache.nifi.web.api.ControllerServiceResource" scope="singleton">
         <property name="serviceFacade" ref="serviceFacade"/>
         <property name="properties" ref="nifiProperties"/>
         <property name="clusterManager" ref="clusterManager"/>

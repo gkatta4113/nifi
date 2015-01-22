@@ -151,13 +151,23 @@ public class ControllerResource extends ApplicationResource {
     }
 
     /**
-     * Locates the Template sub-resource.
+     * Locates the Snippets sub-resource.
      *
      * @return
      */
     @Path("/snippets")
     public SnippetResource getSnippetResource() {
         return resourceContext.getResource(SnippetResource.class);
+    }
+    
+    /**
+     * Locates the Controller Services sub-resource.
+     *
+     * @return
+     */
+    @Path("/controller-services")
+    public ControllerServiceResource getControllerServiceResource() {
+        return resourceContext.getResource(ControllerServiceResource.class);
     }
 
     /**

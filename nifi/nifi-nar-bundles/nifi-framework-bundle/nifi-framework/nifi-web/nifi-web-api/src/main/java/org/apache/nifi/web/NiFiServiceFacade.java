@@ -27,6 +27,7 @@ import org.apache.nifi.web.api.dto.ClusterDTO;
 import org.apache.nifi.web.api.dto.ConnectionDTO;
 import org.apache.nifi.web.api.dto.ControllerConfigurationDTO;
 import org.apache.nifi.web.api.dto.ControllerDTO;
+import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.dto.CounterDTO;
 import org.apache.nifi.web.api.dto.CountersDTO;
 import org.apache.nifi.web.api.dto.DocumentedTypeDTO;
@@ -938,6 +939,66 @@ public interface NiFiServiceFacade {
      */
     ConfigurationSnapshot<Void> deleteLabel(Revision revision, String groupId, String labelId);
 
+    // ----------------------------------------
+    // Controller Services methods
+    // ----------------------------------------
+    
+    /**
+     * Creates a controller service.
+     *
+     * @param revision Revision to compare with current base revision
+     * @param controllerServiceDTO The controller service DTO
+     * @return The controller service DTO
+     */
+    ConfigurationSnapshot<ControllerServiceDTO> createControllerService(Revision revision, ControllerServiceDTO controllerServiceDTO);
+    
+    /**
+     * Gets all controller services.
+     * 
+     * @return 
+     */
+    Set<ControllerServiceDTO> getControllerServices();
+    
+    /**
+     * Gets the specified controller service.
+     * 
+     * @param controllerServiceId
+     * @return 
+     */
+    ControllerServiceDTO getControllerService(String controllerServiceId);
+    
+    /**
+     * Updates the specified label.
+     *
+     * @param revision Revision to compare with current base revision
+     * @param controllerServiceDTO The controller service DTO
+     * @return The controller service DTO
+     */
+    ConfigurationSnapshot<ControllerServiceDTO> updateControllerService(Revision revision, ControllerServiceDTO controllerServiceDTO);
+
+    /**
+     * Deletes the specified label.
+     *
+     * @param revision Revision to compare with current base revision
+     * @param controllerServiceId The controller service id
+     * @return 
+     */
+    ConfigurationSnapshot<Void> deleteControllerService(Revision revision, String controllerServiceId);
+    
+    /**
+     * Verifies the specified controller service can be updated.
+     *
+     * @param controllerServiceDTO
+     */
+    void verifyUpdateControllerService(ControllerServiceDTO controllerServiceDTO);
+
+    /**
+     * Verifies the specified controller service can be removed.
+     *
+     * @param controllerServiceId
+     */
+    void verifyDeleteControllerService(String controllerServiceId);
+    
     // ----------------------------------------
     // History methods
     // ----------------------------------------

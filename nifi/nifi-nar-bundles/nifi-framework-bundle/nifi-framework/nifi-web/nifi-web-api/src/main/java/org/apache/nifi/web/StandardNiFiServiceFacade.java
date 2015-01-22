@@ -153,6 +153,9 @@ import org.apache.nifi.web.util.SnippetUtils;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.web.api.dto.ControllerServiceDTO;
+import org.apache.nifi.web.dao.ControllerServiceDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -183,6 +186,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     private PortDAO inputPortDAO;
     private PortDAO outputPortDAO;
     private ConnectionDAO connectionDAO;
+    private ControllerServiceDAO controllerServiceDAO;
     private TemplateDAO templateDAO;
 
     // administrative services
@@ -244,6 +248,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     // -----------------------------------------
     // Verification Operations
     // -----------------------------------------
+    
     @Override
     public void verifyCreateConnection(String groupId, ConnectionDTO connectionDTO) {
         connectionDAO.verifyCreate(groupId, connectionDTO);
@@ -361,9 +366,20 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         remoteProcessGroupDAO.verifyDelete(groupId, remoteProcessGroupId);
     }
 
+    @Override
+    public void verifyUpdateControllerService(ControllerServiceDTO controllerServiceDTO) {
+        controllerServiceDAO.verifyUpdate(controllerServiceDTO);
+    }
+
+    @Override
+    public void verifyDeleteControllerService(String controllerServiceId) {
+        controllerServiceDAO.verifyDelete(controllerServiceId);
+    }
+
     // -----------------------------------------
     // Write Operations
     // -----------------------------------------
+    
     @Override
     public ConfigurationSnapshot<ConnectionDTO> updateConnection(Revision revision, String groupId, ConnectionDTO connectionDTO) {
 
@@ -1258,6 +1274,68 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
+    public ConfigurationSnapshot<ControllerServiceDTO> createControllerService(Revision revision, ControllerServiceDTO controllerServiceDTO) {
+        // ensure the proper revision before performing the update
+        checkRevision(revision);
+
+        // ensure id is set
+        if (StringUtils.isBlank(controllerServiceDTO.getId())) {
+            controllerServiceDTO.setId(UUID.randomUUID().toString());
+        }
+
+        final ControllerServiceNode controllerService = controllerServiceDAO.createControllerService(controllerServiceDTO);
+
+        // update the revision and generate a response
+        final Revision updatedRevision = updateRevision(revision);
+        final ConfigurationSnapshot<ControllerServiceDTO> response = new ConfigurationSnapshot<>(updatedRevision.getVersion(), dtoFactory.createControllerServiceDto(controllerService));
+
+        // save the flow
+        controllerFacade.save();
+
+        return response;
+    }
+
+    @Override
+    public ConfigurationSnapshot<ControllerServiceDTO> updateControllerService(Revision revision, ControllerServiceDTO controllerServiceDTO) {
+        // ensure the proper revision before performing the update
+        checkRevision(revision);
+
+        // if controller service does not exist, then create new controller service
+        if (controllerServiceDAO.hasControllerService(controllerServiceDTO.getId()) == false) {
+            return createControllerService(revision, controllerServiceDTO);
+        }
+
+        final ControllerServiceNode controllerService = controllerServiceDAO.updateControllerService(controllerServiceDTO);
+
+        // update the revision and generate a response
+        final Revision updatedRevision = updateRevision(revision);
+        final ConfigurationSnapshot<ControllerServiceDTO> response = new ConfigurationSnapshot<>(updatedRevision.getVersion(), dtoFactory.createControllerServiceDto(controllerService));
+
+        // save the flow
+        controllerFacade.save();
+
+        return response;
+    }
+
+    @Override
+    public ConfigurationSnapshot<Void> deleteControllerService(Revision revision, String controllerServiceId) {
+        // ensure the proper revision before performing the update
+        checkRevision(revision);
+
+        // delete the label
+        controllerServiceDAO.deleteControllerService(controllerServiceId);
+
+        // update the revision and generate a response
+        final Revision updatedRevision = updateRevision(revision);
+        final ConfigurationSnapshot<Void> response = new ConfigurationSnapshot<>(updatedRevision.getVersion());
+
+        // save the flow
+        controllerFacade.save();
+
+        return response;
+    }
+
+    @Override
     public void deleteActions(Date endDate) {
         // get the user from the request
         NiFiUser user = NiFiUserUtils.getNiFiUser();
@@ -1943,6 +2021,20 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         Long version = optimisticLockingManager.getRevision().getVersion();
         ConfigurationSnapshot<ProcessGroupDTO> response = new ConfigurationSnapshot<>(version, dtoFactory.createProcessGroupDto(processGroup, recurse));
         return response;
+    }
+
+    @Override
+    public Set<ControllerServiceDTO> getControllerServices() {
+        final Set<ControllerServiceDTO> controllerServiceDtos = new LinkedHashSet<>();
+        for (ControllerServiceNode controllerService : controllerServiceDAO.getControllerServices()) {
+            controllerServiceDtos.add(dtoFactory.createControllerServiceDto(controllerService));
+        }
+        return controllerServiceDtos;
+    }
+
+    @Override
+    public ControllerServiceDTO getControllerService(String controllerServiceId) {
+        return dtoFactory.createControllerServiceDto(controllerServiceDAO.getControllerService(controllerServiceId));
     }
 
     @Override
@@ -2727,6 +2819,10 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     public void setProcessGroupDAO(ProcessGroupDAO processGroupDAO) {
         this.processGroupDAO = processGroupDAO;
+    }
+
+    public void setControllerServiceDAO(ControllerServiceDAO controllerServiceDAO) {
+        this.controllerServiceDAO = controllerServiceDAO;
     }
 
     public void setTemplateDAO(TemplateDAO templateDAO) {

@@ -99,8 +99,7 @@ import org.apache.nifi.user.NiFiUserGroup;
 import org.apache.nifi.util.FormatUtils;
 import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.web.Revision;
-import org.apache.nifi.web.api.dto.ProcessorConfigDTO.AllowableValueDTO;
-import org.apache.nifi.web.api.dto.ProcessorConfigDTO.PropertyDescriptorDTO;
+import org.apache.nifi.web.api.dto.PropertyDescriptorDTO.AllowableValueDTO;
 import org.apache.nifi.web.api.dto.action.ActionDTO;
 import org.apache.nifi.web.api.dto.action.HistoryDTO;
 import org.apache.nifi.web.api.dto.action.component.details.ComponentDetailsDTO;
@@ -124,6 +123,7 @@ import org.apache.nifi.web.api.dto.status.ProcessorStatusDTO;
 import org.apache.nifi.web.api.dto.status.RemoteProcessGroupStatusDTO;
 import org.apache.nifi.web.api.dto.status.StatusDTO;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.controller.service.ControllerServiceNode;
 
 /**
  *
@@ -835,6 +835,59 @@ public final class DtoFactory {
         return dto;
     }
 
+    public ControllerServiceDTO createControllerServiceDto(final ControllerServiceNode controllerServiceNode) {
+        if (controllerServiceNode == null) {
+            return null;
+        }
+        
+        final ControllerServiceDTO dto = new ControllerServiceDTO();
+        dto.setId(controllerServiceNode.getIdentifier());
+        dto.setName(controllerServiceNode.getName());
+        dto.setAvailability(controllerServiceNode.getAvailability().name());
+        dto.setEnabled(!controllerServiceNode.isDisabled());
+        
+        // sort a copy of the properties
+        final Map<PropertyDescriptor, String> sortedProperties = new TreeMap<>(new Comparator<PropertyDescriptor>() {
+            @Override
+            public int compare(PropertyDescriptor o1, PropertyDescriptor o2) {
+                return Collator.getInstance(Locale.US).compare(o1.getName(), o2.getName());
+            }
+        });
+        sortedProperties.putAll(controllerServiceNode.getProperties());
+
+        // get the property order from the controller service
+        final ControllerService controllerService = controllerServiceNode.getControllerService();
+        final Map<PropertyDescriptor, String> orderedProperties = new LinkedHashMap<>();
+        final List<PropertyDescriptor> descriptors = controllerService.getPropertyDescriptors();
+        if (descriptors != null && !descriptors.isEmpty()) {
+            for (PropertyDescriptor descriptor : descriptors) {
+                orderedProperties.put(descriptor, null);
+            }
+        }
+        orderedProperties.putAll(sortedProperties);
+        
+        // build the descriptor and property dtos
+        dto.setDescriptors(new LinkedHashMap<String, PropertyDescriptorDTO>());
+        dto.setProperties(new LinkedHashMap<String, String>());
+        for (final Map.Entry<PropertyDescriptor, String> entry : orderedProperties.entrySet()) {
+            final PropertyDescriptor descriptor = entry.getKey();
+
+            // store the property descriptor
+            dto.getDescriptors().put(descriptor.getName(), createPropertyDescriptorDto(descriptor));
+
+            // determine the property value - don't include sensitive properties
+            String propertyValue = entry.getValue();
+            if (propertyValue != null && descriptor.isSensitive()) {
+                propertyValue = "********";
+            }
+
+            // set the property value
+            dto.getProperties().put(descriptor.getName(), propertyValue);
+        }
+        
+        return dto;
+    }
+    
     public RemoteProcessGroupPortDTO createRemoteProcessGroupPortDto(final RemoteGroupPort port) {
         if (port == null) {
             return null;
@@ -1686,12 +1739,12 @@ public final class DtoFactory {
      * @param propertyDescriptor
      * @return
      */
-    private ProcessorConfigDTO.PropertyDescriptorDTO createPropertyDescriptorDto(final PropertyDescriptor propertyDescriptor) {
+    private PropertyDescriptorDTO createPropertyDescriptorDto(final PropertyDescriptor propertyDescriptor) {
         if (propertyDescriptor == null) {
             return null;
         }
 
-        final ProcessorConfigDTO.PropertyDescriptorDTO dto = new ProcessorConfigDTO.PropertyDescriptorDTO();
+        final PropertyDescriptorDTO dto = new PropertyDescriptorDTO();
 
         dto.setName(propertyDescriptor.getName());
         dto.setDisplayName(propertyDescriptor.getDisplayName());
