@@ -169,16 +169,25 @@ nf.Settings = (function () {
     var isAncestor = function (item) {
         return item.children.length > 0;
     };
+
+    /**
+     * Hides the selected controller service.
+     */
+    var clearSelectedControllerService = function () {
+        $('#controller-service-type-description').text('');
+        $('#controller-service-type-name').text('');
+        $('#controller-service-name-field').val('');
+        $('#selected-controller-service-name').text('');
+        $('#selected-controller-service-type').text('');
+        $('#controller-service-description-container').hide();
+    };
     
     /**
      * Clears the selected controller service type.
      */
     var clearControllerServiceSelection = function () {
         // clear the selected row
-        $('#controller-service-type-description').text('');
-        $('#controller-service-type-name').text('');
-        $('#selected-controller-service-name').text('');
-        $('#selected-controller-service-type').text('');
+        clearSelectedControllerService();
 
         // clear the active cell the it can be reselected when its included
         var controllerServiceTypesGrid = $('#controller-service-types-table').data('gridInstance');
@@ -443,8 +452,12 @@ nf.Settings = (function () {
 
                     // populate the dom
                     $('#controller-service-type-name').text(controllerServiceType.label).ellipsis();
+                    $('#controller-service-name-field').val(controllerServiceType.label);
                     $('#selected-controller-service-name').text(controllerServiceType.label);
                     $('#selected-controller-service-type').text(controllerServiceType.type);
+                    
+                    // show the selected controller service
+                    $('#controller-service-description-container').show();
                 }
             }
         });
@@ -565,10 +578,7 @@ nf.Settings = (function () {
             }],
             close: function() {
                 // clear the selected row
-                $('#controller-service-type-description').text('');
-                $('#controller-service-type-name').text('');
-                $('#selected-controller-service-name').text('');
-                $('#selected-controller-service-type').text('');
+                clearSelectedControllerService();
 
                 // unselect any current selection
                 var processTypesGrid = $('#controller-service-types-table').data('gridInstance');
