@@ -59,7 +59,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         final Map<String, String> temp = new HashMap<>();
         
         // create the controller service
-        final ControllerServiceNode controllerService = flowController.createControllerService(controllerServiceDTO.getType(), controllerServiceDTO.getName(), temp);
+        final ControllerServiceNode controllerService = flowController.createControllerService(controllerServiceDTO.getType(), controllerServiceDTO.getName(), true);
         return controllerService;
     }
 

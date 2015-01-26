@@ -855,7 +855,7 @@ public final class DtoFactory {
         sortedProperties.putAll(controllerServiceNode.getProperties());
 
         // get the property order from the controller service
-        final ControllerService controllerService = controllerServiceNode.getControllerService();
+        final ControllerService controllerService = controllerServiceNode.getControllerServiceImplementation();
         final Map<PropertyDescriptor, String> orderedProperties = new LinkedHashMap<>();
         final List<PropertyDescriptor> descriptors = controllerService.getPropertyDescriptors();
         if (descriptors != null && !descriptors.isEmpty()) {
