@@ -122,10 +122,11 @@ public class ControllerServiceLoader {
                 for (final Element serviceElement : serviceNodes) {
                     //get properties for the specific controller task - id, name, class,
                     //and schedulingPeriod must be set
+                    final String serviceId = DomUtils.getChild(serviceElement, "identifier").getTextContent().trim();
                     final String serviceClass = DomUtils.getChild(serviceElement, "class").getTextContent().trim();
 
                     //set the class to be used for the configured controller task
-                    final ControllerServiceNode serviceNode = provider.createControllerService(serviceClass, false);
+                    final ControllerServiceNode serviceNode = provider.createControllerService(serviceClass, serviceId, false);
 
                     //optional task-specific properties
                     for (final Element optionalProperty : DomUtils.getChildElementsByTagName(serviceElement, "property")) {

@@ -238,7 +238,11 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
 	            if ( controllerServicesElement != null ) {
 	                final List<Element> serviceElements = DomUtils.getChildElementsByTagName(controllerServicesElement, "controllerService");
 	                for ( final Element serviceElement : serviceElements ) {
-	                	addControllerService(controller, serviceElement, encryptor);
+	                	if ( !initialized || existingFlowEmpty ) {
+	                		addControllerService(controller, serviceElement, encryptor);
+	                	} else {
+	                		updateControllerService(controller, serviceElement, encryptor);
+	                	}
 	                }
                 }
                 
@@ -246,7 +250,11 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                 if ( reportingTasksElement != null ) {
                 	final List<Element> taskElements = DomUtils.getChildElementsByTagName(reportingTasksElement, "reportingTask");
                 	for ( final Element taskElement : taskElements ) {
-                		addReportingTask(controller, taskElement, encryptor);
+                		if ( !initialized || existingFlowEmpty ) {
+                			addReportingTask(controller, taskElement, encryptor);
+                		} else {
+                			updateReportingTask(controller, taskElement, encryptor);
+                		}
                 	}
                 }
             }
@@ -347,6 +355,21 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	for ( final Map.Entry<String, String> property : dto.getProperties().entrySet() ) {
     		node.setProperty(property.getKey(), property.getValue());
     	}
+    	
+    	if ( dto.getEnabled() == Boolean.TRUE ) {
+    		controller.enableControllerService(node);
+    	}
+    }
+    
+    private void updateControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
+    	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
+    	
+    	final boolean enabled = controller.isControllerServiceEnabled(dto.getId());
+    	if (dto.getEnabled() && !enabled) {
+    		controller.enableControllerService(controller.getControllerServiceNode(dto.getId()));
+    	} else if (dto.getEnabled() == Boolean.FALSE && enabled) {
+    		controller.disableControllerService(controller.getControllerServiceNode(dto.getId()));
+    	}
     }
     
     private void addReportingTask(final FlowController controller, final Element reportingTaskElement, final StringEncryptor encryptor) throws ReportingTaskInstantiationException {
@@ -367,6 +390,49 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	}
     }
 
+    private void updateReportingTask(final FlowController controller, final Element reportingTaskElement, final StringEncryptor encryptor) {
+    	final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(reportingTaskElement, encryptor);
+    	final ReportingTaskNode taskNode = controller.getReportingTaskNode(dto.getId());
+    	
+        if (!taskNode.getScheduledState().name().equals(dto.getScheduledState())) {
+            try {
+                switch (ScheduledState.valueOf(dto.getScheduledState())) {
+                    case DISABLED:
+                    	if ( taskNode.isRunning() ) {
+                    		controller.stopReportingTask(taskNode);
+                    	}
+                    	controller.disableReportingTask(taskNode);
+                        break;
+                    case RUNNING:
+                    	if ( taskNode.getScheduledState() == ScheduledState.DISABLED ) {
+                    		controller.enableReportingTask(taskNode);
+                    	}
+                    	controller.startReportingTask(taskNode);
+                        break;
+                    case STOPPED:
+                        if (taskNode.getScheduledState() == ScheduledState.DISABLED) {
+                        	controller.enableReportingTask(taskNode);
+                        } else if (taskNode.getScheduledState() == ScheduledState.RUNNING) {
+                        	controller.stopReportingTask(taskNode);
+                        }
+                        break;
+                }
+            } catch (final IllegalStateException ise) {
+                logger.error("Failed to change Scheduled State of {} from {} to {} due to {}", taskNode, taskNode.getScheduledState().name(), dto.getScheduledState(), ise.toString());
+                logger.error("", ise);
+
+                // create bulletin for the Processor Node
+                controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Node Reconnection", Severity.ERROR.name(),
+                        "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getScheduledState() + " due to " + ise.toString()));
+
+                // create bulletin at Controller level.
+                controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Node Reconnection", Severity.ERROR.name(),
+                        "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getScheduledState() + " due to " + ise.toString()));
+            }
+        }
+    }
+    
+    
     private ProcessGroup updateProcessGroup(final FlowController controller, final ProcessGroup parentGroup, final Element processGroupElement, final StringEncryptor encryptor) throws ProcessorInstantiationException {
 
         // get the parent group ID

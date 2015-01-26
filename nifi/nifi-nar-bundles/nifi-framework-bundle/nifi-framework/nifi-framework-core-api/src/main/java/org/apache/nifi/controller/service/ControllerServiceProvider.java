@@ -34,7 +34,7 @@ public interface ControllerServiceProvider extends ControllerServiceLookup {
      * @param firstTimeAdded
      * @return
      */
-    ControllerServiceNode createControllerService(String type, boolean firstTimeAdded);
+    ControllerServiceNode createControllerService(String type, String id, boolean firstTimeAdded);
 
     /**
      * Gets the controller service node for the specified identifier. Returns

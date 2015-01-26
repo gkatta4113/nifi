@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -98,12 +97,11 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
     }
 
     @Override
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-        if (type == null) {
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+        if (type == null || id == null) {
             throw new NullPointerException();
         }
         
-        final String id = UUID.randomUUID().toString();
         final ClassLoader currentContextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             final ClassLoader cl = ExtensionManager.getClassLoader(type);

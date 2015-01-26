@@ -404,9 +404,13 @@ public class ControllerFacade implements ControllerServiceProvider {
         return flowController.getControllerService(serviceIdentifier);
     }
 
-    @Override
     public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-        return flowController.createControllerService(type, firstTimeAdded);
+    	return flowController.createControllerService(type, firstTimeAdded);
+    }
+    
+    @Override
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+        return flowController.createControllerService(type, id, firstTimeAdded);
     }
     
     public void removeControllerService(ControllerServiceNode serviceNode) {

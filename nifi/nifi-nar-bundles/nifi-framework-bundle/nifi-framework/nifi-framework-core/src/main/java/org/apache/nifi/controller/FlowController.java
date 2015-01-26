@@ -2589,9 +2589,60 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     	}
     }
     
-    @Override
+    
+    /**
+     * <p>
+     * Starts any enabled Processors and Reporting Tasks that are referencing this Controller Service. If other Controller
+     * Services reference this Controller Service, will also enable those services and 'active' any components referencing
+     * them.
+     * </p>
+     * 
+     * <p>
+     * NOTE: If any component cannot be started, an IllegalStateException will be thrown an no more components will
+     * be activated. This method provides no atomicity.
+     * </p>
+     * 
+     * @param serviceNode
+     */
+    public void activateReferencingComponents(final ControllerServiceNode serviceNode) {
+    	final ControllerServiceReference ref = serviceNode.getReferences();
+    	final Set<ConfiguredComponent> components = ref.getReferencingComponents();
+    	
+    	// First, activate any other controller services. We do this first so that we can
+    	// avoid the situation where Processor X depends on Controller Services Y and Z; and
+    	// Controller Service Y depends on Controller Service Z. In this case, if we first attempted
+    	// to start Processor X, we would fail because Controller Service Y is disabled. THis way, we
+    	// can recursively enable everything.
+    	for ( final ConfiguredComponent component : components ) {
+    		if (component instanceof ControllerServiceNode) {
+    			final ControllerServiceNode componentNode = (ControllerServiceNode) component;
+    			enableControllerService(componentNode);
+    			activateReferencingComponents(componentNode);
+    		}
+    	}
+    	
+    	for ( final ConfiguredComponent component : components ) {
+    		if (component instanceof ProcessorNode) {
+    			final ProcessorNode procNode = (ProcessorNode) component;
+    			if ( !procNode.isRunning() ) {
+    				startProcessor(procNode.getProcessGroup().getIdentifier(), procNode.getIdentifier());
+    			}
+    		} else if (component instanceof ReportingTaskNode) {
+    			final ReportingTaskNode taskNode = (ReportingTaskNode) component;
+    			if ( !taskNode.isRunning() ) {
+    				startReportingTask(taskNode);
+    			}
+    		}
+    	}
+    }
+    
     public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-        return controllerServiceProvider.createControllerService(type, firstTimeAdded);
+    	return createControllerService(type, UUID.randomUUID().toString(), firstTimeAdded);
+    }
+    
+    @Override
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+        return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
     }
     
     public void enableReportingTask(final ReportingTaskNode reportingTaskNode) {

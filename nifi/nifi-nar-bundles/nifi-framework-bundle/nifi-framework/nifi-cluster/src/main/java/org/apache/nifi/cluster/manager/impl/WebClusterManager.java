@@ -1287,6 +1287,10 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
             writeLock.unlock("handleControllerStartupFailure");
         }
     }
+    
+    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
+    	return createControllerService(type, UUID.randomUUID().toString(), firstTimeAdded);
+    }
 
     /**
      * Adds an instance of a specified controller service.
@@ -1297,8 +1301,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
      * @return
      */
     @Override
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-        return controllerServiceProvider.createControllerService(type, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+        return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
     }
 
     @Override
