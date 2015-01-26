@@ -22,17 +22,19 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ConfigurationContext;
-import org.apache.nifi.controller.annotation.OnConfigured;
 import org.apache.nifi.controller.status.ProcessGroupStatus;
 import org.apache.nifi.controller.status.ProcessorStatus;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.reporting.AbstractReportingTask;
 import org.apache.nifi.reporting.InitializationException;
 import org.apache.nifi.reporting.ReportingContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.MetricName;
@@ -44,6 +46,11 @@ import com.yammer.metrics.reporting.GangliaReporter;
  * to the Ganglia server and optionally allows a "port" property (default
  * otherwise is 8649)
  */
+@Tags({"ganglia", "stats"})
+@CapabilityDescription("Reports metrics to Ganglia so that Ganglia can be used for external monitoring of the application. Metrics"
+        + " reported include JVM Metrics (optional); the following 5-minute NiFi statistics: FlowFiles Received, Bytes Received,"
+        + " FlowFiles Sent, Bytes Sent, Bytes Read, Bytes Written, Total Task Duration; and the current values for"
+        + " FlowFiles Queued, Bytes Queued, and number of Active Threads.")
 public class StandardGangliaReporter extends AbstractReportingTask {
 
     public static final PropertyDescriptor HOSTNAME = new PropertyDescriptor.Builder()
@@ -85,7 +92,7 @@ public class StandardGangliaReporter extends AbstractReportingTask {
         return properties;
     }
 
-    @OnConfigured
+    @OnScheduled
     public void onConfigure(final ConfigurationContext config) throws InitializationException {
         metricsRegistry = new MetricsRegistry();
 

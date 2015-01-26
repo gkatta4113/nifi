@@ -25,9 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -36,11 +34,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
-import org.apache.nifi.util.file.FileUtils;
-import org.apache.nifi.util.DomUtils;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.nifi.util.DomUtils;
+import org.apache.nifi.util.file.FileUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -123,25 +120,23 @@ public class ControllerServiceLoader {
 
                 final List<Element> serviceNodes = DomUtils.getChildElementsByTagName(servicesElement, "service");
                 for (final Element serviceElement : serviceNodes) {
-                    //add global properties common to all tasks
-                    Map<String, String> properties = new HashMap<>();
-
                     //get properties for the specific controller task - id, name, class,
                     //and schedulingPeriod must be set
                     final String serviceId = DomUtils.getChild(serviceElement, "identifier").getTextContent().trim();
                     final String serviceClass = DomUtils.getChild(serviceElement, "class").getTextContent().trim();
 
+                    //set the class to be used for the configured controller task
+                    final ControllerServiceNode serviceNode = provider.createControllerService(serviceClass, serviceId, false);
+
                     //optional task-specific properties
                     for (final Element optionalProperty : DomUtils.getChildElementsByTagName(serviceElement, "property")) {
                         final String name = optionalProperty.getAttribute("name").trim();
                         final String value = optionalProperty.getTextContent().trim();
-                        properties.put(name, value);
+                        serviceNode.setProperty(name, value);
                     }
 
-                    //set the class to be used for the configured controller task
-                    final ControllerServiceNode serviceNode = provider.createControllerService(serviceClass, serviceId, properties);
                     services.add(serviceNode);
-                    serviceNode.setDisabled(false);
+                    provider.enableControllerService(serviceNode);
                 }
             }
         } catch (SAXException | ParserConfigurationException sxe) {

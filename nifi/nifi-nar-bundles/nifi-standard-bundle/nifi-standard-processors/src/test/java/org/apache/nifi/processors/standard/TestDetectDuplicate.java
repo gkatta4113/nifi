@@ -16,7 +16,6 @@
  */
 package org.apache.nifi.processors.standard;
 
-import org.apache.nifi.processors.standard.DetectDuplicate;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -26,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.SerializationException;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.distributed.cache.client.Deserializer;
@@ -36,8 +36,6 @@ import org.apache.nifi.reporting.InitializationException;
 import org.apache.nifi.util.MockControllerServiceInitializationContext;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
-
-import org.apache.commons.lang3.SerializationException;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +55,6 @@ public class TestDetectDuplicate {
 
     @Test
     public void testDuplicate() throws InitializationException {
-
         TestRunner runner = TestRunners.newTestRunner(DetectDuplicate.class);
         final DistributedMapCacheClientImpl client = createClient();
         final Map<String, String> clientProperties = new HashMap<>();
@@ -69,6 +66,8 @@ public class TestDetectDuplicate {
         Map<String, String> props = new HashMap<>();
         props.put("hash.value", "1000");
         runner.enqueue(new byte[]{}, props);
+        runner.enableControllerService(client);
+        
         runner.run();
         runner.assertAllFlowFilesTransferred(DetectDuplicate.REL_NON_DUPLICATE, 1);
         runner.clearTransferState();
@@ -91,9 +90,12 @@ public class TestDetectDuplicate {
         runner.setProperty(DetectDuplicate.DISTRIBUTED_CACHE_SERVICE, "client");
         runner.setProperty(DetectDuplicate.FLOWFILE_DESCRIPTION, "The original flow file");
         runner.setProperty(DetectDuplicate.AGE_OFF_DURATION, "2 secs");
+        runner.enableControllerService(client);
+        
         Map<String, String> props = new HashMap<>();
         props.put("hash.value", "1000");
         runner.enqueue(new byte[]{}, props);
+        
         runner.run();
         runner.assertAllFlowFilesTransferred(DetectDuplicate.REL_NON_DUPLICATE, 1);
         runner.clearTransferState();

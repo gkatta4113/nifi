@@ -26,13 +26,15 @@ import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.components.Validator;
 import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.controller.ConfigurationContext;
-import org.apache.nifi.controller.annotation.OnConfigured;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.reporting.InitializationException;
@@ -40,6 +42,9 @@ import org.apache.nifi.security.util.CertificateUtils;
 import org.apache.nifi.security.util.KeystoreType;
 import org.apache.nifi.security.util.SslContextFactory;
 
+@Tags({"ssl", "secure", "certificate", "keystore", "truststore", "jks", "p12", "pkcs12", "pkcs"})
+@CapabilityDescription("Standard implementation of the SSLContextService. Provides the ability to configure "
+        + "keystore and/or truststore properties once and reuse that configuration throughout the application")
 public class StandardSSLContextService extends AbstractControllerService implements SSLContextService {
 
     public static final String STORE_TYPE_JKS = "JKS";
@@ -104,7 +109,7 @@ public class StandardSSLContextService extends AbstractControllerService impleme
     }
     private ConfigurationContext configContext;
 
-    @OnConfigured
+    @OnEnabled
     public void onConfigured(final ConfigurationContext context) throws InitializationException {
         configContext = context;
 

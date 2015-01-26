@@ -24,18 +24,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.controller.annotation.OnConfigured;
 import org.apache.nifi.controller.status.ConnectionStatus;
 import org.apache.nifi.controller.status.ProcessGroupStatus;
 import org.apache.nifi.controller.status.ProcessorStatus;
 import org.apache.nifi.reporting.AbstractReportingTask;
 import org.apache.nifi.reporting.ReportingContext;
 import org.apache.nifi.util.FormatUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Tags({"stats", "log"})
+@CapabilityDescription("Logs the 5-minute stats that are shown in the NiFi Summary Page for Processors and Connections, as"
+        + " well optionally logging the deltas between the previous iteration and the current iteration. Processors' stats are"
+        + " logged using the org.apache.nifi.controller.ControllerStatusReportingTask.Processors logger, while Connections' stats are"
+        + " logged using the org.apache.nifi.controller.ControllerStatusReportingTask.Connections logger. These can be configured"
+        + " in the NiFi logging configuration to log to different files, if desired.")
 public class ControllerStatusReportingTask extends AbstractReportingTask {
 
     public static final PropertyDescriptor SHOW_DELTAS = new PropertyDescriptor.Builder()
@@ -73,7 +80,7 @@ public class ControllerStatusReportingTask extends AbstractReportingTask {
         return descriptors;
     }
 
-    @OnConfigured
+    @OnScheduled
     public void onConfigured(final ConfigurationContext context) {
         connectionLineFormat = context.getProperty(SHOW_DELTAS).asBoolean() ? CONNECTION_LINE_FORMAT_WITH_DELTA : CONNECTION_LINE_FORMAT_NO_DELTA;
         connectionHeader = String.format(connectionLineFormat, "Connection ID", "Source", "Connection Name", "Destination", "Flow Files In", "Flow Files Out", "FlowFiles Queued");
