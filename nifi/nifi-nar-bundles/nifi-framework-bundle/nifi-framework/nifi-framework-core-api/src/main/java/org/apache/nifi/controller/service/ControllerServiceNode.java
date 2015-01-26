@@ -40,6 +40,9 @@ public interface ControllerServiceNode extends ConfiguredComponent {
 
     void removeReference(ConfiguredComponent referringComponent);
     
+    void setComment(String comment);
+    String getComment();
+    
     void verifyCanEnable();
     void verifyCanDisable();
     void verifyCanDelete();

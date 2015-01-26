@@ -16,6 +16,8 @@
  */
 package org.apache.nifi.controller.service;
 
+import java.util.Set;
+
 import org.apache.nifi.annotation.lifecycle.OnAdded;
 import org.apache.nifi.controller.ControllerServiceLookup;
 
@@ -65,4 +67,10 @@ public interface ControllerServiceProvider extends ControllerServiceLookup {
      * @param serviceNode
      */
     void disableControllerService(ControllerServiceNode serviceNode);
+    
+    /**
+     * Returns a Set of all Controller Services that exist for this service provider.
+     * @return
+     */
+    Set<ControllerServiceNode> getAllControllerServices();
 }

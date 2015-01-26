@@ -2464,16 +2464,16 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         lookupGroup(groupId).stopProcessing();
     }
 
-    public ReportingTaskNode createReportingTask(final String type, String id) throws ReportingTaskInstantiationException {
-        return createReportingTask(type, id, true);
+    public ReportingTaskNode createReportingTask(final String type) throws ReportingTaskInstantiationException {
+        return createReportingTask(type, true);
     }
     
-    public ReportingTaskNode createReportingTask(final String type, String id, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+    public ReportingTaskNode createReportingTask(final String type, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
         if (type == null) {
             throw new NullPointerException();
         }
-
-        id = requireNonNull(id).intern();
+        
+        final String id = UUID.randomUUID().toString();
 
         ReportingTask task = null;
         final ClassLoader ctxClassLoader = Thread.currentThread().getContextClassLoader();
@@ -2563,18 +2563,28 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
      * @param serviceNode
      */
     public void deactiveReferencingComponents(final ControllerServiceNode serviceNode) {
+    	// TODO: Should stop all Processors and Reporting Tasks, and then wait for them to
+    	// finish, rather than stopping & waiting serially.
     	final ControllerServiceReference reference = serviceNode.getReferences();
     	
     	final Set<ConfiguredComponent> components = reference.getActiveReferences();
     	for (final ConfiguredComponent component : components) {
     		if ( component instanceof ControllerServiceNode ) {
     			deactiveReferencingComponents((ControllerServiceNode) component);
-    			// TODO: DISABLE CONTROLLER SERVICE!
+    			
+    			if (isControllerServiceEnabled(serviceNode.getIdentifier())) {
+    				disableControllerService(serviceNode);
+    			}
     		} else if ( component instanceof ReportingTaskNode ) {
-    			stopReportingTask((ReportingTaskNode) component);
+    			final ReportingTaskNode taskNode = (ReportingTaskNode) component;
+    			if (taskNode.isRunning()) {
+    				stopReportingTask((ReportingTaskNode) component);
+    			}
     		} else if ( component instanceof ProcessorNode ) {
     			final ProcessorNode procNode = (ProcessorNode) component;
-    			stopProcessor(procNode.getProcessGroup().getIdentifier(), procNode.getIdentifier());
+    			if ( procNode.isRunning() ) {
+    				stopProcessor(procNode.getProcessGroup().getIdentifier(), procNode.getIdentifier());
+    			}
     		}
     	}
     }
@@ -2635,6 +2645,11 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
 
     public void removeControllerService(final ControllerServiceNode serviceNode) {
         controllerServiceProvider.removeControllerService(serviceNode);
+    }
+    
+    @Override
+    public Set<ControllerServiceNode> getAllControllerServices() {
+    	return controllerServiceProvider.getAllControllerServices();
     }
     
     //

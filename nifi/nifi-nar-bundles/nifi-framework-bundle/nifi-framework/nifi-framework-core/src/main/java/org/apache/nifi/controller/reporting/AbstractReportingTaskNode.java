@@ -46,7 +46,8 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     private final AtomicReference<SchedulingStrategy> schedulingStrategy = new AtomicReference<>(SchedulingStrategy.TIMER_DRIVEN);
     private final AtomicReference<String> schedulingPeriod = new AtomicReference<>("5 mins");
     private final AtomicReference<Availability> availability = new AtomicReference<>(Availability.NODE_ONLY);
-
+    
+    private volatile String comment;
     private volatile ScheduledState scheduledState = ScheduledState.STOPPED;
     
     public AbstractReportingTaskNode(final ReportingTask reportingTask, final String id,
@@ -142,7 +143,8 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
         return removed;
     }
     
-    private void onConfigured() {
+    @SuppressWarnings("deprecation")
+	private void onConfigured() {
         // We need to invoke any method annotation with the OnConfigured annotation in order to
         // maintain backward compatibility. This will be removed when we remove the old, deprecated annotations.
         try (final NarCloseable x = NarCloseable.withNarLoader()) {
@@ -158,6 +160,16 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     }
     
     @Override
+    public String getComment() {
+		return comment;
+	}
+
+    @Override
+	public void setComment(final String comment) {
+		this.comment = comment;
+	}
+
+	@Override
     public void verifyCanDelete() {
         if (isRunning()) {
             throw new IllegalStateException("Cannot delete " + reportingTask + " because it is currently running");

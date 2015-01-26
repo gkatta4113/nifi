@@ -1342,6 +1342,10 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         controllerServiceProvider.disableControllerService(serviceNode);
     }
     
+    @Override
+    public Set<ControllerServiceNode> getAllControllerServices() {
+    	return controllerServiceProvider.getAllControllerServices();
+    }
     
     /**
      * Handle a bulletins message.

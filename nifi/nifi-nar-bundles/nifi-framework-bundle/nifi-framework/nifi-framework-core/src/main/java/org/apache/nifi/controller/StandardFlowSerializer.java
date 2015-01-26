@@ -40,6 +40,7 @@ import org.apache.nifi.connectable.Port;
 import org.apache.nifi.connectable.Position;
 import org.apache.nifi.connectable.Size;
 import org.apache.nifi.controller.label.Label;
+import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.flowfile.FlowFilePrioritizer;
 import org.apache.nifi.groups.ProcessGroup;
@@ -47,7 +48,6 @@ import org.apache.nifi.groups.RemoteProcessGroup;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.remote.RemoteGroupPort;
 import org.apache.nifi.remote.RootGroupPort;
-
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -79,6 +79,18 @@ public class StandardFlowSerializer implements FlowSerializer {
             addTextElement(rootNode, "maxTimerDrivenThreadCount", controller.getMaxTimerDrivenThreadCount());
             addTextElement(rootNode, "maxEventDrivenThreadCount", controller.getMaxEventDrivenThreadCount());
             addProcessGroup(rootNode, controller.getGroup(controller.getRootGroupId()), "rootGroup");
+            
+            final Element controllerServicesNode = doc.createElement("controllerServices");
+            rootNode.appendChild(controllerServicesNode);
+            for ( final ControllerServiceNode serviceNode : controller.getAllControllerServices() ) {
+            	addControllerService(controllerServicesNode, serviceNode);
+            }
+            
+            final Element reportingTasksNode = doc.createElement("reportingTasks");
+            rootNode.appendChild(reportingTasksNode);
+            for ( final ReportingTaskNode taskNode : controller.getReportingTasks() ) {
+            	addReportingTask(reportingTasksNode, taskNode);
+            }
 
             final DOMSource domSource = new DOMSource(doc);
             final StreamResult streamResult = new StreamResult(new BufferedOutputStream(os));
@@ -300,8 +312,16 @@ public class StandardFlowSerializer implements FlowSerializer {
         addTextElement(element, "schedulingStrategy", processor.getSchedulingStrategy().name());
         addTextElement(element, "runDurationNanos", processor.getRunDuration(TimeUnit.NANOSECONDS));
 
-        // properties.
-        for (final Map.Entry<PropertyDescriptor, String> entry : processor.getProperties().entrySet()) {
+        addConfiguration(element, processor.getProperties(), processor.getAnnotationData());
+        
+        for (final Relationship rel : processor.getAutoTerminatedRelationships()) {
+            addTextElement(element, "autoTerminatedRelationship", rel.getName());
+        }
+    }
+    
+    private void addConfiguration(final Element element, final Map<PropertyDescriptor, String> properties, final String annotationData) {
+    	final Document doc = element.getOwnerDocument();
+    	for (final Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
             final PropertyDescriptor descriptor = entry.getKey();
             String value = entry.getValue();
 
@@ -322,13 +342,8 @@ public class StandardFlowSerializer implements FlowSerializer {
             element.appendChild(propElement);
         }
 
-        final String annotationData = processor.getAnnotationData();
         if (annotationData != null) {
             addTextElement(element, "annotationData", annotationData);
-        }
-
-        for (final Relationship rel : processor.getAutoTerminatedRelationships()) {
-            addTextElement(element, "autoTerminatedRelationship", rel.getName());
         }
     }
 
@@ -390,6 +405,37 @@ public class StandardFlowSerializer implements FlowSerializer {
         parentElement.appendChild(element);
     }
 
+    
+    private void addControllerService(final Element element, final ControllerServiceNode serviceNode) {
+    	final Element serviceElement = element.getOwnerDocument().createElement("controllerService");
+    	addTextElement(serviceElement, "id", serviceNode.getIdentifier());
+    	addTextElement(serviceElement, "name", serviceNode.getName());
+    	addTextElement(serviceElement, "comment", serviceNode.getComment());
+    	addTextElement(serviceElement, "class", serviceNode.getControllerServiceImplementation().getClass().getCanonicalName());
+        addTextElement(serviceElement, "enabled", String.valueOf(!serviceNode.isDisabled()));
+        addTextElement(serviceElement, "availability", serviceNode.getAvailability().toString());
+        
+        addConfiguration(serviceElement, serviceNode.getProperties(), serviceNode.getAnnotationData());
+        
+    	element.appendChild(serviceElement);
+    }
+    
+    private void addReportingTask(final Element element, final ReportingTaskNode taskNode) {
+    	final Element taskElement = element.getOwnerDocument().createElement("reportingTask");
+    	addTextElement(taskElement, "id", taskNode.getIdentifier());
+    	addTextElement(taskElement, "name", taskNode.getName());
+    	addTextElement(taskElement, "comment", taskNode.getComment());
+    	addTextElement(taskElement, "class", taskNode.getReportingTask().getClass().getCanonicalName());
+        addTextElement(taskElement, "schedulingPeriod", taskNode.getSchedulingPeriod());
+        addTextElement(taskElement, "scheduledState", taskNode.getScheduledState().name());
+        addTextElement(taskElement, "schedulingStrategy", taskNode.getSchedulingStrategy().name());
+    	addTextElement(taskElement, "availability", taskNode.getAvailability().toString());
+    	
+    	addConfiguration(taskElement, taskNode.getProperties(), taskNode.getAnnotationData());
+    	
+    	element.appendChild(taskElement);
+    }
+    
     private void addTextElement(final Element element, final String name, final long value) {
         addTextElement(element, name, String.valueOf(value));
     }

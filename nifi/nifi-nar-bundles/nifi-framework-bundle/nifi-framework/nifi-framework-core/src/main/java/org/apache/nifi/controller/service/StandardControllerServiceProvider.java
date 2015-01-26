@@ -30,10 +30,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.nifi.annotation.lifecycle.OnAdded;
-import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.annotation.lifecycle.OnDisabled;
+import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.annotation.lifecycle.OnRemoved;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.ControllerService;
@@ -55,7 +56,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
 
     private static final Logger logger = LoggerFactory.getLogger(StandardControllerServiceProvider.class);
 
-    private final Map<String, ControllerServiceNode> controllerServices;
+    private final ConcurrentMap<String, ControllerServiceNode> controllerServices;
     private static final Set<Method> validDisabledMethods;
 
     static {
@@ -244,5 +245,10 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         }
         
         controllerServices.remove(serviceNode.getIdentifier());
+    }
+    
+    @Override
+    public Set<ControllerServiceNode> getAllControllerServices() {
+    	return new HashSet<>(controllerServices.values());
     }
 }

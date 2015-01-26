@@ -438,6 +438,10 @@ public class ControllerFacade implements ControllerServiceProvider {
     	return flowController.getControllerServiceName(serviceIdentifier);
     }
 
+    @Override
+    public Set<ControllerServiceNode> getAllControllerServices() {
+    	return flowController.getAllControllerServices();
+    }
 
     @Override
     public void enableControllerService(final ControllerServiceNode serviceNode) {

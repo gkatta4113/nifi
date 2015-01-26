@@ -20,13 +20,14 @@ import java.util.Map;
 import javax.xml.bind.annotation.XmlType;
 
 /**
- * A connection between two connectable components.
+ * A Controller Service that can be shared by other components
  */
 @XmlType(name = "controllerService")
 public class ControllerServiceDTO extends NiFiComponentDTO {
 
     private String name;
     private String type;
+    private String comment;
     private String availability;
     private Boolean enabled;
     
@@ -60,8 +61,21 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
     public void setType(String type) {
         this.type = type;
     }
+    
 
     /**
+     * The comment for the Controller Service
+     * @return
+     */
+    public String getComment() {
+		return comment;
+	}
+
+	public void setComment(String comment) {
+		this.comment = comment;
+	}
+
+	/**
      * Where this service is available. Possible values are CLUSTER_MANAGER_ONLY, NODE_ONLY, BOTH.
      * 
      * @return 

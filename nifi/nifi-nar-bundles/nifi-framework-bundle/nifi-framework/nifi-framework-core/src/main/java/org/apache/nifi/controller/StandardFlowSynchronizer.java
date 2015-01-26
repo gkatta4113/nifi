@@ -40,6 +40,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.nifi.cluster.protocol.DataFlow;
 import org.apache.nifi.cluster.protocol.StandardDataFlow;
 import org.apache.nifi.connectable.Connectable;
@@ -51,8 +52,10 @@ import org.apache.nifi.connectable.Position;
 import org.apache.nifi.connectable.Size;
 import org.apache.nifi.controller.exception.ProcessorInstantiationException;
 import org.apache.nifi.controller.label.Label;
+import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
+import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.events.BulletinFactory;
-import org.apache.nifi.util.file.FileUtils;
 import org.apache.nifi.fingerprint.FingerprintException;
 import org.apache.nifi.fingerprint.FingerprintFactory;
 import org.apache.nifi.flowfile.FlowFilePrioritizer;
@@ -65,9 +68,12 @@ import org.apache.nifi.remote.RemoteGroupPort;
 import org.apache.nifi.remote.RootGroupPort;
 import org.apache.nifi.reporting.Severity;
 import org.apache.nifi.scheduling.SchedulingStrategy;
+import org.apache.nifi.util.DomUtils;
 import org.apache.nifi.util.NiFiProperties;
+import org.apache.nifi.util.file.FileUtils;
 import org.apache.nifi.web.api.dto.ConnectableDTO;
 import org.apache.nifi.web.api.dto.ConnectionDTO;
+import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.dto.FlowSnippetDTO;
 import org.apache.nifi.web.api.dto.FunnelDTO;
 import org.apache.nifi.web.api.dto.LabelDTO;
@@ -77,9 +83,7 @@ import org.apache.nifi.web.api.dto.ProcessGroupDTO;
 import org.apache.nifi.web.api.dto.ProcessorConfigDTO;
 import org.apache.nifi.web.api.dto.ProcessorDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
-
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.nifi.encrypt.StringEncryptor;
+import org.apache.nifi.web.api.dto.ReportingTaskDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -229,6 +233,22 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                     logger.trace("Updating root process group");
                     updateProcessGroup(controller, /* parent group */ null, rootGroupElement, encryptor);
                 }
+                
+                final Element controllerServicesElement = (Element) DomUtils.getChild(rootElement, "controllerServices");
+	            if ( controllerServicesElement != null ) {
+	                final List<Element> serviceElements = DomUtils.getChildElementsByTagName(controllerServicesElement, "controllerService");
+	                for ( final Element serviceElement : serviceElements ) {
+	                	addControllerService(controller, serviceElement, encryptor);
+	                }
+                }
+                
+                final Element reportingTasksElement = (Element) DomUtils.getChild(rootElement, "reportingTasks");
+                if ( reportingTasksElement != null ) {
+                	final List<Element> taskElements = DomUtils.getChildElementsByTagName(reportingTasksElement, "reportingTask");
+                	for ( final Element taskElement : taskElements ) {
+                		addReportingTask(controller, taskElement, encryptor);
+                	}
+                }
             }
 
             logger.trace("Synching templates");
@@ -312,6 +332,39 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
         }
 
         return baos.toByteArray();
+    }
+    
+    private void addControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
+    	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
+    	
+    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), false);
+    	node.setName(dto.getName());
+    	node.setAvailability(Availability.valueOf(dto.getAvailability()));
+    	node.setComment(dto.getComment());
+    	node.setDisabled(dto.getEnabled() != Boolean.TRUE);
+    	node.setAnnotationData(dto.getAnnotationData());
+    	
+    	for ( final Map.Entry<String, String> property : dto.getProperties().entrySet() ) {
+    		node.setProperty(property.getKey(), property.getValue());
+    	}
+    }
+    
+    private void addReportingTask(final FlowController controller, final Element reportingTaskElement, final StringEncryptor encryptor) throws ReportingTaskInstantiationException {
+    	final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(reportingTaskElement, encryptor);
+    	
+    	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), false);
+    	reportingTask.setName(dto.getName());
+    	reportingTask.setComment(dto.getComment());
+    	reportingTask.setAvailability(Availability.valueOf(dto.getAvailability()));
+    	reportingTask.setScheduldingPeriod(dto.getSchedulingPeriod());
+    	reportingTask.setScheduledState(ScheduledState.valueOf(dto.getScheduledState()));
+    	reportingTask.setSchedulingStrategy(SchedulingStrategy.valueOf(dto.getSchedulingStrategy()));
+    	
+    	reportingTask.setAnnotationData(dto.getAnnotationData());
+    	
+    	for ( final Map.Entry<String, String> entry : dto.getProperties().entrySet() ) {
+    		reportingTask.setProperty(entry.getKey(), entry.getValue());
+    	}
     }
 
     private ProcessGroup updateProcessGroup(final FlowController controller, final ProcessGroup parentGroup, final Element processGroupElement, final StringEncryptor encryptor) throws ProcessorInstantiationException {

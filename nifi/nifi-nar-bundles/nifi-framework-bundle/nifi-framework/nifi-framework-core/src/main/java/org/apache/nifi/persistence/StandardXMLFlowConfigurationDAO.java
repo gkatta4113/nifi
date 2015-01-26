@@ -219,7 +219,6 @@ public final class StandardXMLFlowConfigurationDAO implements FlowConfigurationD
 
                 //get properties for the specific reporting task - id, name, class,
                 //and schedulingPeriod must be set
-                final String taskId = DomUtils.getChild(taskElement, "id").getTextContent().trim();
                 final String taskName = DomUtils.getChild(taskElement, "name").getTextContent().trim();
 
                 final List<Element> schedulingStrategyNodeList = DomUtils.getChildElementsByTagName(taskElement, "schedulingStrategy");
@@ -230,7 +229,7 @@ public final class StandardXMLFlowConfigurationDAO implements FlowConfigurationD
                     try {
                         schedulingStrategyValue = SchedulingStrategy.valueOf(specifiedValue).name();
                     } catch (final Exception e) {
-                        throw new RuntimeException("Cannot start Reporting Task with id " + taskId + " because its Scheduling Strategy does not have a valid value", e);
+                        throw new RuntimeException("Cannot start Reporting Task with name " + taskName + " because its Scheduling Strategy does not have a valid value", e);
                     }
                 }
 
@@ -248,9 +247,9 @@ public final class StandardXMLFlowConfigurationDAO implements FlowConfigurationD
                 //set the class to be used for the configured reporting task
                 final ReportingTaskNode reportingTaskNode;
                 try {
-                    reportingTaskNode = controller.createReportingTask(taskClass, taskId);
+                    reportingTaskNode = controller.createReportingTask(taskClass);
                 } catch (final ReportingTaskInstantiationException e) {
-                    LOG.error("Unable to load reporting task {} due to {}", new Object[]{taskId, e});
+                    LOG.error("Unable to load reporting task {} due to {}", new Object[]{taskName, e});
                     if (LOG.isDebugEnabled()) {
                         LOG.error("", e);
                     }
@@ -263,7 +262,8 @@ public final class StandardXMLFlowConfigurationDAO implements FlowConfigurationD
 
                 final ReportingTask reportingTask = reportingTaskNode.getReportingTask();
 
-                final ReportingInitializationContext config = new StandardReportingInitializationContext(taskId, taskName, schedulingStrategy, taskSchedulingPeriod, controller);
+                final ReportingInitializationContext config = new StandardReportingInitializationContext(
+                		reportingTask.getIdentifier(), taskName, schedulingStrategy, taskSchedulingPeriod, controller);
                 reportingTask.initialize(config);
 
                 final Map<PropertyDescriptor, String> resolvedProps;

@@ -54,10 +54,10 @@ public class ProcessorConfigDTO {
     }
 
     /**
-     * The amount of time that should elapse between task executions. This will
-     * not affect currently scheduled tasks.
+     * The frequency with which to schedule the processor. The format of the value will
+     * depend on the value of {@link #getSchedulingStrategy()}.
      *
-     * @return The scheduling period in seconds
+     * @return The scheduling period
      */
     public String getSchedulingPeriod() {
         return schedulingPeriod;

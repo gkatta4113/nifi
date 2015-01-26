@@ -49,6 +49,7 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     private final Lock writeLock = rwLock.writeLock();
 
     private final Set<ConfiguredComponent> referencingComponents = new HashSet<>();
+    private String comment;
 
     public StandardControllerServiceNode(final ControllerService proxiedControllerService, final ControllerService implementation, final String id,
             final ValidationContextFactory validationContextFactory, final ControllerServiceProvider serviceProvider) {
@@ -192,5 +193,25 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
         if ( !isDisabled() ) {
             throw new IllegalStateException(implementation + " cannot be updated because it is not disabled");
         }
+    }
+    
+    @Override
+    public String getComment() {
+    	readLock.lock();
+    	try {
+    		return comment;
+    	} finally {
+    		readLock.unlock();
+    	}
+    }
+    
+    @Override
+    public void setComment(final String comment) {
+    	writeLock.lock();
+    	try {
+    		this.comment = comment;
+    	} finally {
+    		writeLock.unlock();
+    	}
     }
 }
