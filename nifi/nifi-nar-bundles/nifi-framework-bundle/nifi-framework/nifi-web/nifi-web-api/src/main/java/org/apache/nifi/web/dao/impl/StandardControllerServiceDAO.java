@@ -17,6 +17,7 @@
 package org.apache.nifi.web.dao.impl;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -56,8 +57,6 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     @Override
     public ControllerServiceNode createControllerService(final ControllerServiceDTO controllerServiceDTO) {
-        final Map<String, String> temp = new HashMap<>();
-        
         // create the controller service
         final ControllerServiceNode controllerService = flowController.createControllerService(controllerServiceDTO.getType(), controllerServiceDTO.getName(), true);
         return controllerService;
@@ -92,7 +91,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     @Override
     public Set<ControllerServiceNode> getControllerServices() {
-        return null;
+        return new HashSet<>();
     }
 
     /**
