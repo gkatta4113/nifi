@@ -129,4 +129,10 @@ public class StandardReportingContext implements ReportingContext, ControllerSer
     public ControllerServiceLookup getControllerServiceLookup() {
         return this;
     }
+
+	@Override
+	public String getControllerServiceName(final String serviceIdentifier) {
+		return serviceProvider.getControllerServiceName(serviceIdentifier);
+	}
+    
 }

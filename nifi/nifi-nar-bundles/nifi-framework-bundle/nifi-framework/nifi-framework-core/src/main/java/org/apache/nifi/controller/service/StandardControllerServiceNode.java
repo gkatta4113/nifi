@@ -62,7 +62,7 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
 
         if (disabled) {
             // do not allow a Controller Service to be disabled if it's currently being used.
-            final Set<ConfiguredComponent> runningRefs = getReferences().getRunningReferences();
+            final Set<ConfiguredComponent> runningRefs = getReferences().getActiveReferences();
             if (!runningRefs.isEmpty()) {
                 throw new IllegalStateException("Cannot disable Controller Service because it is referenced (either directly or indirectly) by " + runningRefs.size() + " different components that are currently running");
             }

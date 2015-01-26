@@ -63,4 +63,11 @@ public interface ControllerServiceLookup {
      */
     Set<String> getControllerServiceIdentifiers(Class<? extends ControllerService> serviceType) throws IllegalArgumentException;
 
+    /**
+     * Returns the name of the Controller service with the given identifier. If no service can be
+     * found with this identifier, returns {@code null}.
+     * @param serviceIdentifier
+     * @return
+     */
+    String getControllerServiceName(String serviceIdentifier);
 }

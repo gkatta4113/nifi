@@ -48,6 +48,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.net.ssl.SSLContext;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.admin.service.UserService;
 import org.apache.nifi.cluster.BulletinsPayload;
 import org.apache.nifi.cluster.HeartbeatPayload;
@@ -100,6 +101,7 @@ import org.apache.nifi.controller.scheduling.StandardProcessScheduler;
 import org.apache.nifi.controller.scheduling.TimerDrivenSchedulingAgent;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
+import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.controller.service.StandardControllerServiceProvider;
 import org.apache.nifi.controller.status.ConnectionStatus;
 import org.apache.nifi.controller.status.PortStatus;
@@ -126,7 +128,6 @@ import org.apache.nifi.groups.ProcessGroup;
 import org.apache.nifi.groups.RemoteProcessGroup;
 import org.apache.nifi.groups.RemoteProcessGroupPortDescriptor;
 import org.apache.nifi.groups.StandardProcessGroup;
-import org.apache.nifi.stream.io.StreamUtils;
 import org.apache.nifi.logging.LogLevel;
 import org.apache.nifi.logging.LogRepository;
 import org.apache.nifi.logging.LogRepositoryFactory;
@@ -163,6 +164,7 @@ import org.apache.nifi.reporting.EventAccess;
 import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.reporting.Severity;
 import org.apache.nifi.scheduling.SchedulingStrategy;
+import org.apache.nifi.stream.io.StreamUtils;
 import org.apache.nifi.util.FormatUtils;
 import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.util.ReflectionUtils;
@@ -182,7 +184,6 @@ import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
 import org.apache.nifi.web.api.dto.TemplateDTO;
 import org.apache.nifi.web.api.dto.status.StatusHistoryDTO;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2522,9 +2523,32 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         return reportingTasks.values();
     }
 
+    /**
+     * Recursively stops all Processors and Reporting Tasks that are referencing the given Controller Service,
+     * as well as disabling any Controller Service that references this Controller Service (and stops
+     * all Reporting Task or Controller Service that is referencing it, and so on).
+     * @param serviceNode
+     */
+    public void deactiveReferencingComponents(final ControllerServiceNode serviceNode) {
+    	final ControllerServiceReference reference = serviceNode.getReferences();
+    	
+    	final Set<ConfiguredComponent> components = reference.getActiveReferences();
+    	for (final ConfiguredComponent component : components) {
+    		if ( component instanceof ControllerServiceNode ) {
+    			deactiveReferencingComponents((ControllerServiceNode) component);
+    			// TODO: DISABLE CONTROLLER SERVICE!
+    		} else if ( component instanceof ReportingTaskNode ) {
+    			stopReportingTask((ReportingTaskNode) component);
+    		} else if ( component instanceof ProcessorNode ) {
+    			final ProcessorNode procNode = (ProcessorNode) component;
+    			stopProcessor(procNode.getProcessGroup().getIdentifier(), procNode.getIdentifier());
+    		}
+    	}
+    }
+    
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final Map<String, String> properties) {
-        return controllerServiceProvider.createControllerService(type, id.intern(), properties);
+    public ControllerServiceNode createControllerService(final String type) {
+        return controllerServiceProvider.createControllerService(type);
     }
 
     @Override
@@ -2547,6 +2571,12 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         return controllerServiceProvider.isControllerServiceEnabled(serviceIdentifier);
     }
 
+    @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	return controllerServiceProvider.getControllerServiceName(serviceIdentifier);
+    }
+
+    
     //
     // Counters
     //

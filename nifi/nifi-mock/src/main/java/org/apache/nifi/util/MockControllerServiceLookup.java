@@ -73,4 +73,10 @@ public abstract class MockControllerServiceLookup implements ControllerServiceLo
         }
         return ids;
     }
+    
+    @Override
+    public String getControllerServiceName(String serviceIdentifier) {
+    	final ControllerServiceConfiguration status = controllerServiceMap.get(serviceIdentifier);
+    	return status == null ? null : serviceIdentifier;
+    }
 }

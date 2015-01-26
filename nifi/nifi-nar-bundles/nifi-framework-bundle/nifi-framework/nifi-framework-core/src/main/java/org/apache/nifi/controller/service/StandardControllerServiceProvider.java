@@ -28,19 +28,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.ValidationContextFactory;
-import org.apache.nifi.controller.annotation.OnConfigured;
-import org.apache.nifi.controller.exception.ControllerServiceAlreadyExistsException;
 import org.apache.nifi.controller.exception.ControllerServiceNotFoundException;
 import org.apache.nifi.nar.ExtensionManager;
 import org.apache.nifi.nar.NarCloseable;
 import org.apache.nifi.processor.StandardValidationContextFactory;
 import org.apache.nifi.util.ObjectHolder;
-import org.apache.nifi.util.ReflectionUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,14 +90,12 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
     }
 
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final Map<String, String> properties) {
-        if (type == null || id == null) {
+    public ControllerServiceNode createControllerService(final String type) {
+        if (type == null) {
             throw new NullPointerException();
         }
-        if (controllerServices.containsKey(id)) {
-            throw new ControllerServiceAlreadyExistsException(id);
-        }
-
+        
+        final String id = UUID.randomUUID().toString();
         final ClassLoader currentContextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             final ClassLoader cl = ExtensionManager.getClassLoader(type);
@@ -133,7 +128,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
             };
 
             final ControllerService proxiedService = (ControllerService) Proxy.newProxyInstance(cl, getInterfaces(controllerServiceClass), invocationHandler);
-            logger.info("Loaded service {} as configured.", type);
+            logger.info("Create Controller Service of type {} with identifier {}", type, id);
 
             originalService.initialize(new StandardControllerServiceInitializationContext(id, this));
 
@@ -141,13 +136,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
 
             final ControllerServiceNode serviceNode = new StandardControllerServiceNode(proxiedService, id, validationContextFactory, this);
             serviceNodeHolder.set(serviceNode);
-            serviceNode.setAnnotationData(null);
-            serviceNode.setName(id);
-            for (final Map.Entry<String, String> entry : properties.entrySet()) {
-                serviceNode.setProperty(entry.getKey(), entry.getValue());
-            }
-            final StandardConfigurationContext configurationContext = new StandardConfigurationContext(serviceNode, this);
-            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnConfigured.class, originalService, configurationContext);
+            serviceNode.setName(rawClass.getSimpleName());
 
             this.controllerServices.put(id, serviceNode);
             return serviceNode;
@@ -192,5 +181,11 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         }
 
         return identifiers;
+    }
+    
+    @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	final ControllerServiceNode node = getControllerServiceNode(serviceIdentifier);
+    	return node == null ? null : node.getName();
     }
 }

@@ -33,6 +33,11 @@ public class MockControllerServiceInitializationContext extends MockControllerSe
     public String getIdentifier() {
         return identifier;
     }
+    
+    @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	return null;
+    }
 
     @Override
     public ControllerServiceLookup getControllerServiceLookup() {

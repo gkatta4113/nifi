@@ -191,7 +191,6 @@ import org.apache.nifi.web.api.entity.ProvenanceEventEntity;
 import org.apache.nifi.web.api.entity.RemoteProcessGroupEntity;
 import org.apache.nifi.web.api.entity.RemoteProcessGroupsEntity;
 import org.apache.nifi.web.util.WebUtils;
-
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1299,8 +1298,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
      * @return
      */
     @Override
-    public ControllerServiceNode createControllerService(String type, String id, Map<String, String> properties) {
-        return controllerServiceProvider.createControllerService(type, id, properties);
+    public ControllerServiceNode createControllerService(String type) {
+        return controllerServiceProvider.createControllerService(type);
     }
 
     @Override
@@ -1321,6 +1320,11 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     @Override
     public boolean isControllerServiceEnabled(final String serviceIdentifier) {
         return controllerServiceProvider.isControllerServiceEnabled(serviceIdentifier);
+    }
+
+    @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	return controllerServiceProvider.getControllerServiceName(serviceIdentifier);
     }
 
     /**

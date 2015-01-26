@@ -93,4 +93,9 @@ public class StandardReportingInitializationContext implements ReportingInitiali
     public ControllerServiceLookup getControllerServiceLookup() {
         return this;
     }
+    
+    @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	return serviceProvider.getControllerServiceName(serviceIdentifier);
+    }
 }

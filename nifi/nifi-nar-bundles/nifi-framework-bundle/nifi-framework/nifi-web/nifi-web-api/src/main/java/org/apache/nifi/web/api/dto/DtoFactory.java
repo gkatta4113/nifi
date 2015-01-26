@@ -1762,10 +1762,7 @@ public final class DtoFactory {
             } else {
                 final Set<AllowableValueDTO> allowableValues = new LinkedHashSet<>();
                 for (final String serviceIdentifier : controllerServiceLookup.getControllerServiceIdentifiers(serviceDefinition)) {
-                    String displayName = serviceIdentifier;
-
-                    // TODO: attempt to get the controller service name
-                    final ControllerService controllerService = controllerServiceLookup.getControllerService(serviceIdentifier);
+                	final String displayName = controllerServiceLookup.getControllerServiceName(serviceIdentifier);
 
                     final AllowableValueDTO allowableValue = new AllowableValueDTO();
                     allowableValue.setDisplayName(displayName);

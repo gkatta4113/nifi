@@ -115,7 +115,6 @@ import org.apache.nifi.admin.service.UserService;
 import org.apache.nifi.authorization.DownloadAuthorization;
 import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.reporting.ReportingTask;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -406,8 +405,8 @@ public class ControllerFacade implements ControllerServiceProvider {
     }
 
     @Override
-    public ControllerServiceNode createControllerService(String type, String id, Map<String, String> properties) {
-        return flowController.createControllerService(type, id, properties);
+    public ControllerServiceNode createControllerService(String type) {
+        return flowController.createControllerService(type);
     }
 
     @Override
@@ -429,6 +428,12 @@ public class ControllerFacade implements ControllerServiceProvider {
     public boolean isControllerServiceEnabled(final String serviceIdentifier) {
         return flowController.isControllerServiceEnabled(serviceIdentifier);
     }
+    
+    @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	return flowController.getControllerServiceName(serviceIdentifier);
+    }
+
 
     /**
      * Gets the status of this controller.

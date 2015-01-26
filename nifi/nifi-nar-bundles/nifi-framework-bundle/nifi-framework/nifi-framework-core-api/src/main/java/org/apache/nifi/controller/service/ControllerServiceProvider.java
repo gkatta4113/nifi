@@ -16,8 +16,6 @@
  */
 package org.apache.nifi.controller.service;
 
-import java.util.Map;
-
 import org.apache.nifi.controller.ControllerServiceLookup;
 
 /**
@@ -26,15 +24,14 @@ import org.apache.nifi.controller.ControllerServiceLookup;
 public interface ControllerServiceProvider extends ControllerServiceLookup {
 
     /**
-     * Gets the controller service for the specified identifier. Returns null if
-     * the identifier does not match a known service.
+     * Creates a new Controller Service of the specified type
      *
      * @param type
      * @param id
      * @param properties
      * @return
      */
-    ControllerServiceNode createControllerService(String type, String id, Map<String, String> properties);
+    ControllerServiceNode createControllerService(String type);
 
     /**
      * Gets the controller service node for the specified identifier. Returns
