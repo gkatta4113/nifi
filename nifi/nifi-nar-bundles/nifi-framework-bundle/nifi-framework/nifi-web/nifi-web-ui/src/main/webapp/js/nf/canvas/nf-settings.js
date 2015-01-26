@@ -760,6 +760,9 @@ nf.Settings = (function () {
                                 return 'Create a new reporting task';
                             }
                         });
+                        
+                        // resize the table
+                        nf.Settings.resetTableSize();
                     }
                 }
             });
