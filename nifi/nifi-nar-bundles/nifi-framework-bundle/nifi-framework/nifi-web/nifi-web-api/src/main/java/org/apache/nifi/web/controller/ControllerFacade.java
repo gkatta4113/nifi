@@ -405,8 +405,12 @@ public class ControllerFacade implements ControllerServiceProvider {
     }
 
     @Override
-    public ControllerServiceNode createControllerService(String type) {
-        return flowController.createControllerService(type);
+    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
+        return flowController.createControllerService(type, firstTimeAdded);
+    }
+    
+    public void removeControllerService(ControllerServiceNode serviceNode) {
+        flowController.removeControllerService(serviceNode);
     }
 
     @Override
@@ -435,6 +439,16 @@ public class ControllerFacade implements ControllerServiceProvider {
     }
 
 
+    @Override
+    public void enableControllerService(final ControllerServiceNode serviceNode) {
+        flowController.enableControllerService(serviceNode);
+    }
+    
+    @Override
+    public void disableControllerService(ControllerServiceNode serviceNode) {
+        flowController.disableControllerService(serviceNode);
+    }
+    
     /**
      * Gets the status of this controller.
      *

@@ -16,7 +16,6 @@
  */
 package org.apache.nifi.controller;
 
-import org.apache.nifi.controller.ConfigurationContext;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
@@ -26,11 +25,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import org.apache.nifi.annotation.documentation.CapabilityDescription;
+import org.apache.nifi.annotation.documentation.Tags;
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.components.Validator;
-import org.apache.nifi.controller.annotation.OnConfigured;
 import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.reporting.AbstractReportingTask;
@@ -40,7 +41,6 @@ import org.apache.nifi.reporting.ReportingContext;
 import org.apache.nifi.reporting.ReportingInitializationContext;
 import org.apache.nifi.reporting.Severity;
 import org.apache.nifi.util.FormatUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +86,10 @@ import org.slf4j.LoggerFactory;
  * </li>
  * </ul>
  */
+@Tags({"monitor", "memory", "heap", "jvm", "gc", "garbage collection", "warning"})
+@CapabilityDescription("Checks the amount of Java Heap available in the JVM for a particular JVM Memory Pool. If the"
+        + " amount of space used exceeds some configurable threshold, will warn (via a log message and System-Level Bulletin)"
+        + " that the memory pool is exceeding this threshold.")
 public class MonitorMemory extends AbstractReportingTask {
 
     public static final PropertyDescriptor MEMORY_POOL_PROPERTY = new PropertyDescriptor.Builder()
@@ -143,7 +147,7 @@ public class MonitorMemory extends AbstractReportingTask {
         return descriptors;
     }
 
-    @OnConfigured
+    @OnScheduled
     public void onConfigured(final ConfigurationContext config) throws InitializationException {
         final String desiredMemoryPoolName = config.getProperty(MEMORY_POOL_PROPERTY).getValue();
         final String thresholdValue = config.getProperty(THRESHOLD_PROPERTY).getValue().trim();

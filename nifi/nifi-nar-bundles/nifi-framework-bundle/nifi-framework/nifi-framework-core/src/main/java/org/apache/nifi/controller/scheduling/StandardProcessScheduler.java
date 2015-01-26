@@ -27,6 +27,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.nifi.annotation.lifecycle.OnDisabled;
+import org.apache.nifi.annotation.lifecycle.OnEnabled;
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
+import org.apache.nifi.annotation.lifecycle.OnStopped;
+import org.apache.nifi.annotation.lifecycle.OnUnscheduled;
 import org.apache.nifi.connectable.Connectable;
 import org.apache.nifi.connectable.Funnel;
 import org.apache.nifi.connectable.Port;
@@ -38,6 +43,7 @@ import org.apache.nifi.controller.ProcessorNode;
 import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.annotation.OnConfigured;
+import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.engine.FlowEngine;
@@ -47,15 +53,11 @@ import org.apache.nifi.processor.SchedulingContext;
 import org.apache.nifi.processor.SimpleProcessLogger;
 import org.apache.nifi.processor.StandardProcessContext;
 import org.apache.nifi.processor.StandardSchedulingContext;
-import org.apache.nifi.processor.annotation.OnScheduled;
-import org.apache.nifi.processor.annotation.OnStopped;
-import org.apache.nifi.processor.annotation.OnUnscheduled;
 import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.scheduling.SchedulingStrategy;
 import org.apache.nifi.util.FormatUtils;
 import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.util.ReflectionUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,18 +164,21 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         scheduleState.setScheduled(true);
 
         final Runnable startReportingTaskRunnable = new Runnable() {
+            @SuppressWarnings("deprecation")
             @Override
             public void run() {
+                // Continually attempt to start the Reporting Task, and if we fail sleep for a bit each time.
                 while (true) {
                     final ReportingTask reportingTask = taskNode.getReportingTask();
 
                     try {
                         try (final NarCloseable x = NarCloseable.withNarLoader()) {
-                            ReflectionUtils.invokeMethodsWithAnnotation(OnConfigured.class, reportingTask, taskNode.getConfigurationContext());
+                            ReflectionUtils.invokeMethodsWithAnnotation(OnConfigured.class, OnScheduled.class, reportingTask, taskNode.getConfigurationContext());
                         }
+                        
                         break;
                     } catch (final InvocationTargetException ite) {
-                        LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
+                        LOG.error("Failed to invoke the On-Scheduled Lifecycle methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
                                 new Object[]{reportingTask, ite.getTargetException(), administrativeYieldDuration});
                         LOG.error("", ite.getTargetException());
 
@@ -182,7 +187,7 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                         } catch (final InterruptedException ie) {
                         }
                     } catch (final Exception e) {
-                        LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
+                        LOG.error("Failed to invoke the On-Scheduled Lifecycle methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
                                 new Object[]{reportingTask, e.toString(), administrativeYieldDuration}, e);
                         try {
                             Thread.sleep(administrativeYieldMillis);
@@ -209,39 +214,37 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         scheduleState.setScheduled(false);
 
         final Runnable unscheduleReportingTaskRunnable = new Runnable() {
+            @SuppressWarnings("deprecation")
             @Override
             public void run() {
                 final ConfigurationContext configurationContext = taskNode.getConfigurationContext();
 
-                while (true) {
-                    try {
-                        try (final NarCloseable x = NarCloseable.withNarLoader()) {
-                            ReflectionUtils.invokeMethodsWithAnnotation(OnUnscheduled.class, reportingTask, configurationContext);
-                        }
-                        break;
-                    } catch (final InvocationTargetException ite) {
-                        LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
-                                new Object[]{reportingTask, ite.getTargetException(), administrativeYieldDuration});
-                        LOG.error("", ite.getTargetException());
+                try {
+                    try (final NarCloseable x = NarCloseable.withNarLoader()) {
+                        ReflectionUtils.invokeMethodsWithAnnotation(OnUnscheduled.class, org.apache.nifi.processor.annotation.OnUnscheduled.class, reportingTask, configurationContext);
+                    }
+                } catch (final InvocationTargetException ite) {
+                    LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
+                            new Object[]{reportingTask, ite.getTargetException(), administrativeYieldDuration});
+                    LOG.error("", ite.getTargetException());
 
-                        try {
-                            Thread.sleep(administrativeYieldMillis);
-                        } catch (final InterruptedException ie) {
-                        }
-                    } catch (final Exception e) {
-                        LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
-                                new Object[]{reportingTask, e.toString(), administrativeYieldDuration}, e);
-                        try {
-                            Thread.sleep(administrativeYieldMillis);
-                        } catch (final InterruptedException ie) {
-                        }
+                    try {
+                        Thread.sleep(administrativeYieldMillis);
+                    } catch (final InterruptedException ie) {
+                    }
+                } catch (final Exception e) {
+                    LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
+                            new Object[]{reportingTask, e.toString(), administrativeYieldDuration}, e);
+                    try {
+                        Thread.sleep(administrativeYieldMillis);
+                    } catch (final InterruptedException ie) {
                     }
                 }
 
                 agent.unschedule(taskNode, scheduleState);
 
-                if (scheduleState.getActiveThreadCount() == 0) {
-                    ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnStopped.class, reportingTask, configurationContext);
+                if (scheduleState.getActiveThreadCount() == 0 && scheduleState.mustCallOnStoppedMethods()) {
+                    ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnStopped.class, org.apache.nifi.processor.annotation.OnStopped.class, reportingTask, configurationContext);
                 }
             }
         };
@@ -276,6 +279,7 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         }
 
         final Runnable startProcRunnable = new Runnable() {
+            @SuppressWarnings("deprecation")
             @Override
             public void run() {
                 try (final NarCloseable x = NarCloseable.withNarLoader()) {
@@ -297,7 +301,7 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                                 }
 
                                 final SchedulingContext schedulingContext = new StandardSchedulingContext(processContext, controllerServiceProvider, procNode);
-                                ReflectionUtils.invokeMethodsWithAnnotation(OnScheduled.class, procNode.getProcessor(), schedulingContext);
+                                ReflectionUtils.invokeMethodsWithAnnotation(OnScheduled.class, org.apache.nifi.processor.annotation.OnScheduled.class, procNode.getProcessor(), schedulingContext);
 
                                 getSchedulingAgent(procNode).schedule(procNode, scheduleState);
 
@@ -513,14 +517,6 @@ public final class StandardProcessScheduler implements ProcessScheduler {
     }
 
     @Override
-    public synchronized void disableProcessor(final ProcessorNode procNode) {
-        if (procNode.getScheduledState() != ScheduledState.STOPPED) {
-            throw new IllegalStateException("Processor cannot be disabled because its state is set to " + procNode.getScheduledState());
-        }
-        procNode.setScheduledState(ScheduledState.DISABLED);
-    }
-
-    @Override
     public synchronized void enablePort(final Port port) {
         if (port.getScheduledState() != ScheduledState.DISABLED) {
             throw new IllegalStateException("Funnel cannot be enabled because it is not disabled");
@@ -538,7 +534,51 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         if (procNode.getScheduledState() != ScheduledState.DISABLED) {
             throw new IllegalStateException("Processor cannot be enabled because it is not disabled");
         }
+        
         procNode.setScheduledState(ScheduledState.STOPPED);
+        
+        try (final NarCloseable x = NarCloseable.withNarLoader()) {
+            final ProcessorLog processorLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
+            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnEnabled.class, procNode.getProcessor(), processorLog);
+        }
+    }
+
+    @Override
+    public synchronized void disableProcessor(final ProcessorNode procNode) {
+        if (procNode.getScheduledState() != ScheduledState.STOPPED) {
+            throw new IllegalStateException("Processor cannot be disabled because its state is set to " + procNode.getScheduledState());
+        }
+        
+        procNode.setScheduledState(ScheduledState.DISABLED);
+        
+        try (final NarCloseable x = NarCloseable.withNarLoader()) {
+            final ProcessorLog processorLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
+            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, procNode.getProcessor(), processorLog);
+        }
+    }
+
+    public synchronized void enableReportingTask(final ReportingTaskNode taskNode) {
+        if ( taskNode.getScheduledState() != ScheduledState.DISABLED ) {
+            throw new IllegalStateException("Reporting Task cannot be enabled because it is not disabled");
+        }
+
+        taskNode.setScheduledState(ScheduledState.STOPPED);
+        
+        try (final NarCloseable x = NarCloseable.withNarLoader()) {
+            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnEnabled.class, taskNode.getReportingTask());
+        }
+    }
+    
+    public synchronized void disableReportingTask(final ReportingTaskNode taskNode) {
+        if ( taskNode.getScheduledState() != ScheduledState.STOPPED ) {
+            throw new IllegalStateException("Reporting Task cannot be disabled because its state is set to " + taskNode.getScheduledState() + " but transition to DISABLED state is allowed only from the STOPPED state");
+        }
+
+        taskNode.setScheduledState(ScheduledState.DISABLED);
+        
+        try (final NarCloseable x = NarCloseable.withNarLoader()) {
+            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, taskNode.getReportingTask());
+        }
     }
 
     @Override
@@ -548,7 +588,7 @@ public final class StandardProcessScheduler implements ProcessScheduler {
     }
 
     /**
-     * Returns the ScheduleState that is registered for the given ProcessorNode;
+     * Returns the ScheduleState that is registered for the given component;
      * if no ScheduleState current is registered, one is created and registered
      * atomically, and then that value is returned.
      *

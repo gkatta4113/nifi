@@ -25,7 +25,9 @@ nf.Settings = (function () {
             controllerConfig: '../nifi-api/controller/config',
             controllerArchive: '../nifi-api/controller/archive',
             controllerServiceTypes: '../nifi-api/controller/controller-service-types',
-            reportingTaskTypes: '../nifi-api/controller/reporting-task-types'
+            controllerServices: '../nifi-api/controller/controller-services',
+            reportingTaskTypes: '../nifi-api/controller/reporting-task-types',
+            reportingTasks: '../nifi-api/controller/reporting-tasks'
         }
     };
 
@@ -565,7 +567,15 @@ nf.Settings = (function () {
                 buttonText: 'Add',
                 handler: {
                     click: function () {
+                        // add the new controller service
+                        var selectedServiceName = $('#controller-service-name-field').val();
+                        var selectedServiceType = $('#selected-controller-service-type').text();
                         
+                        $.ajax({
+                            
+                        }).done(function () {
+                            
+                        });
                     }
                 }
             }, {
@@ -606,11 +616,75 @@ nf.Settings = (function () {
         };
         
         // define the column model for the controller services table
-        var controllerServicesColumnModel = [
+        var controllerServicesColumns = [
             {id: 'moreDetails', field: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreControllerServiceDetails, sortable: true, width: 50, maxWidth: 50},
-            {id: 'id', field: 'id', name: 'Identifier', sortable: true, resizable: true},
+            {id: 'name', field: 'name', name: 'Name', sortable: true, resizable: true},
             {id: 'type', field: 'type', name: 'Type', sortable: true, resizable: true}
         ];
+        var controllerServicesOptions = {
+            forceFitColumns: true,
+            enableTextSelectionOnCells: true,
+            enableCellNavigation: true,
+            enableColumnReorder: false,
+            autoEdit: false,
+            multiSelect: false
+        };
+
+        // initialize the dataview
+        var controllerServicesData = new Slick.Data.DataView({
+            inlineFilters: false
+        });
+        controllerServicesData.setItems([]);
+//        controllerServicesData.setFilterArgs({
+//            searchString: getControllerServiceTypeFilterText(),
+//            property: $('#controller-service-type-filter-options').combo('getSelectedOption').value
+//        });
+        controllerServicesData.setFilter(filterControllerServiceTypes);
+        
+        // initialize the grid
+        var controllerServicesGrid = new Slick.Grid('#controller-services-table', controllerServicesData, controllerServicesColumns, controllerServicesOptions);
+        controllerServicesGrid.setSelectionModel(new Slick.RowSelectionModel());
+        controllerServicesGrid.registerPlugin(new Slick.AutoTooltips());
+        controllerServicesGrid.setSortColumn('name', true);
+
+        // wire up the dataview to the grid
+        controllerServicesData.onRowCountChanged.subscribe(function (e, args) {
+            controllerServicesGrid.updateRowCount();
+            controllerServicesGrid.render();
+
+            // update the total number of displayed processors
+//            $('#displayed-controller-service-types').text(getVisibleControllerServiceCount());
+        });
+        controllerServicesData.onRowsChanged.subscribe(function (e, args) {
+            controllerServicesGrid.invalidateRows(args.rows);
+            controllerServicesGrid.render();
+        });
+        controllerServicesData.syncGridSelection(controllerServicesGrid, true);
+
+        // hold onto an instance of the grid
+        $('#controller-services-table').data('gridInstance', controllerServicesGrid);
+    };
+    
+    /**
+     * Loads the controller services.
+     */
+    var loadControllerServices = function () {
+        return $.ajax({
+            type: 'GET',
+            url: config.urls.controllerServices,
+            dataType: 'json'
+        }).done(function (response) {
+            var controllerServices = response.controllerServices;
+            if (nf.Common.isDefinedAndNotNull(controllerServices)) {
+                var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
+                var controllerServicesData = controllerServicesGrid.getData();
+
+                // update the processors
+                controllerServicesData.setItems(controllerServices);
+                controllerServicesData.reSort();
+                controllerServicesGrid.invalidate();
+            }
+        });
     };
     
     /**
@@ -640,9 +714,16 @@ nf.Settings = (function () {
         // define the column model for the reporting tasks table
         var reportingTasksColumnModel = [
             {id: 'moreDetails', field: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreReportingTaskDetails, sortable: true, width: 50, maxWidth: 50},
-            {id: 'id', field: 'id', name: 'Identifier', sortable: true, resizable: true},
+            {id: 'name', field: 'name', name: 'Name', sortable: true, resizable: true},
             {id: 'type', field: 'type', name: 'Type', sortable: true, resizable: true}
         ];
+    };
+    
+    /**
+     * Loads the reporting tasks.
+     */
+    var loadReportingTasks = function () {
+        
     };
 
     return {
@@ -679,6 +760,9 @@ nf.Settings = (function () {
                                 return 'Create a new reporting task';
                             }
                         });
+                        
+                        // resize the table
+                        nf.Settings.resetTableSize();
                     }
                 }
             });
@@ -736,7 +820,7 @@ nf.Settings = (function () {
          * Shows the settings dialog.
          */
         showSettings: function () {
-            $.ajax({
+            var settings = $.ajax({
                 type: 'GET',
                 url: config.urls.controllerConfig,
                 dataType: 'json'
@@ -759,6 +843,14 @@ nf.Settings = (function () {
                     $('#settings-save').mouseout();
                 });
             }).fail(nf.Common.handleAjaxError);
+            
+            // load the controller services
+            var controllerServices = loadControllerServices();
+            
+            // load the reporting tasks
+            var reportingTasks = loadReportingTasks();
+            
+            return $.when(settings, controllerServices, reportingTasks);
         }
     };
 }());

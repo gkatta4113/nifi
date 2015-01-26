@@ -63,6 +63,7 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.admin.service.AuditService;
 import org.apache.nifi.cluster.BulletinsPayload;
 import org.apache.nifi.cluster.ClusterNodeInformation;
@@ -117,6 +118,7 @@ import org.apache.nifi.cluster.protocol.message.NodeBulletinsMessage;
 import org.apache.nifi.cluster.protocol.message.PrimaryRoleAssignmentMessage;
 import org.apache.nifi.cluster.protocol.message.ProtocolMessage;
 import org.apache.nifi.cluster.protocol.message.ProtocolMessage.MessageType;
+import org.apache.nifi.cluster.protocol.message.ReconnectionFailureMessage;
 import org.apache.nifi.cluster.protocol.message.ReconnectionRequestMessage;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ControllerService;
@@ -191,7 +193,6 @@ import org.apache.nifi.web.api.entity.ProvenanceEventEntity;
 import org.apache.nifi.web.api.entity.RemoteProcessGroupEntity;
 import org.apache.nifi.web.api.entity.RemoteProcessGroupsEntity;
 import org.apache.nifi.web.util.WebUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.DOMException;
@@ -202,8 +203,6 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
 import com.sun.jersey.api.client.ClientResponse;
-
-import org.apache.nifi.cluster.protocol.message.ReconnectionFailureMessage;
 
 /**
  * Provides a cluster manager implementation. The manager federates incoming
@@ -1298,8 +1297,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
      * @return
      */
     @Override
-    public ControllerServiceNode createControllerService(String type) {
-        return controllerServiceProvider.createControllerService(type);
+    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
+        return controllerServiceProvider.createControllerService(type, firstTimeAdded);
     }
 
     @Override
@@ -1327,6 +1326,23 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	return controllerServiceProvider.getControllerServiceName(serviceIdentifier);
     }
 
+    @Override
+    public void removeControllerService(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.removeControllerService(serviceNode);
+    }
+    
+
+    @Override
+    public void enableControllerService(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.enableControllerService(serviceNode);
+    }
+    
+    @Override
+    public void disableControllerService(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.disableControllerService(serviceNode);
+    }
+    
+    
     /**
      * Handle a bulletins message.
      *

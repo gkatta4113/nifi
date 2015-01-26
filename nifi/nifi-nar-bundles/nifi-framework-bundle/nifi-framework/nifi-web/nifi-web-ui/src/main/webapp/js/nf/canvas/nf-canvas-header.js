@@ -60,7 +60,9 @@ nf.CanvasHeader = (function () {
             // mouse over for the flow settings link
             if (nf.Common.isDFM()) {
                 nf.Common.addHoverEffect('#flow-settings-link', 'flow-settings-link', 'flow-settings-link-hover').click(function () {
-                    nf.Settings.showSettings();
+                    nf.Settings.showSettings().done(function () {
+                        nf.Settings.resetTableSize();
+                    });
                 });
             } else {
                 $('#flow-settings-link').addClass('flow-settings-link-disabled');
