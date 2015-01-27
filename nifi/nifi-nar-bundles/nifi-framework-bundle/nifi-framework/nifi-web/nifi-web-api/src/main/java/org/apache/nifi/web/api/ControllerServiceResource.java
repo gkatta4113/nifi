@@ -154,6 +154,7 @@ public class ControllerServiceResource extends ApplicationResource {
 
         // create the controller service DTO
         final ControllerServiceDTO controllerServiceDTO = new ControllerServiceDTO();
+        controllerServiceDTO.setType(type);
 
         // create the revision
         final RevisionDTO revision = new RevisionDTO();

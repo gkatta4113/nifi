@@ -27,7 +27,7 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
 
     private String name;
     private String type;
-    private String comment;
+    private String comments;
     private String availability;
     private Boolean enabled;
     
@@ -67,12 +67,12 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
      * The comment for the Controller Service
      * @return
      */
-    public String getComment() {
-		return comment;
+    public String getComments() {
+		return comments;
 	}
 
-	public void setComment(String comment) {
-		this.comment = comment;
+	public void setComments(String comments) {
+		this.comments = comments;
 	}
 
 	/**

@@ -842,8 +842,10 @@ public final class DtoFactory {
         final ControllerServiceDTO dto = new ControllerServiceDTO();
         dto.setId(controllerServiceNode.getIdentifier());
         dto.setName(controllerServiceNode.getName());
+        dto.setType(controllerServiceNode.getControllerServiceImplementation().getClass().getName());
         dto.setAvailability(controllerServiceNode.getAvailability().name());
         dto.setEnabled(!controllerServiceNode.isDisabled());
+        dto.setComments(controllerServiceNode.getComment());
         
         // sort a copy of the properties
         final Map<PropertyDescriptor, String> sortedProperties = new TreeMap<>(new Comparator<PropertyDescriptor>() {
