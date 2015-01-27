@@ -35,20 +35,671 @@
     var languageId = 'nfel';
     var editorClass = languageId + '-editor';
 
-    var isUndefined = function (obj) {
-        return typeof obj === 'undefined';
+    // text editor
+    var textEditor = function (args) {
+        var scope = this;
+        var initialValue = '';
+        var previousValue;
+        var propertyDescriptor;
+        var wrapper;
+        var isEmpty;
+        var input;
+
+
+        this.init = function () {
+            var container = $('body');
+
+            // get the property descriptor
+            var gridContainer = $(args.grid.getContainerNode());
+            var descriptors = gridContainer.data('descriptors');
+            propertyDescriptor = descriptors[args.item.property];
+
+            // record the previous value
+            previousValue = args.item[args.column.field];
+
+            // create the wrapper
+            wrapper = $('<div></div>').css({
+                'z-index': 100000,
+                'position': 'absolute',
+                'background': 'white',
+                'padding': '5px',
+                'overflow': 'hidden',
+                'border': '3px solid #365C6A',
+                'box-shadow': '4px 4px 6px rgba(0, 0, 0, 0.9)',
+                'cursor': 'move'
+            }).draggable({
+                cancel: '.button, textarea, .nf-checkbox',
+                containment: 'parent'
+            }).appendTo(container);
+
+            // create the input field
+            input = $('<textarea hidefocus rows="5"/>').css({
+                'background': 'white',
+                'width': args.position.width + 'px',
+                'min-width': '150px',
+                'height': '80px',
+                'border-width': '0',
+                'outline': '0',
+                'overflow-y': 'auto',
+                'resize': 'both',
+                'margin-bottom': '28px'
+            }).tab().on('keydown', scope.handleKeyDown).appendTo(wrapper);
+
+            // create the button panel
+            var stringCheckPanel = $('<div class="string-check-container">');
+
+            // build the custom checkbox
+            isEmpty = $('<div class="nf-checkbox string-check"/>').appendTo(stringCheckPanel);
+            $('<span class="string-check-label">&nbsp;Empty</span>').appendTo(stringCheckPanel);
+
+            var ok = $('<div class="button button-normal">Ok</div>').on('click', scope.save);
+            var cancel = $('<div class="button button-normal">Cancel</div>').on('click', scope.cancel);
+            $('<div></div>').css({
+                'position': 'absolute',
+                'bottom': '0',
+                'left': '0',
+                'right': '0',
+                'padding': '0 3px 5px'
+            }).append(stringCheckPanel).append(ok).append(cancel).append('<div class="clear"></div>').appendTo(wrapper);
+
+            // position and focus
+            scope.position(args.position);
+            input.focus().select();
+        };
+
+        this.handleKeyDown = function (e) {
+            if (e.which === $.ui.keyCode.ENTER && !e.shiftKey) {
+                scope.save();
+            } else if (e.which === $.ui.keyCode.ESCAPE) {
+                e.preventDefault();
+                scope.cancel();
+            }
+        };
+
+        this.save = function () {
+            args.commitChanges();
+        };
+
+        this.cancel = function () {
+            input.val(initialValue);
+            args.cancelChanges();
+        };
+
+        this.hide = function () {
+            wrapper.hide();
+        };
+
+        this.show = function () {
+            wrapper.show();
+        };
+
+        this.position = function (position) {
+            wrapper.css({
+                'top': position.top - 5,
+                'left': position.left - 5
+            });
+        };
+
+        this.destroy = function () {
+            wrapper.remove();
+        };
+
+        this.focus = function () {
+            input.focus();
+        };
+
+        this.loadValue = function (item) {
+            // determine if this is a sensitive property
+            var isEmptyChecked = false;
+            var sensitive = nf.Common.isSensitiveProperty(propertyDescriptor);
+
+            // determine the value to use when populating the text field
+            if (nf.Common.isDefinedAndNotNull(item[args.column.field])) {
+                if (sensitive) {
+                    initialValue = nf.Common.config.sensitiveText;
+                } else {
+                    initialValue = item[args.column.field];
+                    isEmptyChecked = initialValue === '';
+                }
+            }
+
+            // determine if its an empty string
+            var checkboxStyle = isEmptyChecked ? 'checkbox-checked' : 'checkbox-unchecked';
+            isEmpty.addClass(checkboxStyle);
+
+            // style sensitive properties differently
+            if (sensitive) {
+                input.addClass('sensitive').keydown(function () {
+                    var sensitiveInput = $(this);
+                    if (sensitiveInput.hasClass('sensitive')) {
+                        sensitiveInput.removeClass('sensitive');
+                        if (sensitiveInput.val() === nf.Common.config.sensitiveText) {
+                            sensitiveInput.val('');
+                        }
+                    }
+                });
+            }
+
+            input.val(initialValue);
+            input.select();
+        };
+
+        this.serializeValue = function () {
+            // if the field has been cleared, set the value accordingly
+            if (input.val() === '') {
+                // if the user has checked the empty string checkbox, use emtpy string
+                if (isEmpty.hasClass('checkbox-checked')) {
+                    return '';
+                } else {
+                    // otherwise if the property is required
+                    if (nf.Common.isRequiredProperty(propertyDescriptor)) {
+                        if (nf.Common.isBlank(propertyDescriptor.defaultValue)) {
+                            return previousValue;
+                        } else {
+                            return propertyDescriptor.defaultValue;
+                        }
+                    } else {
+                        // if the property is not required, clear the value
+                        return null;
+                    }
+                }
+            } else {
+                // if the field still has the sensitive class it means a property
+                // was edited but never modified so we should restore the previous
+                // value instead of setting it to the 'sensitive value set' string
+                if (input.hasClass('sensitive')) {
+                    return previousValue;
+                } else {
+                    // if there is text specified, use that value
+                    return input.val();
+                }
+            }
+        };
+
+        this.applyValue = function (item, state) {
+            item[args.column.field] = state;
+        };
+
+        this.isValueChanged = function () {
+            return scope.serializeValue() !== previousValue;
+        };
+
+        this.validate = function () {
+            return {
+                valid: true,
+                msg: null
+            };
+        };
+
+        // initialize the custom long text editor
+        this.init();
+    };
+    
+    // nfel editor
+    var nfelEditor = function (args) {
+        var scope = this;
+        var initialValue = '';
+        var previousValue;
+        var propertyDescriptor;
+        var isEmpty;
+        var wrapper;
+        var editor;
+
+        this.init = function () {
+            var container = $('body');
+
+            // get the property descriptor
+            var gridContainer = $(args.grid.getContainerNode());
+            var descriptors = gridContainer.data('descriptors');
+            propertyDescriptor = descriptors[args.item.property];
+
+            // determine if this is a sensitive property
+            var sensitive = nf.Common.isSensitiveProperty(propertyDescriptor);
+
+            // record the previous value
+            previousValue = args.item[args.column.field];
+
+            var languageId = 'nfel';
+            var editorClass = languageId + '-editor';
+
+            // create the wrapper
+            wrapper = $('<div></div>').addClass('slickgrid-nfel-editor').css({
+                'z-index': 14000,
+                'position': 'absolute',
+                'background': 'white',
+                'padding': '5px',
+                'overflow': 'hidden',
+                'border': '3px solid #365C6A',
+                'box-shadow': '4px 4px 6px rgba(0, 0, 0, 0.9)',
+                'cursor': 'move'
+            }).draggable({
+                cancel: 'input, textarea, pre, .nf-checkbox, .button, .' + editorClass,
+                containment: 'parent'
+            }).appendTo(container);
+
+            // create the editor
+            editor = $('<div></div>').addClass(editorClass).appendTo(wrapper).nfeditor({
+                languageId: languageId,
+                width: args.position.width,
+                minWidth: 175,
+                minHeight: 100,
+                resizable: true,
+                sensitive: sensitive,
+                escape: function () {
+                    scope.cancel();
+                },
+                enter: function () {
+                    scope.save();
+                }
+            });
+
+            // create the button panel
+            var stringCheckPanel = $('<div class="string-check-container">');
+
+            // build the custom checkbox
+            isEmpty = $('<div class="nf-checkbox string-check"/>').appendTo(stringCheckPanel);
+            $('<span class="string-check-label">&nbsp;Empty</span>').appendTo(stringCheckPanel);
+
+            var ok = $('<div class="button button-normal">Ok</div>').on('click', scope.save);
+            var cancel = $('<div class="button button-normal">Cancel</div>').on('click', scope.cancel);
+            $('<div></div>').css({
+                'position': 'absolute',
+                'bottom': '0',
+                'left': '0',
+                'right': '0',
+                'padding': '0 3px 5px 1px'
+            }).append(stringCheckPanel).append(ok).append(cancel).append('<div class="clear"></div>').appendTo(wrapper);
+
+            // position and focus
+            scope.position(args.position);
+            editor.nfeditor('focus').nfeditor('selectAll');
+        };
+
+        this.save = function () {
+            args.commitChanges();
+        };
+
+        this.cancel = function () {
+            editor.nfeditor('setValue', initialValue);
+            args.cancelChanges();
+        };
+
+        this.hide = function () {
+            wrapper.hide();
+        };
+
+        this.show = function () {
+            wrapper.show();
+            editor.nfeditor('setSize', args.position.width, null).nfeditor('refresh');
+        };
+
+        this.position = function (position) {
+            wrapper.css({
+                'top': position.top - 5,
+                'left': position.left - 5
+            });
+        };
+
+        this.destroy = function () {
+            editor.nfeditor('destroy');
+            wrapper.remove();
+        };
+
+        this.focus = function () {
+            editor.nfeditor('focus');
+        };
+
+        this.loadValue = function (item) {
+            // determine if this is a sensitive property
+            var isEmptyChecked = false;
+            var sensitive = nf.Common.isSensitiveProperty(propertyDescriptor);
+
+            // determine the value to use when populating the text field
+            if (nf.Common.isDefinedAndNotNull(item[args.column.field])) {
+                if (sensitive) {
+                    initialValue = nf.Common.config.sensitiveText;
+                } else {
+                    initialValue = item[args.column.field];
+                    isEmptyChecked = initialValue === '';
+                }
+            }
+
+            // determine if its an empty string
+            var checkboxStyle = isEmptyChecked ? 'checkbox-checked' : 'checkbox-unchecked';
+            isEmpty.addClass(checkboxStyle);
+
+            editor.nfeditor('setValue', initialValue).nfeditor('selectAll');
+        };
+
+        this.serializeValue = function () {
+            var value = editor.nfeditor('getValue');
+
+            // if the field has been cleared, set the value accordingly
+            if (value === '') {
+                // if the user has checked the empty string checkbox, use emtpy string
+                if (isEmpty.hasClass('checkbox-checked')) {
+                    return '';
+                } else {
+                    // otherwise if the property is required
+                    if (nf.Common.isRequiredProperty(propertyDescriptor)) {
+                        if (nf.Common.isBlank(propertyDescriptor.defaultValue)) {
+                            return previousValue;
+                        } else {
+                            return propertyDescriptor.defaultValue;
+                        }
+                    } else {
+                        // if the property is not required, clear the value
+                        return null;
+                    }
+                }
+            } else {
+                // if the field still has the sensitive class it means a property
+                // was edited but never modified so we should restore the previous
+                // value instead of setting it to the 'sensitive value set' string
+
+                // if the field hasn't been modified return the previous value... this
+                // is important because sensitive properties contain the text 'sensitive
+                // value set' which is cleared when the value is edited. we do not 
+                // want to actually use this value
+                if (editor.nfeditor('isModified') === false) {
+                    return previousValue;
+                } else {
+                    // if there is text specified, use that value
+                    return value;
+                }
+            }
+        };
+
+        this.applyValue = function (item, state) {
+            item[args.column.field] = state;
+        };
+
+        this.isValueChanged = function () {
+            return scope.serializeValue() !== previousValue;
+        };
+
+        this.validate = function () {
+            return {
+                valid: true,
+                msg: null
+            };
+        };
+
+        // initialize the custom long nfel editor
+        this.init();
+    };
+    
+    // combo editor
+    var comboEditor = function (args) {
+        var scope = this;
+        var initialValue = null;
+        var wrapper;
+        var combo;
+        var propertyDescriptor;
+
+        this.init = function () {
+            var container = $('body');
+
+            // get the property descriptor
+            var gridContainer = $(args.grid.getContainerNode());
+            var descriptors = gridContainer.data('descriptors');
+            propertyDescriptor = descriptors[args.item.property];
+
+            // create the wrapper
+            wrapper = $('<div></div>').css({
+                'z-index': 1999,
+                'position': 'absolute',
+                'background': 'white',
+                'padding': '5px',
+                'overflow': 'hidden',
+                'border': '3px solid #365C6A',
+                'box-shadow': '4px 4px 6px rgba(0, 0, 0, 0.9)',
+                'cursor': 'move'
+            }).draggable({
+                cancel: '.button, .combo',
+                containment: 'parent'
+            }).appendTo(container);
+
+            // check for allowable values which will drive which editor to use
+            var allowableValues = nf.Common.getAllowableValues(propertyDescriptor);
+
+            // show the output port options
+            var options = [];
+            if (propertyDescriptor.required === false) {
+                options.push({
+                    text: 'No value',
+                    value: null,
+                    optionClass: 'unset'
+                });
+            }
+            if ($.isArray(allowableValues)) {
+                $.each(allowableValues, function (i, allowableValue) {
+                    options.push({
+                        text: allowableValue.displayName,
+                        value: allowableValue.value,
+                        description: nf.Common.escapeHtml(allowableValue.description)
+                    });
+                });
+            }
+
+            // ensure the options there is at least one option
+            if (options.length === 0) {
+                options.push({
+                    text: 'No value',
+                    value: null,
+                    optionClass: 'unset',
+                    disabled: true
+                });
+            }
+
+            // determine the max height
+            var position = args.position;
+            var windowHeight = $(window).height();
+            var maxHeight = windowHeight - position.bottom - 16;
+
+            // build the combo field
+            combo = $('<div class="value-combo combo"></div>').combo({
+                options: options,
+                maxHeight: maxHeight
+            }).width(position.width - 16).appendTo(wrapper);
+
+            // add buttons for handling user input
+            $('<div class="button button-normal">Cancel</div>').css({
+                'margin': '0 0 0 5px',
+                'float': 'left'
+            }).on('click', scope.cancel).appendTo(wrapper);
+            $('<div class="button button-normal">Ok</div>').css({
+                'margin': '0 0 0 5px',
+                'float': 'left'
+            }).on('click', scope.save).appendTo(wrapper);
+
+            // position and focus
+            scope.position(position);
+        };
+
+        this.save = function () {
+            args.commitChanges();
+        };
+
+        this.cancel = function () {
+            args.cancelChanges();
+        };
+
+        this.hide = function () {
+            wrapper.hide();
+        };
+
+        this.show = function () {
+            wrapper.show();
+        };
+
+        this.position = function (position) {
+            wrapper.css({
+                'top': position.top - 5,
+                'left': position.left - 5
+            });
+        };
+
+        this.destroy = function () {
+            wrapper.remove();
+        };
+
+        this.focus = function () {
+        };
+
+        this.loadValue = function (item) {
+            // select as appropriate
+            if (!nf.Common.isUndefined(item.value)) {
+                initialValue = item.value;
+
+                combo.combo('setSelectedOption', {
+                    value: item.value
+                });
+            } else if (nf.Common.isDefinedAndNotNull(propertyDescriptor.defaultValue)) {
+                initialValue = propertyDescriptor.defaultValue;
+
+                combo.combo('setSelectedOption', {
+                    value: propertyDescriptor.defaultValue
+                });
+            }
+        };
+
+        this.serializeValue = function () {
+            var selectedOption = combo.combo('getSelectedOption');
+            return selectedOption.value;
+        };
+
+        this.applyValue = function (item, state) {
+            item[args.column.field] = state;
+        };
+
+        this.isValueChanged = function () {
+            var selectedOption = combo.combo('getSelectedOption');
+            return (!(selectedOption.value === "" && initialValue === null)) && (selectedOption.value !== initialValue);
+        };
+
+        this.validate = function () {
+            return {
+                valid: true,
+                msg: null
+            };
+        };
+
+        // initialize the custom long text editor
+        this.init();
     };
 
-    var isNull = function (obj) {
-        return obj === null;
+    /**
+     * Shows the property value for the specified row and cell.
+     * 
+     * @param {type} propertyGrid
+     * @param {type} descriptors 
+     * @param {type} row
+     * @param {type} cell
+     */
+    var showPropertyValue = function (propertyGrid, descriptors, row, cell) {
+        // remove any currently open detail dialogs
+        removeAllPropertyDetailDialogs();
+
+        // get the property in question
+        var propertyData = propertyGrid.getData();
+        var property = propertyData.getItem(row);
+
+        // ensure there is a value
+        if (nf.Common.isDefinedAndNotNull(property.value)) {
+
+            // get the descriptor to insert the description tooltip
+            var propertyDescriptor = descriptors[property.property];
+
+            // ensure we're not dealing with a sensitive property
+            if (!nf.Common.isSensitiveProperty(propertyDescriptor)) {
+
+                // get details about the location of the cell
+                var cellNode = $(propertyGrid.getCellNode(row, cell));
+                var offset = cellNode.offset();
+
+                // create the wrapper
+                var wrapper = $('<div class="property-detail"></div>').css({
+                    'z-index': 100000,
+                    'position': 'absolute',
+                    'background': 'white',
+                    'padding': '5px',
+                    'overflow': 'hidden',
+                    'border': '3px solid #365C6A',
+                    'box-shadow': '4px 4px 6px rgba(0, 0, 0, 0.9)',
+                    'cursor': 'move',
+                    'top': offset.top - 5,
+                    'left': offset.left - 5
+                }).appendTo('body');
+
+                var editor = null;
+
+                // so the nfel editor is appropriate
+                if (nf.Common.supportsEl(propertyDescriptor)) {
+                    var languageId = 'nfel';
+                    var editorClass = languageId + '-editor';
+
+                    // prevent dragging over the nf editor
+                    wrapper.draggable({
+                        cancel: 'input, textarea, pre, .button, .' + editorClass,
+                        containment: 'parent'
+                    });
+
+                    // create the editor
+                    editor = $('<div></div>').addClass(editorClass).appendTo(wrapper).nfeditor({
+                        languageId: languageId,
+                        width: cellNode.width(),
+                        content: property.value,
+                        minWidth: 175,
+                        minHeight: 100,
+                        readOnly: true,
+                        resizable: true
+                    });
+                } else {
+                    // prevent dragging over standard components
+                    wrapper.draggable({
+                        containment: 'parent'
+                    });
+
+                    // create the input field
+                    $('<textarea hidefocus rows="5" readonly="readonly"/>').css({
+                        'background': 'white',
+                        'width': cellNode.width() + 'px',
+                        'height': '80px',
+                        'border-width': '0',
+                        'outline': '0',
+                        'overflow-y': 'auto',
+                        'resize': 'both',
+                        'margin-bottom': '28px'
+                    }).text(property.value).appendTo(wrapper);
+                }
+
+                // add an ok button that will remove the entire pop up
+                var ok = $('<div class="button button-normal">Ok</div>').on('click', function () {
+                    // clean up the editor
+                    if (editor !== null) {
+                        editor.nfeditor('destroy');
+                    }
+                    
+                    // clean up the rest
+                    wrapper.hide().remove();
+                });
+                $('<div></div>').css({
+                    'position': 'absolute',
+                    'bottom': '0',
+                    'left': '0',
+                    'right': '0',
+                    'padding': '0 3px 5px'
+                }).append(ok).append('<div class="clear"></div>').appendTo(wrapper);
+            }
+        }
     };
 
-    var isDefinedAndNotNull = function (obj) {
-        return !isUndefined(obj) && !isNull(obj);
-    };
-
-    var isBlank = function (str) {
-        return isUndefined(str) || isNull(str) || str === '';
+    /**
+     * Removes all currently open property detail dialogs.
+     */
+    var removeAllPropertyDetailDialogs = function () {
+        $('body').children('div.property-detail').hide().remove();
     };
 
     var initPropertiesTable = function (table, options) {
@@ -127,7 +778,7 @@
             return $('<div/>').append(content).html();
         };
 
-        var processorConfigurationColumns = [
+        var propertyColumns = [
             {id: 'property', field: 'displayName', name: 'Property', sortable: false, resizable: true, rerenderOnResize: true, formatter: nameFormatter},
             {id: 'value', field: 'value', name: 'Value', sortable: false, resizable: true, cssClass: 'pointer', rerenderOnResize: true, formatter: valueFormatter}
         ];
@@ -144,7 +795,7 @@
 
                 return markup;
             };
-            processorConfigurationColumns.push({id: "actions", name: "&nbsp;", minWidth: 20, width: 20, formatter: actionFormatter});
+            propertyColumns.push({id: "actions", name: "&nbsp;", minWidth: 20, width: 20, formatter: actionFormatter});
         }
         
         var propertyConfigurationOptions = {
@@ -179,7 +830,7 @@
                 return {
                     columns: {
                         value: {
-                            editor: nf.ProcessorPropertyNfelEditor
+                            editor: nfelEditor
                         }
                     }
                 };
@@ -190,7 +841,7 @@
                     return {
                         columns: {
                             value: {
-                                editor: nf.ProcessorPropertyComboEditor
+                                editor: comboEditor
                             }
                         }
                     };
@@ -198,7 +849,7 @@
                     return {
                         columns: {
                             value: {
-                                editor: nf.ProcessorPropertyTextEditor
+                                editor: textEditor
                             }
                         }
                     };
@@ -207,12 +858,17 @@
         };
 
         // initialize the grid
-        var propertyGrid = new Slick.Grid(table, propertyData, processorConfigurationColumns, propertyConfigurationOptions);
+        var propertyGrid = new Slick.Grid(table, propertyData, propertyColumns, propertyConfigurationOptions);
         propertyGrid.setSelectionModel(new Slick.RowSelectionModel());
         propertyGrid.onClick.subscribe(function (e, args) {
             if (propertyGrid.getColumns()[args.cell].id === 'value') {
-                // edits the clicked cell
-                propertyGrid.gotoCell(args.row, args.cell, true);
+                if (options.readOnly === true) {
+                    var descriptors = table.data('descriptors');
+                    showPropertyValue(propertyGrid, descriptors, args.row, args.cell);
+                } else {
+                    // edits the clicked cell
+                    propertyGrid.gotoCell(args.row, args.cell, true);
+                }
 
                 // prevents standard edit logic
                 e.stopImmediatePropagation();
@@ -252,7 +908,7 @@
                 var descriptors = table.data('descriptors');
                 var propertyDescriptor = descriptors[property];
 
-                // get the processor history
+                // get the history
                 var history = table.data('history');
                 var propertyHistory = history[property];
 
@@ -363,7 +1019,7 @@
         init: function (options) {
             return this.each(function () {
                 // ensure the options have been properly specified
-                if (isDefinedAndNotNull(options)) {
+                if (nf.Common.isDefinedAndNotNull(options)) {
                     // get the tag cloud
                     var propertyTableContainer = $(this);
                     
@@ -553,7 +1209,13 @@
          */
         clear: function () {
             return this.each(function () {
+                var options = $(this).data('options');
+                if (options.readOnly === true) {
+                    removeAllPropertyDetailDialogs();
+                }
+                
                 var table = $(this).find('div.property-table');
+                table.removeData('descriptors history');
             
                 // clean up any tooltips that may have been generated
                 nf.Common.cleanUpTooltips(table, 'img.icon-info');
@@ -577,7 +1239,7 @@
                 var propertyGrid = table.data('gridInstance');
                 var propertyData = propertyGrid.getData();
 
-                // determine if any of the processor properties have changed
+                // determine if any of the properties have changed
                 $.each(propertyData.getItems(), function () {
                     if (this.value !== this.previousValue) {
                         isSaveRequired = true;
