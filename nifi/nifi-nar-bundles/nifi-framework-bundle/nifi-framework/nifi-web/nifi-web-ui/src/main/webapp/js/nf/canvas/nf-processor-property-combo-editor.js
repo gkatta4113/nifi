@@ -19,9 +19,15 @@ nf.ProcessorPropertyComboEditor = function (args) {
     var initialValue = null;
     var wrapper;
     var combo;
-
+    var propertyDescriptor;
+    
     this.init = function () {
         var container = $('body');
+
+        // get the property descriptor
+        var gridContainer = $(args.grid.getContainerNode());
+        var descriptors = gridContainer.data('descriptors');
+        propertyDescriptor = descriptors[args.item.property];
 
         // create the wrapper
         wrapper = $('<div></div>').css({
@@ -38,13 +44,8 @@ nf.ProcessorPropertyComboEditor = function (args) {
             containment: 'parent'
         }).appendTo(container);
 
-        // identify the property descriptor - property descriptor is never null/undefined here... in order
-        // to use this editor, the property descriptor would have had to indicate a set of allowable values
-        var processorDetails = $('#processor-configuration').data('processorDetails');
-        var propertyDescriptor = processorDetails.config.descriptors[args.item.property];
-
         // check for allowable values which will drive which editor to use
-        var allowableValues = nf.ProcessorPropertyTable.getAllowableValues(propertyDescriptor);
+        var allowableValues = nf.Common.getAllowableValues(propertyDescriptor);
 
         // show the output port options
         var options = [];
@@ -131,10 +132,6 @@ nf.ProcessorPropertyComboEditor = function (args) {
     };
 
     this.loadValue = function (item) {
-        // identify the property descriptor
-        var processorDetails = $('#processor-configuration').data('processorDetails');
-        var propertyDescriptor = processorDetails.config.descriptors[item.property];
-
         // select as appropriate
         if (!nf.Common.isUndefined(item.value)) {
             initialValue = item.value;

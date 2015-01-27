@@ -220,7 +220,7 @@ nf.ProcessorConfiguration = (function () {
         }
 
         // defer to the property and relationship grids
-        return nf.ProcessorPropertyTable.isSaveRequired();
+        return $('#processor-properties').propertytable('isSaveRequired');
     };
 
     /**
@@ -275,7 +275,7 @@ nf.ProcessorConfiguration = (function () {
         processorConfigDto['autoTerminatedRelationships'] = marshalRelationships();
 
         // properties
-        var properties = nf.ProcessorPropertyTable.marshalProperties();
+        var properties = $('#processor-properties').propertytable('marshalProperties');
 
         // set the properties
         if ($.isEmptyObject(properties) === false) {
@@ -389,25 +389,25 @@ nf.ProcessorConfiguration = (function () {
                 selectedTabStyle: 'selected-tab',
                 tabs: [{
                         name: 'Settings',
-                        tabContentId: 'configuration-standard-settings-tab-content'
+                        tabContentId: 'processor-standard-settings-tab-content'
                     }, {
                         name: 'Scheduling',
-                        tabContentId: 'configuration-scheduling-tab-content'
+                        tabContentId: 'processor-scheduling-tab-content'
                     }, {
                         name: 'Properties',
-                        tabContentId: 'configuration-processor-properties-tab-content'
+                        tabContentId: 'processor-properties-tab-content'
                     }, {
                         name: 'Comments',
-                        tabContentId: 'configuration-comments-tab-content'
+                        tabContentId: 'processor-comments-tab-content'
                     }],
                 select: function () {
                     // update the processor property table size in case this is the first time its rendered
                     if ($(this).text() === 'Properties') {
-                        nf.ProcessorPropertyTable.resetTableSize();
+                        $('#processor-properties').propertytable('resetTableSize');
                     }
 
                     // close all fields currently being edited
-                    nf.ProcessorPropertyTable.saveRow();
+                    $('#processor-properties').propertytable('saveRow');
 
                     // show the border around the processor relationships if necessary
                     var processorRelationships = $('#auto-terminate-relationship-names');
@@ -430,10 +430,10 @@ nf.ProcessorConfiguration = (function () {
                         $('#processor-property-dialog').hide();
 
                         // cancel any active edits
-                        nf.ProcessorPropertyTable.cancelEdit();
+                        $('#processor-properties').propertytable('cancelEdit');
 
                         // clear the tables
-                        nf.ProcessorPropertyTable.clear();
+                        $('#processor-properties').propertytable('clear');
 
                         // removed the cached processor details
                         $('#processor-configuration').removeData('processorDetails');
@@ -469,7 +469,10 @@ nf.ProcessorConfiguration = (function () {
             });
 
             // initialize the property table
-            nf.ProcessorPropertyTable.init();
+            $('#processor-properties').propertytable({
+                readOnly: false,
+                newPropertyDialogContainer: 'body'
+            });
         },
         
         /**
@@ -578,9 +581,33 @@ nf.ProcessorConfiguration = (function () {
                     $('#timer-driven-scheduling-period').val(processor.config['schedulingPeriod']);
                 }
 
-                // load the property table
-                nf.ProcessorPropertyTable.loadProperties(processor.config.properties, processor.config.descriptors);
+                // get the processor history
+                $.ajax({
+                    type: 'GET',
+                    url: '../nifi-api/controller/history/processors/' + encodeURIComponent(processor.id),
+                    dataType: 'json'
+                }).done(function (response) {
+                    var processorHistory = response.processorHistory;
 
+                    // record the processor history
+                    $('#processor-configuration').data('processorHistory', processorHistory);
+
+                    // load the property table
+                    $('#processor-properties').propertytable('loadProperties', processor.config.properties, processor.config.descriptors, processorHistory.propertyHistory);
+
+                    // show the details
+                    $('#processor-configuration').modal('show');
+
+                    // add ellipsis if necessary
+                    $('#processor-configuration div.relationship-name').ellipsis();
+
+                    // show the border if necessary
+                    var processorRelationships = $('#auto-terminate-relationship-names');
+                    if (processorRelationships.is(':visible') && processorRelationships.get(0).scrollHeight > processorRelationships.innerHeight()) {
+                        processorRelationships.css('border-width', '1px');
+                    }
+                }).fail(nf.Common.handleAjaxError);
+                
                 // load the relationship list
                 if (!nf.Common.isEmpty(processor.relationships)) {
                     $.each(processor.relationships, function (i, relationship) {
@@ -595,7 +622,7 @@ nf.ProcessorConfiguration = (function () {
                         handler: {
                             click: function () {
                                 // close all fields currently being edited
-                                nf.ProcessorPropertyTable.saveRow();
+                                $('#processor-properties').propertytable('saveRow');
 
                                 // marshal the settings and properties and update the processor
                                 var updatedProcessor = marshalDetails();
@@ -658,7 +685,7 @@ nf.ProcessorConfiguration = (function () {
                                 };
 
                                 // close all fields currently being edited
-                                nf.ProcessorPropertyTable.saveRow();
+                                $('#processor-properties').propertytable('saveRow');
 
                                 // determine if changes have been made
                                 if (isSaveRequired()) {
@@ -704,30 +731,6 @@ nf.ProcessorConfiguration = (function () {
 
                 // set the button model
                 $('#processor-configuration').modal('setButtonModel', buttons);
-
-                // get the processor history
-                $.ajax({
-                    type: 'GET',
-                    url: '../nifi-api/controller/history/processors/' + encodeURIComponent(processor.id),
-                    dataType: 'json'
-                }).done(function (response) {
-                    var processorHistory = response.processorHistory;
-
-                    // record the processor history
-                    $('#processor-configuration').data('processorHistory', processorHistory);
-
-                    // show the details
-                    $('#processor-configuration').modal('show');
-
-                    // add ellipsis if necessary
-                    $('#processor-configuration div.relationship-name').ellipsis();
-
-                    // show the border if necessary
-                    var processorRelationships = $('#auto-terminate-relationship-names');
-                    if (processorRelationships.is(':visible') && processorRelationships.get(0).scrollHeight > processorRelationships.innerHeight()) {
-                        processorRelationships.css('border-width', '1px');
-                    }
-                }).fail(nf.Common.handleAjaxError);
             }
         }
     };

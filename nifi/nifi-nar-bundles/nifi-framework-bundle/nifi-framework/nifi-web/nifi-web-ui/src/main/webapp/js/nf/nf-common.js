@@ -55,6 +55,7 @@ $(document).ready(function () {
 // Define a common utility class used across the entire application.
 nf.Common = {
     config: {
+        sensitiveText: 'Sensitive value set',
         tooltipConfig: {
             style: {
                 classes: 'nifi-tooltip'
@@ -404,6 +405,71 @@ nf.Common = {
             }
         };
     }()),
+    
+    /**
+     * Determines if the specified property is sensitive.
+     * 
+     * @argument {object} propertyDescriptor        The property descriptor
+     */
+    isSensitiveProperty: function (propertyDescriptor) {
+        if (nf.Common.isDefinedAndNotNull(propertyDescriptor)) {
+            return propertyDescriptor.sensitive === true;
+        } else {
+            return false;
+        }
+    },
+
+    /**
+     * Determines if the specified property is required.
+     * 
+     * @param {object} propertyDescriptor           The property descriptor
+     */
+    isRequiredProperty: function (propertyDescriptor) {
+        if (nf.Common.isDefinedAndNotNull(propertyDescriptor)) {
+            return propertyDescriptor.required === true;
+        } else {
+            return false;
+        }
+    },
+
+    /**
+     * Determines if the specified property is required.
+     * 
+     * @param {object} propertyDescriptor           The property descriptor
+     */
+    isDynamicProperty: function (propertyDescriptor) {
+        if (nf.Common.isDefinedAndNotNull(propertyDescriptor)) {
+            return propertyDescriptor.dynamic === true;
+        } else {
+            return false;
+        }
+    },
+
+    /**
+     * Gets the allowable values for the specified property.
+     * 
+     * @argument {object} propertyDescriptor        The property descriptor
+     */
+    getAllowableValues: function (propertyDescriptor) {
+        if (nf.Common.isDefinedAndNotNull(propertyDescriptor)) {
+            return propertyDescriptor.allowableValues;
+        } else {
+            return null;
+        }
+    },
+
+    /**
+     * Returns whether the specified property supports EL.
+     * 
+     * @param {object} propertyDescriptor           The property descriptor
+     */
+    supportsEl: function (propertyDescriptor) {
+        if (nf.Common.isDefinedAndNotNull(propertyDescriptor)) {
+            return propertyDescriptor.supportsEl === true;
+        } else {
+            return false;
+        }
+    },
     
     /**
      * Creates a form inline in order to submit the specified params to the specified URL

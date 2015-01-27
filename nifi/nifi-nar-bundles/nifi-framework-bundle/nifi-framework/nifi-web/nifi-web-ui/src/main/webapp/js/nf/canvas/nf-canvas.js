@@ -1005,6 +1005,7 @@ nf.Canvas = (function () {
 
                         // initialize components
                         nf.ConnectionConfiguration.init();
+                        nf.ControllerServiceConfiguration.init();
                         nf.ProcessorConfiguration.init();
                         nf.ProcessGroupConfiguration.init();
                         nf.RemoteProcessGroupConfiguration.init();

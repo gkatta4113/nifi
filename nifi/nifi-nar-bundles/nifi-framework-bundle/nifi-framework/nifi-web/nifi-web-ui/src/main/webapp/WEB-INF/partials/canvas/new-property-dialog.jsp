@@ -15,7 +15,7 @@
   limitations under the License.
 --%>
 <%@ page contentType="text/html" pageEncoding="UTF-8" session="false" %>
-<div id="processor-property-dialog" class="dialog">
+<div id="new-property-dialog" class="dialog">
     <div>
         <div class="setting-name">Property name</div>
         <div class="setting-field" id="new-property-name-container">

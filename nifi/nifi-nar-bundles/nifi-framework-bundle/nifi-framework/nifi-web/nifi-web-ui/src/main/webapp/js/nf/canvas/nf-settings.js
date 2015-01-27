@@ -178,7 +178,6 @@ nf.Settings = (function () {
     var clearSelectedControllerService = function () {
         $('#controller-service-type-description').text('');
         $('#controller-service-type-name').text('');
-        $('#controller-service-name-field').val('');
         $('#selected-controller-service-name').text('');
         $('#selected-controller-service-type').text('');
         $('#controller-service-description-container').hide();
@@ -350,6 +349,39 @@ nf.Settings = (function () {
         
         return markup;
     };
+
+    /**
+     * Adds a new controller service of the specified type.
+     * 
+     * @param {string} controllerServiceType
+     */
+    var addControllerService = function (controllerServiceType) {
+        var revision = nf.Client.getRevision();
+
+        // add the new controller service
+        var addService = $.ajax({
+            type: 'POST',
+            url: config.urls.controllerServices,
+            data: {
+                version: revision.version,
+                clientId: revision.clientId,
+                type: controllerServiceType
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            var controllerService = response.controllerService;
+            if (nf.Common.isDefinedAndNotNull(controllerService)) {
+                var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
+                var controllerServicesData = controllerServicesGrid.getData();
+                controllerServicesData.addItem(controllerService);
+            }
+        });
+        
+        // hide the dialog
+        $('#new-controller-service-dialog').modal('hide');
+        
+        return addService;
+    };
     
     /**
      * Initializes the new controller service dialog.
@@ -454,7 +486,6 @@ nf.Settings = (function () {
 
                     // populate the dom
                     $('#controller-service-type-name').text(controllerServiceType.label).ellipsis();
-                    $('#controller-service-name-field').val(controllerServiceType.label);
                     $('#selected-controller-service-name').text(controllerServiceType.label);
                     $('#selected-controller-service-type').text(controllerServiceType.type);
                     
@@ -479,6 +510,10 @@ nf.Settings = (function () {
                 // prevent selection within slickgrid
                 e.stopImmediatePropagation();
             }
+        });
+        controllerServiceTypesGrid.onDblClick.subscribe(function (e, args) {
+            var controllerServiceType = controllerServiceTypesGrid.getDataItem(args.row);
+            addControllerService(controllerServiceType.type);
         });
 
         // wire up the dataview to the grid
@@ -567,15 +602,8 @@ nf.Settings = (function () {
                 buttonText: 'Add',
                 handler: {
                     click: function () {
-                        // add the new controller service
-                        var selectedServiceName = $('#controller-service-name-field').val();
                         var selectedServiceType = $('#selected-controller-service-type').text();
-                        
-                        $.ajax({
-                            
-                        }).done(function () {
-                            
-                        });
+                        addControllerService(selectedServiceType);
                     }
                 }
             }, {
@@ -615,12 +643,43 @@ nf.Settings = (function () {
             return '<img src="images/iconDetails.png" title="View Details" class="pointer" style="margin-top: 5px; float: left;" onclick="javascript:nf.Settings.showControllerServiceDetails(\'' + row + '\');"/>';
         };
         
+        var typeFormatter = function (row, cell, value, columnDef, dataContext) {
+            return nf.Common.substringAfterLast(value, '.');
+        };
+        
+        var enabledFormatter = function (row, cell, value, columnDef, dataContext) {
+            if (dataContext.enabled === true) {
+                return 'Enabled';
+            } else {
+                return 'Disabled';
+            }
+        };
+        
         // define the column model for the controller services table
         var controllerServicesColumns = [
-            {id: 'moreDetails', field: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreControllerServiceDetails, sortable: true, width: 50, maxWidth: 50},
+            {id: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreControllerServiceDetails, sortable: false, width: 50, maxWidth: 50},
             {id: 'name', field: 'name', name: 'Name', sortable: true, resizable: true},
-            {id: 'type', field: 'type', name: 'Type', sortable: true, resizable: true}
+            {id: 'type', field: 'type', name: 'Type', formatter: typeFormatter, sortable: true, resizable: true},
+            {id: 'enabled', field: 'enabled', name: 'State', formatter: enabledFormatter, sortable: true, resizeable: true}
         ];
+        
+        // only DFM can edit controller services
+        if (nf.Common.isDFM()) {
+            var controllerServiceActionFormatter = function (row, cell, value, columnDef, dataContext) {
+                var markup = '';
+
+                if (dataContext.enabled === true) {
+                    markup += '<img src="images/iconDisable.png" title="Disable" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.disableControllerService(\'' + row + '\');"/>&nbsp;';
+                } else {
+                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.editControllerService(\'' + row + '\');"/>&nbsp;<img src="images/iconRun.png" title="Enable" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.enableControllerService(\'' + row + '\');"/>&nbsp;<img src="images/iconDelete.png" title="Remove" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.removeControllerService(\'' + row + '\');"/>&nbsp;';
+                }
+
+                return markup;
+            };
+            
+            controllerServicesColumns.push({id: 'actions', name: '&nbsp;', resizable: false, formatter: controllerServiceActionFormatter, sortable: false, width: 75, maxWidth: 75});
+        }
+        
         var controllerServicesOptions = {
             forceFitColumns: true,
             enableTextSelectionOnCells: true,
@@ -635,11 +694,6 @@ nf.Settings = (function () {
             inlineFilters: false
         });
         controllerServicesData.setItems([]);
-//        controllerServicesData.setFilterArgs({
-//            searchString: getControllerServiceTypeFilterText(),
-//            property: $('#controller-service-type-filter-options').combo('getSelectedOption').value
-//        });
-        controllerServicesData.setFilter(filterControllerServiceTypes);
         
         // initialize the grid
         var controllerServicesGrid = new Slick.Grid('#controller-services-table', controllerServicesData, controllerServicesColumns, controllerServicesOptions);
@@ -651,9 +705,6 @@ nf.Settings = (function () {
         controllerServicesData.onRowCountChanged.subscribe(function (e, args) {
             controllerServicesGrid.updateRowCount();
             controllerServicesGrid.render();
-
-            // update the total number of displayed processors
-//            $('#displayed-controller-service-types').text(getVisibleControllerServiceCount());
         });
         controllerServicesData.onRowsChanged.subscribe(function (e, args) {
             controllerServicesGrid.invalidateRows(args.rows);
@@ -804,6 +855,47 @@ nf.Settings = (function () {
          * @param {documentedType} row
          */
         showControllerServiceDetails: function (row) {
+            
+        },
+        
+        /**
+         * Edits the controller service at the specified row.
+         * 
+         * @param {type} row
+         */
+        editControllerService: function (row) {
+            var grid = $('#controller-services-table').data('gridInstance');
+            if (nf.Common.isDefinedAndNotNull(grid)) {
+                var data = grid.getData();
+                var item = data.getItem(row);
+                nf.ControllerServiceConfiguration.showConfiguration(item);
+            }
+        },
+        
+        /**
+         * Enables the controller service at the specified row.
+         * 
+         * @param {type} row
+         */
+        enableControllerService: function (row) {
+            
+        },
+        
+        /**
+         * Disables the controller service at the specified row.
+         * 
+         * @param {type} row
+         */
+        disableControllerService: function (row) {
+            
+        },
+        
+        /**
+         * Removes the controller service at the specified row.
+         * 
+         * @param {type} row
+         */
+        removeControllerService: function (row) {
             
         },
         

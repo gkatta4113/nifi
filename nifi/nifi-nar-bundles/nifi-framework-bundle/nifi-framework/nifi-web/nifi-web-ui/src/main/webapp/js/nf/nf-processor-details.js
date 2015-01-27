@@ -39,7 +39,7 @@ nf.ProcessorDetails = (function () {
             var propertyDescriptor = details.config.descriptors[property.property];
 
             // ensure we're not dealing with a sensitive property
-            if (!isSensitiveProperty(propertyDescriptor)) {
+            if (!nf.Common.isSensitiveProperty(propertyDescriptor)) {
 
                 // get details about the location of the cell
                 var cellNode = $(propertyGrid.getCellNode(row, cell));
@@ -127,19 +127,6 @@ nf.ProcessorDetails = (function () {
      */
     var removeAllPropertyDetailDialogs = function () {
         $('body').children('div.processor-property-detail').hide().remove();
-    };
-
-    /**
-     * Determines if the specified property is sensitive.
-     * 
-     * @argument {object} propertyDescriptor        The property descriptor
-     */
-    var isSensitiveProperty = function (propertyDescriptor) {
-        if (nf.Common.isDefinedAndNotNull(propertyDescriptor)) {
-            return propertyDescriptor.sensitive === true;
-        } else {
-            return false;
-        }
     };
 
     /**
@@ -310,7 +297,7 @@ nf.ProcessorDetails = (function () {
                     var propertyDescriptor = processorDetails.config.descriptors[dataContext.property];
 
                     // determine if the property is sensitive
-                    if (isSensitiveProperty(propertyDescriptor)) {
+                    if (nf.Common.isSensitiveProperty(propertyDescriptor)) {
                         valueMarkup = '<span class="table-cell sensitive">Sensitive value set</span>';
                     } else {
                         if (value === '') {

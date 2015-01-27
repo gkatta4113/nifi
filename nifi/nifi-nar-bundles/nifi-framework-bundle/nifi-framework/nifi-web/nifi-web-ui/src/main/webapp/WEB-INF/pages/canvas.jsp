@@ -29,6 +29,7 @@
         <link rel="stylesheet" href="js/jquery/nfeditor/languages/nfel.css?${project.version}" type="text/css" />
         <link rel="stylesheet" href="js/jquery/tabbs/jquery.tabbs.css?${project.version}" type="text/css" />
         <link rel="stylesheet" href="js/jquery/combo/jquery.combo.css?${project.version}" type="text/css" />
+        <link rel="stylesheet" href="js/jquery/propertytable/jquery.propertytable.css?${project.version}" type="text/css" />
         <link rel="stylesheet" href="js/jquery/tagcloud/jquery.tagcloud.css?${project.version}" type="text/css" />
         <link rel="stylesheet" href="js/jquery/modal/jquery.modal.css?${project.version}" type="text/css" />
         <link rel="stylesheet" href="js/jquery/qtip2/jquery.qtip.min.css?" type="text/css" />
@@ -46,6 +47,7 @@
         <script type="text/javascript" src="js/jquery/jquery.tab.js"></script>
         <script type="text/javascript" src="js/jquery/tabbs/jquery.tabbs.js?${project.version}"></script>
         <script type="text/javascript" src="js/jquery/combo/jquery.combo.js?${project.version}"></script>
+        <script type="text/javascript" src="js/jquery/propertytable/jquery.propertytable.js?${project.version}"></script>
         <script type="text/javascript" src="js/jquery/tagcloud/jquery.tagcloud.js?${project.version}"></script>
         <script type="text/javascript" src="js/jquery/modal/jquery.modal.js?${project.version}"></script>
         <script type="text/javascript" src="js/jquery/minicolors/jquery.minicolors.min.js"></script>
@@ -85,7 +87,6 @@
         <jsp:include page="/WEB-INF/partials/canvas/new-remote-process-group-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/new-template-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/instantiate-template-dialog.jsp"/>
-        <jsp:include page="/WEB-INF/partials/canvas/new-processor-property-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/fill-color-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/connections-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/flow-status.jsp"/>
@@ -99,6 +100,7 @@
         <jsp:include page="/WEB-INF/partials/canvas/navigation.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/settings-content.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/shell.jsp"/>
+        <jsp:include page="/WEB-INF/partials/canvas/controller-service-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/processor-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/processor-details.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/process-group-configuration.jsp"/>

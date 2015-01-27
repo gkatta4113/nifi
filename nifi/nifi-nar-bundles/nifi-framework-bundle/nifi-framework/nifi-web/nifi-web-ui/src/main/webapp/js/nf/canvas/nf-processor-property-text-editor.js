@@ -22,13 +22,15 @@ nf.ProcessorPropertyTextEditor = function (args) {
     var wrapper;
     var isEmpty;
     var input;
+    
 
     this.init = function () {
         var container = $('body');
 
-        // get the property descriptor for this property
-        var details = $('#processor-configuration').data('processorDetails');
-        propertyDescriptor = details.config.descriptors[args.item.property];
+        // get the property descriptor
+        var gridContainer = $(args.grid.getContainerNode());
+        var descriptors = gridContainer.data('descriptors');
+        propertyDescriptor = descriptors[args.item.property];
 
         // record the previous value
         previousValue = args.item[args.column.field];
@@ -127,12 +129,12 @@ nf.ProcessorPropertyTextEditor = function (args) {
     this.loadValue = function (item) {
         // determine if this is a sensitive property
         var isEmptyChecked = false;
-        var sensitive = nf.ProcessorPropertyTable.isSensitiveProperty(propertyDescriptor);
+        var sensitive = nf.Common.isSensitiveProperty(propertyDescriptor);
 
         // determine the value to use when populating the text field
         if (nf.Common.isDefinedAndNotNull(item[args.column.field])) {
             if (sensitive) {
-                initialValue = nf.ProcessorPropertyTable.config.sensitiveText;
+                initialValue = nf.Common.config.sensitiveText;
             } else {
                 initialValue = item[args.column.field];
                 isEmptyChecked = initialValue === '';
@@ -149,7 +151,7 @@ nf.ProcessorPropertyTextEditor = function (args) {
                 var sensitiveInput = $(this);
                 if (sensitiveInput.hasClass('sensitive')) {
                     sensitiveInput.removeClass('sensitive');
-                    if (sensitiveInput.val() === nf.ProcessorPropertyTable.config.sensitiveText) {
+                    if (sensitiveInput.val() === nf.Common.config.sensitiveText) {
                         sensitiveInput.val('');
                     }
                 }
@@ -168,7 +170,7 @@ nf.ProcessorPropertyTextEditor = function (args) {
                 return '';
             } else {
                 // otherwise if the property is required
-                if (nf.ProcessorPropertyTable.isRequiredProperty(propertyDescriptor)) {
+                if (nf.Common.isRequiredProperty(propertyDescriptor)) {
                     if (nf.Common.isBlank(propertyDescriptor.defaultValue)) {
                         return previousValue;
                     } else {
