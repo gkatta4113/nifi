@@ -16,10 +16,15 @@
  */
 package org.apache.nifi.web.dao.impl;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.controller.Availability;
 
 import org.apache.nifi.controller.FlowController;
+import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
@@ -57,6 +62,13 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     public ControllerServiceNode createControllerService(final ControllerServiceDTO controllerServiceDTO) {
         // create the controller service
         final ControllerServiceNode controllerService = flowController.createControllerService(controllerServiceDTO.getType(), true);
+        
+        // ensure we can perform the update 
+        verifyUpdate(controllerService, controllerServiceDTO);
+        
+        // perform the update
+        configureControllerService(controllerService, controllerServiceDTO);
+        
         return controllerService;
     }
 
@@ -89,7 +101,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     @Override
     public Set<ControllerServiceNode> getControllerServices() {
-        return new HashSet<>();
+        return flowController.getAllControllerServices();
     }
 
     /**
@@ -103,19 +115,134 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         // get the controller service
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceDTO.getId());
         
+        // ensure we can perform the update 
+        verifyUpdate(controllerService, controllerServiceDTO);
+        
+        // perform the update
+        configureControllerService(controllerService, controllerServiceDTO);
+
+        // enable or disable as appropriate
+        if (isNotNull(controllerServiceDTO.getEnabled())) {
+            final boolean proposedDisabled = !controllerServiceDTO.getEnabled();
+            
+            if (proposedDisabled != controllerService.isDisabled()) {
+                if (proposedDisabled) {
+                    flowController.disableControllerService(controllerService);
+                } else {
+                    flowController.enableControllerService(controllerService);
+                }
+            }
+        }
+        
         return controllerService;
     }
 
+    /**
+     * Validates the specified configuration for the specified controller service.
+     * 
+     * @param controllerService
+     * @param controllerServiceDTO
+     * @return 
+     */
+    private List<String> validateProposedConfiguration(final ControllerServiceNode controllerService, final ControllerServiceDTO controllerServiceDTO) {
+        final List<String> validationErrors = new ArrayList<>();
+        
+        if (isNotNull(controllerServiceDTO.getAvailability())) {
+            try {
+                Availability.valueOf(controllerServiceDTO.getAvailability());
+            } catch (IllegalArgumentException iae) {
+                validationErrors.add(String.format("Availability: Value must be one of [%s]", StringUtils.join(Availability.values(), ", ")));
+            }
+        }
+        
+        return validationErrors;
+    }
+    
     @Override
     public void verifyDelete(final String controllerServiceId) {
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
-//        controllerService.verifyCanDelete();
+        controllerService.verifyCanDelete();
     }
 
     @Override
     public void verifyUpdate(final ControllerServiceDTO controllerServiceDTO) {
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceDTO.getId());
-//        controllerService.verifyCanDelete();
+        verifyUpdate(controllerService, controllerServiceDTO);
+    }
+    
+    /**
+     * Verifies the controller service can be updated.
+     * 
+     * @param controllerService
+     * @param controllerServiceDTO 
+     */
+    private void verifyUpdate(final ControllerServiceNode controllerService, final ControllerServiceDTO controllerServiceDTO) {
+        if (isNotNull(controllerServiceDTO.getEnabled())) {
+            if (controllerServiceDTO.getEnabled()) {
+                controllerService.verifyCanEnable();
+            } else {
+                controllerService.verifyCanDisable();
+            }
+        }
+        
+        boolean modificationRequest = false;
+        if (isAnyNotNull(controllerServiceDTO.getName(),
+                controllerServiceDTO.getAvailability(),
+                controllerServiceDTO.getAnnotationData(),
+                controllerServiceDTO.getComments(),
+                controllerServiceDTO.getProperties())) {
+            modificationRequest = true;
+            
+            // validate the request
+            final List<String> requestValidation = validateProposedConfiguration(controllerService, controllerServiceDTO);
+
+            // ensure there was no validation errors
+            if (!requestValidation.isEmpty()) {
+                throw new ValidationException(requestValidation);
+            }
+        }
+        
+        if (modificationRequest) {
+            controllerService.verifyCanUpdate();
+        }
+    }
+    
+    /**
+     * Configures the specified controller service.
+     * 
+     * @param controllerService
+     * @param controllerServiceDTO 
+     */
+    private void configureControllerService(final ControllerServiceNode controllerService, final ControllerServiceDTO controllerServiceDTO) {
+        final String name = controllerServiceDTO.getName();
+        final String availability = controllerServiceDTO.getAvailability();
+        final String annotationData = controllerServiceDTO.getAnnotationData();
+        final String comments = controllerServiceDTO.getComments();
+        final Map<String, String> properties = controllerServiceDTO.getProperties();
+        
+        if (isNotNull(name)) {
+            controllerService.setName(name);
+        }
+        if (isNotNull(availability)) {
+            controllerService.setAvailability(Availability.valueOf(availability));
+        }
+        if (isNotNull(annotationData)) {
+            controllerService.setAnnotationData(annotationData);
+        }
+        if (isNotNull(comments)) {
+            controllerService.setComments(comments);
+        }
+        if (isNotNull(properties)) {
+            for (final Map.Entry<String, String> entry : properties.entrySet()) {
+                final String propName = entry.getKey();
+                final String propVal = entry.getValue();
+                if (isNotNull(propName) && propVal == null) {
+                    controllerService.removeProperty(propName);
+                } else if (isNotNull(propName)) {
+                    controllerService.setProperty(propName, propVal);
+                }
+            }
+        }
     }
     
     /**
@@ -126,6 +253,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     @Override
     public void deleteControllerService(String controllerServiceId) {
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
+        flowController.removeControllerService(controllerService);
     }
 
     /* setters */
