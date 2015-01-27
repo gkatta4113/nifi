@@ -20,9 +20,8 @@
  * format:
  *
  * {
- *   tags: ['attributes', 'copy', 'regex', 'xml', 'copy', 'xml', 'attributes'],
- *   select: selectHandler,
- *   remove: removeHandler
+ *   readOnly: true,
+ *   newPropertyDialogContainer: 'body'
  * }
  */
 

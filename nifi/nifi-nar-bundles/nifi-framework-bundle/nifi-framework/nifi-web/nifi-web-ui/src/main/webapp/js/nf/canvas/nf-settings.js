@@ -640,7 +640,7 @@ nf.Settings = (function () {
         initNewControllerServiceDialog();
         
         var moreControllerServiceDetails = function (row, cell, value, columnDef, dataContext) {
-            return '<img src="images/iconDetails.png" title="View Details" class="pointer" style="margin-top: 5px; float: left;" onclick="javascript:nf.Settings.showControllerServiceDetails(\'' + row + '\');"/>';
+            return '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />';
         };
         
         var typeFormatter = function (row, cell, value, columnDef, dataContext) {
@@ -669,9 +669,9 @@ nf.Settings = (function () {
                 var markup = '';
 
                 if (dataContext.enabled === true) {
-                    markup += '<img src="images/iconDisable.png" title="Disable" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.disableControllerService(\'' + row + '\');"/>&nbsp;';
+                    markup += '<img src="images/iconDisable.png" title="Disable" class="pointer disable-controller-service" style="margin-top: 2px;" />&nbsp;';
                 } else {
-                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.editControllerService(\'' + row + '\');"/>&nbsp;<img src="images/iconRun.png" title="Enable" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.enableControllerService(\'' + row + '\');"/>&nbsp;<img src="images/iconDelete.png" title="Remove" class="pointer" style="margin-top: 2px;" onclick="javascript:nf.Settings.removeControllerService(\'' + row + '\');"/>&nbsp;';
+                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-controller-service" style="margin-top: 2px;" />&nbsp;<img src="images/iconRun.png" title="Enable" class="pointer enable-controller-service" style="margin-top: 2px;"/>&nbsp;<img src="images/iconDelete.png" title="Remove" class="pointer delete-controller-service" style="margin-top: 2px;" />&nbsp;';
                 }
 
                 return markup;
@@ -700,6 +700,27 @@ nf.Settings = (function () {
         controllerServicesGrid.setSelectionModel(new Slick.RowSelectionModel());
         controllerServicesGrid.registerPlugin(new Slick.AutoTooltips());
         controllerServicesGrid.setSortColumn('name', true);
+        controllerServicesGrid.onClick.subscribe(function (e, args) {
+            var target = $(e.target);
+            
+            // get the service at this row
+            var controllerService = controllerServicesData.getItem(args.row);
+            
+            // determine the desired action
+            if (controllerServicesGrid.getColumns()[args.cell].id === 'actions') {
+                if (target.hasClass('edit-controller-service')) {
+                    nf.ControllerServiceConfiguration.showConfiguration(controllerService);
+                } else if (target.hasClass('enable-controller-service')) {
+                    
+                } else if (target.hasClass('delete-controller-service')) {
+                    
+                }
+            } else if (controllerServicesGrid.getColumns()[args.cell].id === 'moreDetails') {
+                if (target.hasClass('view-controller-service')) {
+                    
+                }
+            }
+        });
 
         // wire up the dataview to the grid
         controllerServicesData.onRowCountChanged.subscribe(function (e, args) {
@@ -759,7 +780,7 @@ nf.Settings = (function () {
         initNewReportingTaskDialog();
         
         var moreReportingTaskDetails = function (row, cell, value, columnDef, dataContext) {
-            return '<img src="images/iconDetails.png" title="View Details" class="pointer" style="margin-top: 5px; float: left;" onclick="javascript:nf.Settings.showReportingTaskDetails(\'' + row + '\');"/>';
+            return '<img src="images/iconDetails.png" title="View Details" class="pointer view-reporting-task" style="margin-top: 5px; float: left;" />';
         };
         
         // define the column model for the reporting tasks table
@@ -847,65 +868,6 @@ nf.Settings = (function () {
             if (nf.Common.isDefinedAndNotNull(reportingTasksGrid)) {
                 reportingTasksGrid.resizeCanvas();
             }
-        },
-        
-        /**
-         * Shows the details of the controller service at the specified row.
-         * 
-         * @param {documentedType} row
-         */
-        showControllerServiceDetails: function (row) {
-            
-        },
-        
-        /**
-         * Edits the controller service at the specified row.
-         * 
-         * @param {type} row
-         */
-        editControllerService: function (row) {
-            var grid = $('#controller-services-table').data('gridInstance');
-            if (nf.Common.isDefinedAndNotNull(grid)) {
-                var data = grid.getData();
-                var item = data.getItem(row);
-                nf.ControllerServiceConfiguration.showConfiguration(item);
-            }
-        },
-        
-        /**
-         * Enables the controller service at the specified row.
-         * 
-         * @param {type} row
-         */
-        enableControllerService: function (row) {
-            
-        },
-        
-        /**
-         * Disables the controller service at the specified row.
-         * 
-         * @param {type} row
-         */
-        disableControllerService: function (row) {
-            
-        },
-        
-        /**
-         * Removes the controller service at the specified row.
-         * 
-         * @param {type} row
-         */
-        removeControllerService: function (row) {
-            
-        },
-        
-        /**
-         * Shows the details of the reporting task at the specified row.
-         * 
-         * @param {documentedType} row
-         */
-        showReportingTaskDetails: function (row) {
-            
         },
         
         /**

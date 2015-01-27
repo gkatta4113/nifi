@@ -45,7 +45,7 @@ nf.ControllerServiceConfiguration = (function () {
     };
 
     /**
-     * Determines whether the user has made any changes to the processor configuration
+     * Determines whether the user has made any changes to the controller service configuration
      * that needs to be saved.
      */
     var isSaveRequired = function () {
@@ -53,11 +53,14 @@ nf.ControllerServiceConfiguration = (function () {
 
         // determine if any controller service settings have changed
 
+        if ($('#controller-service-name').val() !== details.name) {
+            return true;
+        }
         if ($('#controller-service-comments').val() !== details.comments) {
             return true;
         }
 
-        // defer to the property and relationship grids
+        // defer to the properties
         return $('#controller-service-properties').propertytable('isSaveRequired');
     };
 
