@@ -160,12 +160,12 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     }
     
     @Override
-    public String getComment() {
+    public String getComments() {
 		return comment;
 	}
 
     @Override
-	public void setComment(final String comment) {
+	public void setComments(final String comment) {
 		this.comment = comment;
 	}
 

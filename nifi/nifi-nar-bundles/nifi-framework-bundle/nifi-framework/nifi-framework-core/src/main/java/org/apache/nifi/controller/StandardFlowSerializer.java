@@ -410,7 +410,7 @@ public class StandardFlowSerializer implements FlowSerializer {
     	final Element serviceElement = element.getOwnerDocument().createElement("controllerService");
     	addTextElement(serviceElement, "id", serviceNode.getIdentifier());
     	addTextElement(serviceElement, "name", serviceNode.getName());
-    	addTextElement(serviceElement, "comment", serviceNode.getComment());
+    	addTextElement(serviceElement, "comment", serviceNode.getComments());
     	addTextElement(serviceElement, "class", serviceNode.getControllerServiceImplementation().getClass().getCanonicalName());
         addTextElement(serviceElement, "enabled", String.valueOf(!serviceNode.isDisabled()));
         addTextElement(serviceElement, "availability", serviceNode.getAvailability().toString());
@@ -424,7 +424,7 @@ public class StandardFlowSerializer implements FlowSerializer {
     	final Element taskElement = element.getOwnerDocument().createElement("reportingTask");
     	addTextElement(taskElement, "id", taskNode.getIdentifier());
     	addTextElement(taskElement, "name", taskNode.getName());
-    	addTextElement(taskElement, "comment", taskNode.getComment());
+    	addTextElement(taskElement, "comment", taskNode.getComments());
     	addTextElement(taskElement, "class", taskNode.getReportingTask().getClass().getCanonicalName());
         addTextElement(taskElement, "schedulingPeriod", taskNode.getSchedulingPeriod());
         addTextElement(taskElement, "scheduledState", taskNode.getScheduledState().name());

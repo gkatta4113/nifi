@@ -348,7 +348,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	final ControllerServiceNode node = controller.createControllerService(dto.getType(), false);
     	node.setName(dto.getName());
     	node.setAvailability(Availability.valueOf(dto.getAvailability()));
-    	node.setComment(dto.getComments());
+    	node.setComments(dto.getComments());
     	node.setDisabled(dto.getEnabled() != Boolean.TRUE);
     	node.setAnnotationData(dto.getAnnotationData());
     	
@@ -377,7 +377,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	
     	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), false);
     	reportingTask.setName(dto.getName());
-    	reportingTask.setComment(dto.getComment());
+    	reportingTask.setComments(dto.getComment());
     	reportingTask.setAvailability(Availability.valueOf(dto.getAvailability()));
     	reportingTask.setScheduldingPeriod(dto.getSchedulingPeriod());
     	reportingTask.setScheduledState(ScheduledState.valueOf(dto.getScheduledState()));

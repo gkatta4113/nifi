@@ -121,6 +121,7 @@ import org.apache.nifi.cluster.protocol.message.ProtocolMessage.MessageType;
 import org.apache.nifi.cluster.protocol.message.ReconnectionFailureMessage;
 import org.apache.nifi.cluster.protocol.message.ReconnectionRequestMessage;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.Heartbeater;
 import org.apache.nifi.controller.ReportingTaskNode;
@@ -128,6 +129,7 @@ import org.apache.nifi.controller.ValidationContextFactory;
 import org.apache.nifi.controller.reporting.ClusteredReportingTaskNode;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
 import org.apache.nifi.controller.reporting.StandardReportingInitializationContext;
+import org.apache.nifi.controller.scheduling.QuartzSchedulingAgent;
 import org.apache.nifi.controller.scheduling.StandardProcessScheduler;
 import org.apache.nifi.controller.scheduling.TimerDrivenSchedulingAgent;
 import org.apache.nifi.controller.service.ControllerServiceNode;
@@ -393,7 +395,11 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
             public void heartbeat() {
             }
         }, this, encryptor);
+        
+        // When we construct the scheduling agents, we can pass null for a lot of the arguments because we are only
+        // going to be scheduling Reporting Tasks. Otherwise, it would not be okay.
         processScheduler.setSchedulingAgent(SchedulingStrategy.TIMER_DRIVEN, new TimerDrivenSchedulingAgent(null, reportingTaskEngine, null, encryptor));
+        processScheduler.setSchedulingAgent(SchedulingStrategy.CRON_DRIVEN, new QuartzSchedulingAgent(null, reportingTaskEngine, null, encryptor));
         processScheduler.setMaxThreadCount(SchedulingStrategy.TIMER_DRIVEN, 10);
         processScheduler.setMaxThreadCount(SchedulingStrategy.CRON_DRIVEN, 10);
     }
@@ -1338,11 +1344,21 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
 
     @Override
     public void enableControllerService(final ControllerServiceNode serviceNode) {
+    	if ( serviceNode.getAvailability() == Availability.NODE_ONLY ) {
+    		serviceNode.setDisabled(false);	// update disabled flag to stay in sync across cluster
+        	return;
+        }
+    	
         controllerServiceProvider.enableControllerService(serviceNode);
     }
     
     @Override
     public void disableControllerService(final ControllerServiceNode serviceNode) {
+    	if ( serviceNode.getAvailability() == Availability.NODE_ONLY ) {
+    		serviceNode.setDisabled(true);	// update disabled flag to stay in sync across cluster
+        	return;
+        }
+    	
         controllerServiceProvider.disableControllerService(serviceNode);
     }
     

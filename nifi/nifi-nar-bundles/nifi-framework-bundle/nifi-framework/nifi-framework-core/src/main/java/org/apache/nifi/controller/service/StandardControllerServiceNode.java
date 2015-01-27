@@ -196,7 +196,7 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     }
     
     @Override
-    public String getComment() {
+    public String getComments() {
     	readLock.lock();
     	try {
     		return comment;
@@ -206,7 +206,7 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     }
     
     @Override
-    public void setComment(final String comment) {
+    public void setComments(final String comment) {
     	writeLock.lock();
     	try {
     		this.comment = comment;
