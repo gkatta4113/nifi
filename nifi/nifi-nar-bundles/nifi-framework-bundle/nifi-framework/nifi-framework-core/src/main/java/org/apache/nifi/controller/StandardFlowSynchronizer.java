@@ -348,7 +348,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	final ControllerServiceNode node = controller.createControllerService(dto.getType(), false);
     	node.setName(dto.getName());
     	node.setAvailability(Availability.valueOf(dto.getAvailability()));
-    	node.setComment(dto.getComment());
+    	node.setComment(dto.getComments());
     	node.setDisabled(dto.getEnabled() != Boolean.TRUE);
     	node.setAnnotationData(dto.getAnnotationData());
     	
