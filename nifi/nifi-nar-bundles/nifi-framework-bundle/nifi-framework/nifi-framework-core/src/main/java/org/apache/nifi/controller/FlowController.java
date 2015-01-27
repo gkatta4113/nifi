@@ -2577,8 +2577,6 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
      * @param serviceNode
      */
     public void deactiveReferencingComponents(final ControllerServiceNode serviceNode) {
-    	// TODO: Should stop all Processors and Reporting Tasks, and then wait for them to
-    	// finish, rather than stopping & waiting serially.
     	final ControllerServiceReference reference = serviceNode.getReferences();
     	
     	final Set<ConfiguredComponent> components = reference.getActiveReferences();
