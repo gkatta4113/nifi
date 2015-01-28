@@ -931,7 +931,7 @@ public class StandardActionDAO implements ActionDAO {
     }
 
     @Override
-    public Map<String, List<PreviousValue>> getPreviousValues(String processorId) {
+    public Map<String, List<PreviousValue>> getPreviousValues(String componentId) {
         Map<String, List<PreviousValue>> previousValues = new LinkedHashMap<>();
 
         PreparedStatement statement = null;
@@ -939,7 +939,7 @@ public class StandardActionDAO implements ActionDAO {
         try {
             // create the statement
             statement = connection.prepareStatement(SELECT_PREVIOUSLY_CONFIGURED_FIELDS);
-            statement.setString(1, processorId);
+            statement.setString(1, componentId);
 
             // execute the query
             rs = statement.executeQuery();
@@ -947,7 +947,7 @@ public class StandardActionDAO implements ActionDAO {
             // ensure results
             while (rs.next()) {
                 final String property = rs.getString("NAME");
-                previousValues.put(property, getPreviousValuesForProperty(processorId, property));
+                previousValues.put(property, getPreviousValuesForProperty(componentId, property));
             }
         } catch (SQLException sqle) {
             throw new DataAccessException(sqle);
@@ -959,7 +959,7 @@ public class StandardActionDAO implements ActionDAO {
         return previousValues;
     }
 
-    private List<PreviousValue> getPreviousValuesForProperty(final String processorId, final String property) {
+    private List<PreviousValue> getPreviousValuesForProperty(final String componentId, final String property) {
         List<PreviousValue> previousValues = new ArrayList<>();
 
         PreparedStatement statement = null;
@@ -967,7 +967,7 @@ public class StandardActionDAO implements ActionDAO {
         try {
             // create the statement
             statement = connection.prepareStatement(SELECT_PREVIOUS_VALUES);
-            statement.setString(1, processorId);
+            statement.setString(1, componentId);
             statement.setString(2, property);
 
             // execute the query
