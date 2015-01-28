@@ -43,14 +43,14 @@
                             <span id="controller-service-type"></span>
                         </div>
                     </div>
-                    <div class="setting">
-                        <div class="bulletin-setting">
+                    <div id="availability-setting-container" class="setting hidden">
+                        <div class="availability-setting">
                             <div class="setting-name">
                                 Availability
                                 <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Where this controller service will be available."/>
                             </div>
                             <div class="setting-field">
-                                <div id="bulletin-level-combo"></div>
+                                <div id="availability-combo"></div>
                             </div>
                         </div>
                         <div class="clear"></div>

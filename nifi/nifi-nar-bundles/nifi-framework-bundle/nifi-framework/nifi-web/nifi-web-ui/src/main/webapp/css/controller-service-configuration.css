@@ -100,6 +100,17 @@ div.controller-service-enabled-container {
     margin-left: 10px;
 }
 
+div.availability-setting {
+    float: left;
+    width: 140px;
+}
+
+#availability-combo {
+    width: 130px;
+    height: 18px;
+    line-height: 18px;
+}
+
 #controller-service-references {
     border: 0 solid #CCCCCC;
     height: 280px;

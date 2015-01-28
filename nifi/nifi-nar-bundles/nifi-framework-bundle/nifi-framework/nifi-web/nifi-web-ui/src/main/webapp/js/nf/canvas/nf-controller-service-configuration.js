@@ -65,6 +65,12 @@ nf.ControllerServiceConfiguration = (function () {
         } else if ($('#controller-service-enabled').hasClass('checkbox-unchecked') && details['enabled'] === true) {
             return true;
         }
+        
+        if (nf.Canvas.isClustered()) {
+            if ($('#availability-combo').combo('getSelectedOption').value !== (details['availability'] + '')) {
+                return true;
+            }
+        }
 
         // defer to the properties
         return $('#controller-service-properties').propertytable('isSaveRequired');
@@ -92,6 +98,11 @@ nf.ControllerServiceConfiguration = (function () {
             controllerServiceDto['enabled'] = false;
         } else if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
             controllerServiceDto['enabled'] = true;
+        }
+
+        // add the availability if appropriate
+        if (nf.Canvas.isClustered()) {
+            controllerServiceDto['availability'] = $('#availability-combo').combo('getSelectedOption').value;
         }
 
         // create the controller service entity
@@ -186,6 +197,26 @@ nf.ControllerServiceConfiguration = (function () {
 //                    }
                 }
             });
+            
+            // we clustered we need to show the controls for editing the availability
+            if (nf.Canvas.isClustered()) {
+                $('#availability-combo').combo({
+                    options: [{
+                        text: 'Cluster Manager',
+                        value: 'CLUSTER_MANAGER_ONLY',
+                        description: 'This controller service will be available on the cluster manager only.'
+                    }, {
+                        text: 'Node',
+                        value: 'NODE',
+                        description: 'This controller service will be available on the nodes only.'
+                    }, {
+                        text: 'Both',
+                        value: 'BOTH',
+                        description: 'This controller service will be available on the cluster manager and the nodes.'
+                    }]
+                });
+                $('#availability-setting-container').show();
+            }
 
             // initialize the conroller service configuration dialog
             $('#controller-service-configuration').modal({
@@ -237,6 +268,13 @@ nf.ControllerServiceConfiguration = (function () {
             $('#controller-service-name').val(controllerService['name']);
             $('#controller-service-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(controllerServiceEnableStyle);
             $('#controller-service-comments').val(controllerService['comments']);
+
+            // select the availability when appropriate
+            if (nf.Canvas.isClustered()) {
+                $('#availability-combo').combo('setSelectedOption', {
+                    value: controllerService['availability']
+                });
+            }
 
             // load the property table
             $('#controller-service-properties').propertytable('loadProperties', controllerService.properties, controllerService.descriptors, {});
