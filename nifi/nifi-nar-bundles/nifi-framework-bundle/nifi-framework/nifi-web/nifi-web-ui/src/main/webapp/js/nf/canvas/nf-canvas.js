@@ -877,7 +877,8 @@ nf.Canvas = (function () {
                 // get the process group to refresh everything
                 var processGroupXhr = reloadProcessGroup(nf.Canvas.getGroupId());
                 var statusXhr = reloadFlowStatus();
-                $.when(processGroupXhr, statusXhr).done(function (processGroupResult) {
+                var settingsXhr = nf.Settings.loadSettings();
+                $.when(processGroupXhr, statusXhr, settingsXhr).done(function (processGroupResult) {
                     // adjust breadcrumbs if necessary
                     var title = $('#data-flow-title-container');
                     var titlePosition = title.position();

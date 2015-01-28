@@ -35,62 +35,71 @@ nf.Settings = (function () {
      * Initializes the general tab.
      */
     var initGeneral = function () {
-        // register the click listener for the archive link
-        $('#archive-flow-link').click(function () {
-            var revision = nf.Client.getRevision();
+        // update the visibility of the controls
+        if (nf.Common.isDFM()) {
+            $('#general-settings div.editable').show();
+            $('#general-settings div.read-only').hide();
+            
+            // register the click listener for the archive link
+            $('#archive-flow-link').click(function () {
+                var revision = nf.Client.getRevision();
 
-            $.ajax({
-                type: 'POST',
-                url: config.urls.controllerArchive,
-                data: {
-                    version: revision.version,
-                    clientId: revision.clientId
-                },
-                dataType: 'json'
-            }).done(function (response) {
-                // update the revision
-                nf.Client.setRevision(response.revision);
+                $.ajax({
+                    type: 'POST',
+                    url: config.urls.controllerArchive,
+                    data: {
+                        version: revision.version,
+                        clientId: revision.clientId
+                    },
+                    dataType: 'json'
+                }).done(function (response) {
+                    // update the revision
+                    nf.Client.setRevision(response.revision);
 
-                // show the result dialog
-                nf.Dialog.showOkDialog({
-                    dialogContent: 'A new flow archive was successfully created.',
-                    overlayBackground: false
-                });
-            }).fail(nf.Common.handleAjaxError);
-        });
+                    // show the result dialog
+                    nf.Dialog.showOkDialog({
+                        dialogContent: 'A new flow archive was successfully created.',
+                        overlayBackground: false
+                    });
+                }).fail(nf.Common.handleAjaxError);
+            });
 
-        // register the click listener for the save button
-        $('#settings-save').click(function () {
-            var revision = nf.Client.getRevision();
+            // register the click listener for the save button
+            $('#settings-save').click(function () {
+                var revision = nf.Client.getRevision();
 
-            // marshal the configuration details
-            var configuration = marshalConfiguration();
-            configuration['version'] = revision.version;
-            configuration['clientId'] = revision.clientId;
+                // marshal the configuration details
+                var configuration = marshalConfiguration();
+                configuration['version'] = revision.version;
+                configuration['clientId'] = revision.clientId;
 
-            // save the new configuration details
-            $.ajax({
-                type: 'PUT',
-                url: config.urls.controllerConfig,
-                data: configuration,
-                dataType: 'json'
-            }).done(function (response) {
-                // update the revision
-                nf.Client.setRevision(response.revision);
+                // save the new configuration details
+                $.ajax({
+                    type: 'PUT',
+                    url: config.urls.controllerConfig,
+                    data: configuration,
+                    dataType: 'json'
+                }).done(function (response) {
+                    // update the revision
+                    nf.Client.setRevision(response.revision);
 
-                // update the displayed name
-                document.title = response.config.name;
+                    // update the displayed name
+                    document.title = response.config.name;
 
-                // set the data flow title and close the shell
-                $('#data-flow-title-container').children('span.link:first-child').text(response.config.name);
+                    // set the data flow title and close the shell
+                    $('#data-flow-title-container').children('span.link:first-child').text(response.config.name);
 
-                // close the settings dialog
-                nf.Dialog.showOkDialog({
-                    dialogContent: 'Settings successfully applied.',
-                    overlayBackground: false
-                });
-            }).fail(nf.Common.handleAjaxError);
-        });
+                    // close the settings dialog
+                    nf.Dialog.showOkDialog({
+                        dialogContent: 'Settings successfully applied.',
+                        overlayBackground: false
+                    });
+                }).fail(nf.Common.handleAjaxError);
+            });
+        } else {
+            $('#general-settings div.editable').hide();
+            $('#general-settings div.read-only').show();
+        }
     };
 
     /**
@@ -895,7 +904,7 @@ nf.Settings = (function () {
                     
                 }
             });
-
+            
             // initialize each tab
             initGeneral();
             initControllerServices();
@@ -946,10 +955,17 @@ nf.Settings = (function () {
                     $('#settings-last-refreshed').text(response.config.currentTime);
 
                     // populate the controller settings
-                    $('#data-flow-title-field').val(response.config.name);
-                    $('#data-flow-comments-field').val(response.config.comments);
-                    $('#maximum-timer-driven-thread-count-field').val(response.config.maxTimerDrivenThreadCount);
-                    $('#maximum-event-driven-thread-count-field').val(response.config.maxEventDrivenThreadCount);
+                    if (nf.Common.isDFM()) {
+                        $('#data-flow-title-field').val(response.config.name);
+                        $('#data-flow-comments-field').val(response.config.comments);
+                        $('#maximum-timer-driven-thread-count-field').val(response.config.maxTimerDrivenThreadCount);
+                        $('#maximum-event-driven-thread-count-field').val(response.config.maxEventDrivenThreadCount);
+                    } else {
+                        $('#read-only-data-flow-title-field').html(nf.Common.formatValue(response.config.name));
+                        $('#read-only-data-flow-comments-field').html(nf.Common.formatValue(response.config.comments));
+                        $('#read-only-maximum-timer-driven-thread-count-field').text(response.config.maxTimerDrivenThreadCount);
+                        $('#read-only-maximum-event-driven-thread-count-field').text(response.config.maxEventDrivenThreadCount);
+                    }
                 }
             });
             

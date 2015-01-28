@@ -35,16 +35,22 @@
                 <div id="general-settings">
                     <div class="setting">
                         <div class="setting-name">Data flow name</div>
-                        <div class="setting-field">
+                        <div class="editable setting-field">
                             <input type="text" id="data-flow-title-field" name="data-flow-title" class="setting-input"/>
                             <span id="archive-flow-link" class="link">Back-up flow</span>
                             <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Archives the flow configuration."/>
                         </div>
+                        <div class="read-only setting-field">
+                            <span id="read-only-data-flow-title-field"></span>
+                        </div>
                     </div>
                     <div class="setting">
                         <div class="setting-name">Data flow comments</div>
-                        <div class="setting-field">
+                        <div class="editable setting-field">
                             <textarea id="data-flow-comments-field" name="data-flow-comments" class="setting-input"></textarea>
+                        </div>
+                        <div class="read-only setting-field">
+                            <span id="read-only-data-flow-comments-field"></span>
                         </div>
                     </div>
                     <div class="setting">
@@ -52,8 +58,11 @@
                             Maximum timer driven thread count
                             <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="The maximum number of threads for timer driven processors available to the system."/>
                         </div>
-                        <div class="setting-field">
+                        <div class="editable setting-field">
                             <input type="text" id="maximum-timer-driven-thread-count-field" class="setting-input"/>
+                        </div>
+                        <div class="read-only setting-field">
+                            <span id="read-only-maximum-timer-driven-thread-count-field"></span>
                         </div>
                     </div>
                     <div class="setting">
@@ -61,11 +70,14 @@
                             Maximum event driven thread count
                             <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="The maximum number of threads for event driven processors available to the system."/>
                         </div>
-                        <div class="setting-field">
+                        <div class="editable setting-field">
                             <input type="text" id="maximum-event-driven-thread-count-field" class="setting-input"/>
                         </div>
+                        <div class="read-only setting-field">
+                            <span id="read-only-maximum-event-driven-thread-count-field"></span>
+                        </div>
                     </div>
-                    <div id="settings-buttons">
+                    <div id="settings-buttons" class="editable">
                         <div id="settings-save" class="button">Apply</div>
                         <div class="clear"></div>
                     </div>
