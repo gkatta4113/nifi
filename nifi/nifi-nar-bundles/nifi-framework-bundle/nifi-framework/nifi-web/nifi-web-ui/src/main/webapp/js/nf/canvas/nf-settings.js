@@ -694,6 +694,29 @@ nf.Settings = (function () {
         controllerServicesGrid.setSelectionModel(new Slick.RowSelectionModel());
         controllerServicesGrid.registerPlugin(new Slick.AutoTooltips());
         controllerServicesGrid.setSortColumn('name', true);
+        
+        // sets whether the specified controller service is enabled
+        var setEnabled = function (controllerService, enabled) {
+            var revision = nf.Client.getRevision();
+            return $.ajax({
+                type: 'PUT',
+                url: controllerService.uri,
+                data: {
+                    clientId: revision.clientId,
+                    version: revision.version,
+                    enabled: enabled
+                },
+                dataType: 'json'
+            }).done(function (response) {
+                // update the revision
+                nf.Client.setRevision(response.revision);
+
+                // update the service
+                controllerServicesData.updateItem(controllerService.id, response.controllerService);
+            }).fail(nf.Common.handleAjaxError);
+        };
+        
+        // configure a click listener
         controllerServicesGrid.onClick.subscribe(function (e, args) {
             var target = $(e.target);
             
@@ -705,23 +728,9 @@ nf.Settings = (function () {
                 if (target.hasClass('edit-controller-service')) {
                     nf.ControllerServiceConfiguration.showConfiguration(controllerService);
                 } else if (target.hasClass('enable-controller-service')) {
-                    var revision = nf.Client.getRevision();
-                    return $.ajax({
-                        type: 'PUT',
-                        url: controllerService.uri,
-                        data: {
-                            clientId: revision.clientId,
-                            version: revision.version,
-                            enabled: true
-                        },
-                        dataType: 'json'
-                    }).done(function (response) {
-                        // update the revision
-                        nf.Client.setRevision(response.revision);
-                        
-                        // update the service
-                        controllerServicesData.updateItem(controllerService.id, response.controllerService);
-                    }).fail(nf.Common.handleAjaxError);
+                    setEnabled(controllerService, true);
+                } else if (target.hasClass('disable-controller-service')) {
+                    setEnabled(controllerService, false);
                 } else if (target.hasClass('delete-controller-service')) {
                     var revision = nf.Client.getRevision();
                     return $.ajax({
