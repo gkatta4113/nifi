@@ -207,7 +207,7 @@ nf.ControllerServiceConfiguration = (function () {
                         description: 'This controller service will be available on the cluster manager only.'
                     }, {
                         text: 'Node',
-                        value: 'NODE',
+                        value: 'NODE_ONLY',
                         description: 'This controller service will be available on the nodes only.'
                     }, {
                         text: 'Both',
