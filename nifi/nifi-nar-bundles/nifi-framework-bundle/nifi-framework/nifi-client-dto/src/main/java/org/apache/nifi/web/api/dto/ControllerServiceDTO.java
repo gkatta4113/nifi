@@ -155,7 +155,12 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
     public void setReferences(Set<ControllerServiceReferenceDTO> references) {
         this.references = references;
     }
-    
+
+    /**
+     * A component reference a controller service. This can either be another
+     * controller service or a processor. Depending on the type of component
+     * different properties may be set.
+     */
     @XmlType(name = "controllerServiceReference")
     public static class ControllerServiceReferenceDTO {
         private String groupId;

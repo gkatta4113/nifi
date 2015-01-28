@@ -154,6 +154,25 @@ nf.ControllerServiceConfiguration = (function () {
     };
     
     /**
+     * Adds a border to the controller service references if necessary.
+     */
+    var showReferencesBorder = function () {
+        var controllerServiceReferences = $('#controller-service-references');
+        if (controllerServiceReferences.is(':visible') && controllerServiceReferences.get(0).scrollHeight > controllerServiceReferences.innerHeight()) {
+            controllerServiceReferences.css('border-width', '1px');
+        }
+    };
+    
+    /**
+     * Adds the specified reference for this controller service.
+     * 
+     * @param {object} reference
+     */
+    var createReference = function (reference) {
+        
+    };
+    
+    /**
      * Reloads components that reference this controller service.
      * 
      * @param {object} controllerService
@@ -191,10 +210,7 @@ nf.ControllerServiceConfiguration = (function () {
                     $('#controller-service-properties').propertytable('saveRow');
 
                     // show the border around the processor relationships if necessary
-//                    var processorRelationships = $('#auto-terminate-relationship-names');
-//                    if (processorRelationships.is(':visible') && processorRelationships.get(0).scrollHeight > processorRelationships.innerHeight()) {
-//                        processorRelationships.css('border-width', '1px');
-//                    }
+                    showReferencesBorder();
                 }
             });
             
@@ -224,8 +240,8 @@ nf.ControllerServiceConfiguration = (function () {
                 overlayBackground: false,
                 handler: {
                     close: function () {
-//                        // empty the relationship list
-//                        $('#auto-terminate-relationship-names').css('border-width', '0').empty();
+                        // empty the references list
+                        $('#controller-service-references').css('border-width', '0').empty();
 
                         // cancel any active edits
                         $('#controller-service-properties').propertytable('cancelEdit');
@@ -278,6 +294,15 @@ nf.ControllerServiceConfiguration = (function () {
 
             // load the property table
             $('#controller-service-properties').propertytable('loadProperties', controllerService.properties, controllerService.descriptors, {});
+
+            // load the controller references list
+            if (!nf.Common.isEmpty(controllerService.references)) {
+                $.each(controllerService.references, function (_, reference) {
+                    createReference(reference);
+                });
+            } else {
+                $('#controller-service-references').append('<div class="unset">This service has no components referencing it.</div>');
+            }
 
             var buttons = [{
                     buttonText: 'Apply',
@@ -402,11 +427,8 @@ nf.ControllerServiceConfiguration = (function () {
                 // show the details
                 $('#controller-service-configuration').modal('show');
 
-//                // show the border if necessary
-//                var processorRelationships = $('#auto-terminate-relationship-names');
-//                if (processorRelationships.is(':visible') && processorRelationships.get(0).scrollHeight > processorRelationships.innerHeight()) {
-//                    processorRelationships.css('border-width', '1px');
-//                }
+                // show the border if necessary
+                showReferencesBorder();
 //            }).fail(nf.Common.handleAjaxError);
         }
     };
