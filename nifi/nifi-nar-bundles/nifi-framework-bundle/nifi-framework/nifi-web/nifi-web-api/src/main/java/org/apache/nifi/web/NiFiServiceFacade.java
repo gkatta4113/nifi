@@ -39,7 +39,7 @@ import org.apache.nifi.web.api.dto.NodeSystemDiagnosticsDTO;
 import org.apache.nifi.web.api.dto.PortDTO;
 import org.apache.nifi.web.api.dto.ProcessGroupDTO;
 import org.apache.nifi.web.api.dto.ProcessorDTO;
-import org.apache.nifi.web.api.dto.ProcessorHistoryDTO;
+import org.apache.nifi.web.api.dto.ComponentHistoryDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
 import org.apache.nifi.web.api.dto.RevisionDTO;
@@ -1026,12 +1026,12 @@ public interface NiFiServiceFacade {
     void deleteActions(Date endDate);
 
     /**
-     * Gets the history for the specified property for the specified processor.
+     * Gets the history for the specified property for the specified component.
      *
-     * @param processorId
+     * @param componentId
      * @return
      */
-    ProcessorHistoryDTO getProcessorHistory(String processorId);
+    ComponentHistoryDTO getComponentHistory(String componentId);
 
     // ----------------------------------------
     // Snippet methods

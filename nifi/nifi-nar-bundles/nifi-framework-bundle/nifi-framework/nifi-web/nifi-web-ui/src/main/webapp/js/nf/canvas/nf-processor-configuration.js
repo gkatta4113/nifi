@@ -431,7 +431,6 @@ nf.ProcessorConfiguration = (function () {
 
                         // removed the cached processor details
                         $('#processor-configuration').removeData('processorDetails');
-                        $('#processor-configuration').removeData('processorHistory');
                     }
                 }
             }).draggable({
@@ -575,33 +574,6 @@ nf.ProcessorConfiguration = (function () {
                     $('#timer-driven-scheduling-period').val(processor.config['schedulingPeriod']);
                 }
 
-                // get the processor history
-                $.ajax({
-                    type: 'GET',
-                    url: '../nifi-api/controller/history/processors/' + encodeURIComponent(processor.id),
-                    dataType: 'json'
-                }).done(function (response) {
-                    var processorHistory = response.processorHistory;
-
-                    // record the processor history
-                    $('#processor-configuration').data('processorHistory', processorHistory);
-
-                    // load the property table
-                    $('#processor-properties').propertytable('loadProperties', processor.config.properties, processor.config.descriptors, processorHistory.propertyHistory);
-
-                    // show the details
-                    $('#processor-configuration').modal('show');
-
-                    // add ellipsis if necessary
-                    $('#processor-configuration div.relationship-name').ellipsis();
-
-                    // show the border if necessary
-                    var processorRelationships = $('#auto-terminate-relationship-names');
-                    if (processorRelationships.is(':visible') && processorRelationships.get(0).scrollHeight > processorRelationships.innerHeight()) {
-                        processorRelationships.css('border-width', '1px');
-                    }
-                }).fail(nf.Common.handleAjaxError);
-                
                 // load the relationship list
                 if (!nf.Common.isEmpty(processor.relationships)) {
                     $.each(processor.relationships, function (i, relationship) {
@@ -725,6 +697,30 @@ nf.ProcessorConfiguration = (function () {
 
                 // set the button model
                 $('#processor-configuration').modal('setButtonModel', buttons);
+                
+                // get the processor history
+                $.ajax({
+                    type: 'GET',
+                    url: '../nifi-api/controller/history/processors/' + encodeURIComponent(processor.id),
+                    dataType: 'json'
+                }).done(function (response) {
+                    var processorHistory = response.componentHistory;
+
+                    // load the property table
+                    $('#processor-properties').propertytable('loadProperties', processor.config.properties, processor.config.descriptors, processorHistory.propertyHistory);
+
+                    // show the details
+                    $('#processor-configuration').modal('show');
+
+                    // add ellipsis if necessary
+                    $('#processor-configuration div.relationship-name').ellipsis();
+
+                    // show the border if necessary
+                    var processorRelationships = $('#auto-terminate-relationship-names');
+                    if (processorRelationships.is(':visible') && processorRelationships.get(0).scrollHeight > processorRelationships.innerHeight()) {
+                        processorRelationships.css('border-width', '1px');
+                    }
+                }).fail(nf.Common.handleAjaxError);
             }
         }
     };

@@ -251,7 +251,7 @@ nf.ControllerServiceConfiguration = (function () {
 
                         // removed the cached controller service details
                         $('#controller-service-configuration').removeData('controllerServiceDetails');
-//                        $('#controller-service-configuration').removeData('processorHistory');
+                        $('#controller-service-configuration').removeData('controllerServiceHistory');
                     }
                 }
             });
@@ -291,9 +291,6 @@ nf.ControllerServiceConfiguration = (function () {
                     value: controllerService['availability']
                 });
             }
-
-            // load the property table
-            $('#controller-service-properties').propertytable('loadProperties', controllerService.properties, controllerService.descriptors, {});
 
             // load the controller references list
             if (!nf.Common.isEmpty(controllerService.references)) {
@@ -413,23 +410,26 @@ nf.ControllerServiceConfiguration = (function () {
             // set the button model
             $('#controller-service-configuration').modal('setButtonModel', buttons);
 
-            // get the processor history
-//            $.ajax({
-//                type: 'GET',
-//                url: '../nifi-api/controller/history/processors/' + encodeURIComponent(processor.id),
-//                dataType: 'json'
-//            }).done(function (response) {
-//                var processorHistory = response.processorHistory;
-//
-//                // record the processor history
-//                $('#processor-configuration').data('processorHistory', processorHistory);
+            // get the controller service history
+            $.ajax({
+                type: 'GET',
+                url: '../nifi-api/controller/history/controller-services/' + encodeURIComponent(controllerService.id),
+                dataType: 'json'
+            }).done(function (response) {
+                var controllerServiceHistory = response.componentHistory;
+
+                // load the property table
+                $('#controller-service-properties').propertytable('loadProperties', controllerService.properties, controllerService.descriptors, controllerServiceHistory.propertyHistory);
+
+                // record the controller service history
+                $('#controller-service-configuration').data('controllerServiceHistory', controllerServiceHistory);
 
                 // show the details
                 $('#controller-service-configuration').modal('show');
 
                 // show the border if necessary
                 showReferencesBorder();
-//            }).fail(nf.Common.handleAjaxError);
+            }).fail(nf.Common.handleAjaxError);
         }
     };
 }());

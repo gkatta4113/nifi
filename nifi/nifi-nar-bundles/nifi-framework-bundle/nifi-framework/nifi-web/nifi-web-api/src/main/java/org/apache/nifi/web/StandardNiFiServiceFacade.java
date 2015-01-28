@@ -106,7 +106,7 @@ import org.apache.nifi.web.api.dto.PreviousValueDTO;
 import org.apache.nifi.web.api.dto.ProcessGroupDTO;
 import org.apache.nifi.web.api.dto.ProcessorConfigDTO;
 import org.apache.nifi.web.api.dto.ProcessorDTO;
-import org.apache.nifi.web.api.dto.ProcessorHistoryDTO;
+import org.apache.nifi.web.api.dto.ComponentHistoryDTO;
 import org.apache.nifi.web.api.dto.PropertyHistoryDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
@@ -2078,9 +2078,9 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ProcessorHistoryDTO getProcessorHistory(String processorId) {
+    public ComponentHistoryDTO getComponentHistory(String componentId) {
         final Map<String, PropertyHistoryDTO> propertyHistoryDtos = new LinkedHashMap<>();
-        final Map<String, List<PreviousValue>> propertyHistory = auditService.getPreviousValues(processorId);
+        final Map<String, List<PreviousValue>> propertyHistory = auditService.getPreviousValues(componentId);
 
         for (final Map.Entry<String, List<PreviousValue>> entry : propertyHistory.entrySet()) {
             final List<PreviousValueDTO> previousValueDtos = new ArrayList<>();
@@ -2100,8 +2100,8 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             }
         }
 
-        final ProcessorHistoryDTO history = new ProcessorHistoryDTO();
-        history.setProcessorId(processorId);
+        final ComponentHistoryDTO history = new ComponentHistoryDTO();
+        history.setComponentId(componentId);
         history.setPropertyHistory(propertyHistoryDtos);
 
         return history;
