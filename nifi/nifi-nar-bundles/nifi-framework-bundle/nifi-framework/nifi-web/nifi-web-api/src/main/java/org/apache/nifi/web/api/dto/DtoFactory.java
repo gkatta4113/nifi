@@ -39,7 +39,7 @@ import javax.ws.rs.WebApplicationException;
 
 import org.apache.nifi.action.Action;
 import org.apache.nifi.action.component.details.ComponentDetails;
-import org.apache.nifi.action.component.details.ProcessorDetails;
+import org.apache.nifi.action.component.details.ExtensionDetails;
 import org.apache.nifi.action.component.details.RemoteProcessGroupDetails;
 import org.apache.nifi.action.details.ActionDetails;
 import org.apache.nifi.action.details.ConfigureDetails;
@@ -103,7 +103,7 @@ import org.apache.nifi.web.api.dto.PropertyDescriptorDTO.AllowableValueDTO;
 import org.apache.nifi.web.api.dto.action.ActionDTO;
 import org.apache.nifi.web.api.dto.action.HistoryDTO;
 import org.apache.nifi.web.api.dto.action.component.details.ComponentDetailsDTO;
-import org.apache.nifi.web.api.dto.action.component.details.ProcessorDetailsDTO;
+import org.apache.nifi.web.api.dto.action.component.details.ExtensionDetailsDTO;
 import org.apache.nifi.web.api.dto.action.component.details.RemoteProcessGroupDetailsDTO;
 import org.apache.nifi.web.api.dto.action.details.ActionDetailsDTO;
 import org.apache.nifi.web.api.dto.action.details.ConfigureDetailsDTO;
@@ -220,9 +220,9 @@ public final class DtoFactory {
             return null;
         }
 
-        if (componentDetails instanceof ProcessorDetails) {
-            final ProcessorDetailsDTO processorDetails = new ProcessorDetailsDTO();
-            processorDetails.setType(((ProcessorDetails) componentDetails).getType());
+        if (componentDetails instanceof ExtensionDetails) {
+            final ExtensionDetailsDTO processorDetails = new ExtensionDetailsDTO();
+            processorDetails.setType(((ExtensionDetails) componentDetails).getType());
             return processorDetails;
         } else if (componentDetails instanceof RemoteProcessGroupDetails) {
             final RemoteProcessGroupDetailsDTO remoteProcessGroupDetails = new RemoteProcessGroupDetailsDTO();

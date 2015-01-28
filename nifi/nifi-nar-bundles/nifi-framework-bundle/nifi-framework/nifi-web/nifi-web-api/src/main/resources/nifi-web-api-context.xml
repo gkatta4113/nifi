@@ -305,6 +305,11 @@
         <property name="processorAuditor" ref="processorAuditor"/>
         <property name="relationshipAuditor" ref="relationshipAuditor"/>
     </bean>
+    <bean id="controllerServiceAuditor" class="org.apache.nifi.audit.ControllerServiceAuditor">
+        <property name="serviceFacade" ref="serviceFacade"/>
+        <property name="auditService" ref="auditService"/>
+        <property name="processGroupDAO" ref="processGroupDAO"/>
+    </bean>
     
     <!-- NiFi locking -->
     <bean id="serviceFacadeLock" class="org.apache.nifi.web.NiFiServiceFacadeLock"/>

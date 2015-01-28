@@ -35,7 +35,7 @@ import javax.ws.rs.core.Response;
 import org.apache.nifi.action.Action;
 import org.apache.nifi.action.Component;
 import org.apache.nifi.action.Operation;
-import org.apache.nifi.action.component.details.ProcessorDetails;
+import org.apache.nifi.action.component.details.ExtensionDetails;
 import org.apache.nifi.action.details.ConfigureDetails;
 import org.apache.nifi.admin.service.AuditService;
 import org.apache.nifi.cluster.manager.NodeResponse;
@@ -98,7 +98,7 @@ public class StandardNiFiWebContext implements NiFiWebContext {
         final Date now = new Date();
         final Collection<Action> actions = new HashSet<>(processorActions.size());
         for (final ProcessorConfigurationAction processorAction : processorActions) {
-            final ProcessorDetails processorDetails = new ProcessorDetails();
+            final ExtensionDetails processorDetails = new ExtensionDetails();
             processorDetails.setType(processorAction.getProcessorType());
 
             final ConfigureDetails configureDetails = new ConfigureDetails();

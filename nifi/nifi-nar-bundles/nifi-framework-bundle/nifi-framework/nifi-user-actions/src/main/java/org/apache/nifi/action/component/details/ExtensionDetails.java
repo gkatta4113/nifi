@@ -19,7 +19,7 @@ package org.apache.nifi.action.component.details;
 /**
  *
  */
-public class ProcessorDetails extends ComponentDetails {
+public class ExtensionDetails extends ComponentDetails {
 
     private String type;
 

@@ -378,7 +378,7 @@ nf.HistoryTable = (function () {
 
                 // inspect the operation to determine if there are any component details
                 if (nf.Common.isDefinedAndNotNull(componentDetails)) {
-                    if (action.sourceType === 'Processor') {
+                    if (action.sourceType === 'Processor' || action.sourceType === 'Controller Service') {
                         detailsMarkup.append(
                                 $('<div class="action-detail"><div class="history-details-name">Type</div>' + nf.Common.escapeHtml(componentDetails.type) + '</div>'));
                     } else if (action.sourceType === 'RemoteProcessGroup') {

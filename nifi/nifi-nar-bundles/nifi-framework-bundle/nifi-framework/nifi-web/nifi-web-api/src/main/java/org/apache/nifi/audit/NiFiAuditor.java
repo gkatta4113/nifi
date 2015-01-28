@@ -54,6 +54,7 @@ public abstract class NiFiAuditor {
      * Records the actions.
      *
      * @param actions
+     * @param logger
      */
     protected void saveActions(Collection<Action> actions, Logger logger) {
         /*
