@@ -19,6 +19,8 @@ package org.apache.nifi.web.api;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -38,19 +40,15 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import org.apache.nifi.cluster.manager.impl.WebClusterManager;
 import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.web.ConfigurationSnapshot;
 import org.apache.nifi.web.NiFiServiceFacade;
 import org.apache.nifi.web.Revision;
-import org.apache.nifi.web.api.dto.FunnelDTO;
-import org.apache.nifi.web.api.dto.PositionDTO;
 import org.apache.nifi.web.api.dto.RevisionDTO;
-import org.apache.nifi.web.api.entity.FunnelEntity;
-import org.apache.nifi.web.api.entity.FunnelsEntity;
 import org.apache.nifi.web.api.request.ClientIdParameter;
-import org.apache.nifi.web.api.request.DoubleParameter;
 import org.apache.nifi.web.api.request.LongParameter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
@@ -62,7 +60,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
- * RESTful endpoint for managing a Funnel.
+ * RESTful endpoint for managing a Controller Service.
  */
 public class ControllerServiceResource extends ApplicationResource {
 
@@ -130,7 +128,7 @@ public class ControllerServiceResource extends ApplicationResource {
     }
 
     /**
-     * Creates a new funnel.
+     * Creates a new controller service.
      *
      * @param httpServletRequest
      * @param version The revision is used to verify the client is working with
@@ -159,7 +157,6 @@ public class ControllerServiceResource extends ApplicationResource {
         // create the revision
         final RevisionDTO revision = new RevisionDTO();
         revision.setClientId(clientId.getClientId());
-
         if (version != null) {
             revision.setVersion(version.getLong());
         }
@@ -266,7 +263,7 @@ public class ControllerServiceResource extends ApplicationResource {
     @Path("{id}")
     @PreAuthorize("hasAnyRole('ROLE_MONITOR', 'ROLE_DFM', 'ROLE_ADMIN')")
     @TypeHint(ControllerServiceEntity.class)
-    public Response getFunnel(@QueryParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId, @PathParam("id") String id) {
+    public Response getControllerService(@QueryParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId, @PathParam("id") String id) {
 
         // replicate if cluster manager
         if (properties.isClusterManager()) {
@@ -274,7 +271,7 @@ public class ControllerServiceResource extends ApplicationResource {
         }
 
         // get the controller service
-        final ControllerServiceDTO funnel = serviceFacade.getControllerService(id);
+        final ControllerServiceDTO controllerService = serviceFacade.getControllerService(id);
 
         // create the revision
         final RevisionDTO revision = new RevisionDTO();
@@ -283,7 +280,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // create the response entity
         final ControllerServiceEntity entity = new ControllerServiceEntity();
         entity.setRevision(revision);
-        entity.setControllerService(populateRemainingControllerServiceContent(funnel));
+        entity.setControllerService(populateRemainingControllerServiceContent(controllerService));
 
         return clusterContext(generateOkResponse(entity)).build();
     }
@@ -298,6 +295,25 @@ public class ControllerServiceResource extends ApplicationResource {
      * new one will be generated. This value (whether specified or generated) is
      * included in the response.
      * @param id The id of the controller service to update.
+     * @param name The name of the controller service
+     * @param annotationData The annotation data for the controller service
+     * @param comments The comments for the controller service
+     * @param enabled Whether this controller service is enabled or not
+     * @param markedForDeletion Array of property names whose value should be removed.
+     * @param formParams Additionally, the processor properties and styles are
+     * specified in the form parameters. Because the property names and styles
+     * differ from processor to processor they are specified in a map-like
+     * fashion:
+     * <br>
+     * <ul>
+     * <li>properties[required.file.path]=/path/to/file</li>
+     * <li>properties[required.hostname]=localhost</li>
+     * <li>properties[required.port]=80</li>
+     * <li>properties[optional.file.path]=/path/to/file</li>
+     * <li>properties[optional.hostname]=localhost</li>
+     * <li>properties[optional.port]=80</li>
+     * <li>properties[user.defined.pattern]=^.*?s.*$</li>
+     * </ul>
      * @return A controllerServiceEntity.
      */
     @PUT
@@ -310,16 +326,51 @@ public class ControllerServiceResource extends ApplicationResource {
             @Context HttpServletRequest httpServletRequest,
             @FormParam(VERSION) LongParameter version,
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
-            @PathParam("id") String id) {
+            @PathParam("id") String id, @FormParam("name") String name,
+            @FormParam("annotationData") String annotationData, @FormParam("comments") String comments,
+            @FormParam("enabled") Boolean enabled, @FormParam("markedForDeletion[]") List<String> markedForDeletion,
+            MultivaluedMap<String, String> formParams) {
 
+        // create collections for holding the controller service properties
+        final Map<String, String> properties = new LinkedHashMap<>();
+        
+        // go through each parameter and look for processor properties
+        for (String parameterName : formParams.keySet()) {
+            if (StringUtils.isNotBlank(parameterName)) {
+                // see if the parameter name starts with an expected parameter type...
+                // if so, store the parameter name and value in the corresponding collection
+                if (parameterName.startsWith("properties")) {
+                    final int startIndex = StringUtils.indexOf(parameterName, "[");
+                    final int endIndex = StringUtils.lastIndexOf(parameterName, "]");
+                    if (startIndex != -1 && endIndex != -1) {
+                        final String propertyName = StringUtils.substring(parameterName, startIndex + 1, endIndex);
+                        properties.put(propertyName, formParams.getFirst(parameterName));
+                    }
+                }
+            }
+        }
+        
+        // set the properties to remove
+        for (String propertyToDelete : markedForDeletion) {
+            properties.put(propertyToDelete, null);
+        }
+        
         // create the controller service DTO
         final ControllerServiceDTO controllerServiceDTO = new ControllerServiceDTO();
         controllerServiceDTO.setId(id);
+        controllerServiceDTO.setName(name);
+        controllerServiceDTO.setAnnotationData(annotationData);
+        controllerServiceDTO.setComments(comments);
+        controllerServiceDTO.setEnabled(enabled);
 
+        // only set the properties when appropriate
+        if (!properties.isEmpty()) {
+            controllerServiceDTO.setProperties(properties);
+        }
+        
         // create the revision
         final RevisionDTO revision = new RevisionDTO();
         revision.setClientId(clientId.getClientId());
-
         if (version != null) {
             revision.setVersion(version.getLong());
         }
@@ -330,7 +381,7 @@ public class ControllerServiceResource extends ApplicationResource {
         controllerServiceEntity.setControllerService(controllerServiceDTO);
 
         // update the controller service
-        return updateFunnel(httpServletRequest, id, controllerServiceEntity);
+        return updateControllerService(httpServletRequest, id, controllerServiceEntity);
     }
 
     /**
@@ -347,7 +398,7 @@ public class ControllerServiceResource extends ApplicationResource {
     @Path("{id}")
     @PreAuthorize("hasRole('ROLE_DFM')")
     @TypeHint(ControllerServiceEntity.class)
-    public Response updateFunnel(
+    public Response updateControllerService(
             @Context HttpServletRequest httpServletRequest,
             @PathParam("id") String id,
             ControllerServiceEntity controllerServiceEntity) {
@@ -447,7 +498,7 @@ public class ControllerServiceResource extends ApplicationResource {
             clientVersion = version.getLong();
         }
 
-        // delete the specified funnel
+        // delete the specified controller service
         final ConfigurationSnapshot<Void> controllerResponse = serviceFacade.deleteControllerService(new Revision(clientVersion, clientId.getClientId()), id);
 
         // get the updated revision
