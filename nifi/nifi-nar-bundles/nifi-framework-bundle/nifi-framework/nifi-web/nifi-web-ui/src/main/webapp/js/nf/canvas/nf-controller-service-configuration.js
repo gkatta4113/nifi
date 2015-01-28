@@ -59,6 +59,12 @@ nf.ControllerServiceConfiguration = (function () {
         if ($('#controller-service-comments').val() !== details.comments) {
             return true;
         }
+        
+        if ($('#controller-service-enabled').hasClass('checkbox-checked') && details['enabled'] === false) {
+            return true;
+        } else if ($('#controller-service-enabled').hasClass('checkbox-unchecked') && details['enabled'] === true) {
+            return true;
+        }
 
         // defer to the properties
         return $('#controller-service-properties').propertytable('isSaveRequired');
@@ -107,6 +113,36 @@ nf.ControllerServiceConfiguration = (function () {
     };
     
     /**
+     * Reloads the specified controller service.
+     * 
+     * @param {object} controllerService
+     */
+    var reloadControllerService = function (controllerService) {
+        return $.ajax({
+            type: 'GET',
+            url: controllerService.uri,
+            dataType: 'json'
+        }).done(function (response) {
+            renderControllerService(response.controllerService);
+        }).fail(nf.Common.handleAjaxError);
+    };
+    
+    /**
+     * Reloads the specified controller service.
+     * 
+     * @param {object} controllerService
+     */
+    var renderControllerService = function (controllerService) {
+        // get the table and update the row accordingly
+        var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+        var controllerServiceData = controllerServiceGrid.getData();
+        controllerServiceData.updateItem(controllerService.id, controllerService);
+
+        // reload the controller service references
+        reloadControllerServiceReferences(controllerService);
+    };
+    
+    /**
      * Reloads components that reference this controller service.
      * 
      * @param {object} controllerService
@@ -135,7 +171,7 @@ nf.ControllerServiceConfiguration = (function () {
                         tabContentId: 'controller-service-comments-tab-content'
                     }],
                 select: function () {
-                    // update the processor property table size in case this is the first time its rendered
+                    // update the property table size in case this is the first time its rendered
                     if ($(this).text() === 'Properties') {
                         $('#controller-service-properties').propertytable('resetTableSize');
                     }
@@ -151,7 +187,7 @@ nf.ControllerServiceConfiguration = (function () {
                 }
             });
 
-            // initialize the processor configuration dialog
+            // initialize the conroller service configuration dialog
             $('#controller-service-configuration').modal({
                 headerText: 'Configure Controller Service',
                 overlayBackground: false,
@@ -160,9 +196,6 @@ nf.ControllerServiceConfiguration = (function () {
 //                        // empty the relationship list
 //                        $('#auto-terminate-relationship-names').css('border-width', '0').empty();
 
-                        // close the new property dialog if necessary
-                        $('#processor-property-dialog').hide();
-
                         // cancel any active edits
                         $('#controller-service-properties').propertytable('cancelEdit');
 
@@ -170,7 +203,7 @@ nf.ControllerServiceConfiguration = (function () {
                         $('#controller-service-properties').propertytable('clear');
 
                         // removed the cached controller service details
-//                        $('#controller-service-configuration').removeData('processorDetails');
+                        $('#controller-service-configuration').removeData('controllerServiceDetails');
 //                        $('#controller-service-configuration').removeData('processorHistory');
                     }
                 }
@@ -189,7 +222,7 @@ nf.ControllerServiceConfiguration = (function () {
          * @argument {controllerService} controllerService      The controller service
          */
         showConfiguration: function (controllerService) {
-            // record the processor details
+            // record the controller service details
             $('#controller-service-configuration').data('controllerServiceDetails', controllerService);
 
             // determine if the enabled checkbox is checked or not
@@ -198,7 +231,7 @@ nf.ControllerServiceConfiguration = (function () {
                 controllerServiceEnableStyle = 'checkbox-unchecked';
             }
 
-            // populate the processor settings
+            // populate the controller service settings
             $('#controller-service-id').text(controllerService['id']);
             $('#controller-service-type').text(nf.Common.substringAfterLast(controllerService['type'], '.'));
             $('#controller-service-name').val(controllerService['name']);
@@ -229,19 +262,16 @@ nf.ControllerServiceConfiguration = (function () {
                                     processData: false,
                                     contentType: 'application/json'
                                 }).done(function (response) {
-//                                    if (nf.Common.isDefinedAndNotNull(response.processor)) {
-//                                        // update the revision
-//                                        nf.Client.setRevision(response.revision);
-//
-//                                        // set the new processor state based on the response
-//                                        nf.Processor.set(response.processor);
-//
-//                                        // reload the processor's outgoing connections
-//                                        reloadProcessorConnections(processor);
-//
-//                                        // close the details panel
-//                                        $('#processor-configuration').modal('hide');
-//                                    }
+                                    if (nf.Common.isDefinedAndNotNull(response.controllerService)) {
+                                        // update the revision
+                                        nf.Client.setRevision(response.revision);
+
+                                        // reload the controller service
+                                        renderControllerService(response.controllerService);
+
+                                        // close the details panel
+                                        $('#controller-service-configuration').modal('hide');
+                                    }
                                 }).fail(handleControllerServiceConfigurationError);
                             }
                         }
@@ -267,11 +297,8 @@ nf.ControllerServiceConfiguration = (function () {
 
                                 // show the custom ui
                                 nf.CustomProcessorUi.showCustomUi($('#controller-service-id').text(), controllerService.customUiUrl, true).done(function () {
-//                                    // once the custom ui is closed, reload the processor
-//                                    nf.Processor.reload(processor);
-//
-//                                    // and reload the processor's outgoing connections
-//                                    reloadProcessorConnections(processor);
+                                    // once the custom ui is closed, reload the controller service
+                                    reloadControllerService(controllerService);
                                 });
                             };
 

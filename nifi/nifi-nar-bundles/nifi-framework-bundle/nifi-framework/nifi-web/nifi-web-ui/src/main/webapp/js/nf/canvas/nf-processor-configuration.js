@@ -426,14 +426,8 @@ nf.ProcessorConfiguration = (function () {
                         // empty the relationship list
                         $('#auto-terminate-relationship-names').css('border-width', '0').empty();
 
-                        // close the new property dialog if necessary
-                        $('#processor-property-dialog').hide();
-
-                        // cancel any active edits
-                        $('#processor-properties').propertytable('cancelEdit');
-
-                        // clear the tables
-                        $('#processor-properties').propertytable('clear');
+                        // cancel any active edits and clear the table
+                        $('#processor-properties').propertytable('cancelEdit').propertytable('clear');
 
                         // removed the cached processor details
                         $('#processor-configuration').removeData('processorDetails');

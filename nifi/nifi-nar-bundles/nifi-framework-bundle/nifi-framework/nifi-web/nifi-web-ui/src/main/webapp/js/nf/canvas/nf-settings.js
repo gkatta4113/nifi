@@ -369,12 +369,12 @@ nf.Settings = (function () {
             },
             dataType: 'json'
         }).done(function (response) {
-            var controllerService = response.controllerService;
-            if (nf.Common.isDefinedAndNotNull(controllerService)) {
-                var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
-                var controllerServicesData = controllerServicesGrid.getData();
-                controllerServicesData.addItem(controllerService);
-            }
+            // update the revision
+            nf.Client.setRevision(response.revision);
+
+            var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
+            var controllerServicesData = controllerServicesGrid.getData();
+            controllerServicesData.addItem(response.controllerService);
         });
         
         // hide the dialog
@@ -497,12 +497,6 @@ nf.Settings = (function () {
         controllerServiceTypesGrid.onClick.subscribe(function (e, args) {
             var item = controllerServiceTypesData.getItem(args.row);
             if (item && item.children.length > 0) {
-                // determine if there are rows currectly selected
-                var selectedIndex = controllerServiceTypesGrid.getSelectedRows();
-                if ($.isArray(selectedIndex) && selectedIndex.length === 1) {
-                    
-                }
-
                 // update the grid
                 item.collapsed = !item.collapsed;
                 controllerServiceTypesData.updateItem(item.id, item);
@@ -711,9 +705,39 @@ nf.Settings = (function () {
                 if (target.hasClass('edit-controller-service')) {
                     nf.ControllerServiceConfiguration.showConfiguration(controllerService);
                 } else if (target.hasClass('enable-controller-service')) {
-                    
+                    var revision = nf.Client.getRevision();
+                    return $.ajax({
+                        type: 'PUT',
+                        url: controllerService.uri,
+                        data: {
+                            clientId: revision.clientId,
+                            version: revision.version,
+                            enabled: true
+                        },
+                        dataType: 'json'
+                    }).done(function (response) {
+                        // update the revision
+                        nf.Client.setRevision(response.revision);
+                        
+                        // update the service
+                        controllerServicesData.updateItem(controllerService.id, response.controllerService);
+                    }).fail(nf.Common.handleAjaxError);
                 } else if (target.hasClass('delete-controller-service')) {
-                    
+                    var revision = nf.Client.getRevision();
+                    return $.ajax({
+                        type: 'DELETE',
+                        url: controllerService.uri + '?' + $.param({
+                            version: revision.version,
+                            clientId: revision.clientId
+                        }),
+                        dataType: 'json'
+                    }).done(function (response) {
+                        // update the revision
+                        nf.Client.setRevision(response.revision);
+                        
+                        // remove the service
+                        controllerServicesData.deleteItem(controllerService.id);
+                    }).fail(nf.Common.handleAjaxError);
                 }
             } else if (controllerServicesGrid.getColumns()[args.cell].id === 'moreDetails') {
                 if (target.hasClass('view-controller-service')) {

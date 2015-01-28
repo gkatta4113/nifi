@@ -1211,8 +1211,11 @@
                 var options = $(this).data('options');
                 if (options.readOnly === true) {
                     removeAllPropertyDetailDialogs();
+                } else {
+                    $(this).find('div.new-property-dialog').hide();
                 }
                 
+                // clean up data
                 var table = $(this).find('div.property-table');
                 table.removeData('descriptors history');
             

@@ -23,7 +23,7 @@
     z-index: 1301;
     display: none;
     width: 800px;
-    height: 500px;
+    height: 450px;
     border: 1px solid #eee;
     line-height: normal;
 }
@@ -42,7 +42,7 @@
 
 #controller-service-description-container {
     width: 588px;
-    height: 150px;
+    height: 100px;
     margin-top: 10px;
 }
 
@@ -57,7 +57,6 @@
 #controller-service-type-description {
     width: 588px;
     height: 60px;
-    margin-bottom: 8px;
 }
 
 #controller-service-types-table {
