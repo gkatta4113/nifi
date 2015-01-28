@@ -872,6 +872,20 @@ nf.Settings = (function () {
                 }
             });
             
+            // setup the tooltip for the refresh icon
+            $('#settings-refresh-required-icon').qtip($.extend({
+                content: 'This flow has been modified by another user. Please refresh.'
+            }, nf.CanvasUtils.config.systemTooltipConfig));
+            
+            // refresh the system diagnostics when clicked
+            nf.Common.addHoverEffect('#settings-refresh-button', 'button-refresh', 'button-refresh-hover').click(function () {
+                if ($('#settings-refresh-required-icon').is(':visible')) {
+                    nf.CanvasHeader.reloadAndClearWarnings();
+                } else {
+                    nf.Settings.loadSettings();
+                }
+            });
+            
             // create a new controller service or reporting task
             $('#new-service-or-task').on('click', function() {
                 var selectedTab = $('li.settings-selected-tab').text();
@@ -907,6 +921,19 @@ nf.Settings = (function () {
          * Shows the settings dialog.
          */
         showSettings: function () {
+            return nf.Settings.loadSettings().done(function () {
+                // show the settings dialog
+                nf.Shell.showContent('#settings').done(function () {
+                    // reset button state
+                    $('#settings-save').mouseout();
+                });
+            });
+        },
+        
+        /**
+         * Loads the settings.
+         */
+        loadSettings: function () {
             var settings = $.ajax({
                 type: 'GET',
                 url: config.urls.controllerConfig,
@@ -916,6 +943,7 @@ nf.Settings = (function () {
                 if (nf.Common.isDefinedAndNotNull(response.config)) {
                     // set the header
                     $('#settings-header-text').text(response.config.name + ' Settings');
+                    $('#settings-last-refreshed').text(response.config.currentTime);
 
                     // populate the controller settings
                     $('#data-flow-title-field').val(response.config.name);
@@ -923,13 +951,7 @@ nf.Settings = (function () {
                     $('#maximum-timer-driven-thread-count-field').val(response.config.maxTimerDrivenThreadCount);
                     $('#maximum-event-driven-thread-count-field').val(response.config.maxEventDrivenThreadCount);
                 }
-
-                // show the settings dialog
-                nf.Shell.showContent('#settings').done(function () {
-                    // reset button state
-                    $('#settings-save').mouseout();
-                });
-            }).fail(nf.Common.handleAjaxError);
+            });
             
             // load the controller services
             var controllerServices = loadControllerServices();
@@ -937,7 +959,10 @@ nf.Settings = (function () {
             // load the reporting tasks
             var reportingTasks = loadReportingTasks();
             
-            return $.when(settings, controllerServices, reportingTasks);
+            // return a deferred for all parts of the settings
+            return $.when(settings, controllerServices, reportingTasks).done(function () {
+                
+            }).fail(nf.Common.handleAjaxError);
         }
     };
 }());

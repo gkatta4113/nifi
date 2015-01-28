@@ -20,6 +20,12 @@
     <div id="settings-container">
         <div id="settings-tabs-container">
             <div id="settings-tabs"></div>
+            <div id="settings-refresh-button" class="pointer" title="Refresh"></div>
+            <div id="settings-last-refreshed-container">
+                Last updated:&nbsp;<span id="settings-last-refreshed"></span>
+            </div>
+            <div id="settings-refresh-required-icon" class="hidden"></div>
+            <div id="settings-loading-container" class="loading-container"></div>
             <div id="new-service-or-task" class="add-icon-bg"></div>
             <div class="clear"></div>
         </div>

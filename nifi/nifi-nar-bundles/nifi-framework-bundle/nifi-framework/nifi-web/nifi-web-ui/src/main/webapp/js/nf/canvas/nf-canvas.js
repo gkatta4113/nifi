@@ -179,11 +179,18 @@ nf.Canvas = (function () {
                 // changes that need to be updated
                 if (revision.version > currentRevision.version && revision.clientId !== currentRevision.clientId) {
                     var refreshContainer = $('#refresh-required-container');
+                    var settingsRefreshIcon = $('#settings-refresh-required-icon');
 
-                    // insert the refresh needed text - if necessary
+                    // insert the refresh needed text in the canvas - if necessary
                     if (!refreshContainer.is(':visible')) {
                         $('#stats-last-refreshed').addClass('alert');
                         refreshContainer.show();
+                    }
+                    
+                    // insert the refresh needed text in the settings - if necessary
+                    if (!settingsRefreshIcon.is(':visible')) {
+                        $('#settings-last-refreshed').addClass('alert');
+                        settingsRefreshIcon.show();
                     }
                 }
             }

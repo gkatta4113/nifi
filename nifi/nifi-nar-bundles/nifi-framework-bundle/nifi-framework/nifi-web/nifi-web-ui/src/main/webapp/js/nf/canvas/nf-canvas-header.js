@@ -105,22 +105,7 @@ nf.CanvasHeader = (function () {
 
             // setup the refresh link actions
             $('#refresh-required-link').click(function () {
-                nf.Canvas.reload().done(function () {
-                    // update component visibility
-                    nf.Canvas.View.updateVisibility();
-
-                    // refresh the birdseye
-                    nf.Birdseye.refresh();
-
-                    // hide the refresh link
-                    $('#stats-last-refreshed').removeClass('alert');
-                    $('#refresh-required-container').hide();
-                }).fail(function () {
-                    nf.Dialog.showOkDialog({
-                        dialogContent: 'Unable to refresh the current group.',
-                        overlayBackground: true
-                    });
-                });
+                nf.CanvasHeader.reloadAndClearWarnings();
             });
 
             // get the about details
@@ -289,6 +274,32 @@ nf.CanvasHeader = (function () {
                         title.css('left', (titlePosition.left + increment) + 'px');
                     }
                 }
+            });
+        },
+        
+        /**
+         * Reloads and clears any warnings.
+         */
+        reloadAndClearWarnings: function () {
+            nf.Canvas.reload().done(function () {
+                // update component visibility
+                nf.Canvas.View.updateVisibility();
+
+                // refresh the birdseye
+                nf.Birdseye.refresh();
+
+                // hide the refresh link on the canvas
+                $('#stats-last-refreshed').removeClass('alert');
+                $('#refresh-required-container').hide();
+                
+                // hide the refresh link on the settings
+                $('#settings-last-refreshed').removeClass('alert');
+                $('#settings-refresh-required-icon').hide();
+            }).fail(function () {
+                nf.Dialog.showOkDialog({
+                    dialogContent: 'Unable to refresh the current group.',
+                    overlayBackground: true
+                });
             });
         }
     };

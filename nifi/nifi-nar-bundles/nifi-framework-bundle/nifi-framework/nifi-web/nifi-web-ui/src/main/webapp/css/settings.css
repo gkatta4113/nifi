@@ -120,6 +120,44 @@ span.sorted {
     text-decoration: underline;
 }
 
+#settings-refresh-button {
+    height: 24px;
+    width: 26px;
+    float: left;
+}
+
+#settings-last-refreshed-container {
+    float: left;
+    color: #666;
+    font-weight: normal;
+    margin-top: 6px;
+    margin-left: 3px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+}
+
+#settings-loading-container {
+    float: left;
+    width: 16px;
+    height: 16px;
+    background-color: transparent;
+    margin-top: 4px;
+    margin-left: 3px;
+}
+
+#settings-last-refreshed {
+    font-weight: bold;
+}
+
+#settings-refresh-required-icon {
+    float: left;
+    margin-top: 4px;
+    margin-left: 3px;
+    width: 18px;
+    height: 16px;
+    background-image: url(../images/iconAlert.png);
+}
+
 /* general */
 
 #general-settings {

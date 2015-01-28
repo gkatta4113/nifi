@@ -1912,6 +1912,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
         final Date now = new Date();
         controllerConfig.setTimeOffset(TimeZone.getDefault().getOffset(now.getTime()));
+        controllerConfig.setCurrentTime(now);
 
         // determine the site to site configuration
         if (isClustered()) {
