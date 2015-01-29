@@ -169,6 +169,8 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
         private String type;
         private String state;
         private Boolean enabled;
+        
+        private String referenceType;
 
         /**
          * Group id for this component referencing a controller service. If this
@@ -250,8 +252,17 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
         public void setEnabled(Boolean enabled) {
             this.enabled = enabled;
         }
-        
-        
+
+        /**
+         * The type of reference this is (Processor, ControllerService, or ReportingTask).
+         * @return 
+         */
+        public String getReferenceType() {
+            return referenceType;
+        }
+
+        public void setReferenceType(String referenceType) {
+            this.referenceType = referenceType;
+        }
     }
-    
 }
