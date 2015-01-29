@@ -225,15 +225,6 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                 // get the root group XML element
                 final Element rootGroupElement = (Element) rootElement.getElementsByTagName("rootGroup").item(0);
 
-                // if this controller isn't initialized or its emtpy, add the root group, otherwise update
-                if (!initialized || existingFlowEmpty) {
-                    logger.trace("Adding root process group");
-                    addProcessGroup(controller, /* parent group */ null, rootGroupElement, encryptor);
-                } else {
-                    logger.trace("Updating root process group");
-                    updateProcessGroup(controller, /* parent group */ null, rootGroupElement, encryptor);
-                }
-                
                 final Element controllerServicesElement = (Element) DomUtils.getChild(rootElement, "controllerServices");
 	            if ( controllerServicesElement != null ) {
 	                final List<Element> serviceElements = DomUtils.getChildElementsByTagName(controllerServicesElement, "controllerService");
@@ -245,7 +236,16 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
 	                	}
 	                }
                 }
-                
+
+                // if this controller isn't initialized or its emtpy, add the root group, otherwise update
+                if (!initialized || existingFlowEmpty) {
+                    logger.trace("Adding root process group");
+                    addProcessGroup(controller, /* parent group */ null, rootGroupElement, encryptor);
+                } else {
+                    logger.trace("Updating root process group");
+                    updateProcessGroup(controller, /* parent group */ null, rootGroupElement, encryptor);
+                }
+
                 final Element reportingTasksElement = (Element) DomUtils.getChild(rootElement, "reportingTasks");
                 if ( reportingTasksElement != null ) {
                 	final List<Element> taskElements = DomUtils.getChildElementsByTagName(reportingTasksElement, "reportingTask");
