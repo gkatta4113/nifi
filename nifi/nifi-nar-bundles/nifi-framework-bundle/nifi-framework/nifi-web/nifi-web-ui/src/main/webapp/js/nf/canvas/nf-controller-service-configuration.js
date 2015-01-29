@@ -156,10 +156,12 @@ nf.ControllerServiceConfiguration = (function () {
     /**
      * Adds a border to the controller service references if necessary.
      */
-    var showReferencesBorder = function () {
+    var updateReferencesBorder = function () {
         var controllerServiceReferences = $('#controller-service-references');
         if (controllerServiceReferences.is(':visible') && controllerServiceReferences.get(0).scrollHeight > controllerServiceReferences.innerHeight()) {
             controllerServiceReferences.css('border-width', '1px');
+        } else {
+            controllerServiceReferences.css('border-width', '0px');
         }
     };
     
@@ -223,7 +225,7 @@ nf.ControllerServiceConfiguration = (function () {
                 toggle(twist, list);
                 
                 // update the border if necessary
-                showReferencesBorder();
+                updateReferencesBorder();
             }).append(twist).append(title).append(count).appendTo(controllerServiceReferences);
             
             // show message for empty list
@@ -241,7 +243,7 @@ nf.ControllerServiceConfiguration = (function () {
         createReferenceBlock('Reporting Tasks', tasks);
         
         // update the border if necessary
-        showReferencesBorder();
+        updateReferencesBorder();
     };
     
     /**
@@ -282,7 +284,7 @@ nf.ControllerServiceConfiguration = (function () {
                     $('#controller-service-properties').propertytable('saveRow');
 
                     // show the border around the processor relationships if necessary
-                    showReferencesBorder();
+                    updateReferencesBorder();
                 }
             });
             
@@ -508,7 +510,7 @@ nf.ControllerServiceConfiguration = (function () {
                 $('#controller-service-configuration').modal('show');
 
                 // show the border if necessary
-                showReferencesBorder();
+                updateReferencesBorder();
             }).fail(nf.Common.handleAjaxError);
         }
     };
