@@ -124,7 +124,9 @@ import org.apache.nifi.web.api.dto.status.RemoteProcessGroupStatusDTO;
 import org.apache.nifi.web.api.dto.status.StatusDTO;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.controller.ConfiguredComponent;
+import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO.ControllerServiceReferenceDTO;
 
 /**
@@ -902,10 +904,17 @@ public final class DtoFactory {
                 reference.setGroupId(node.getProcessGroup().getIdentifier());
                 reference.setState(node.getScheduledState().name());
                 reference.setType(node.getProcessor().getClass().getName());
+                reference.setReferenceType(Processor.class.getSimpleName());
             } else if (component instanceof ControllerServiceNode) {
                 final ControllerServiceNode node = ((ControllerServiceNode) component);
                 reference.setEnabled(!node.isDisabled());
                 reference.setType(node.getControllerServiceImplementation().getClass().getName());
+                reference.setReferenceType(ControllerService.class.getSimpleName());
+            } else if (component instanceof ReportingTask) {
+                final ReportingTaskNode node = ((ReportingTaskNode) component);
+                reference.setState(node.getScheduledState().name());
+                reference.setType(node.getReportingTask().getClass().getName());
+                reference.setReferenceType(ReportingTask.class.getSimpleName());
             }
             
             dto.getReferences().add(reference);

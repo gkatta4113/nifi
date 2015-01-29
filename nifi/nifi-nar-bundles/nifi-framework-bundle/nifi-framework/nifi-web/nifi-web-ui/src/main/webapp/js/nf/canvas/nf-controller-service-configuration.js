@@ -166,10 +166,37 @@ nf.ControllerServiceConfiguration = (function () {
     /**
      * Adds the specified reference for this controller service.
      * 
-     * @param {object} reference
+     * @param {array} references
      */
-    var createReference = function (reference) {
+    var createReferences = function (references) {
+        var processors = $('<ul class="processor-references"></ul>');
+        var services = $('<ul class="controller-service-references"></ul>');
+        var tasks = $('<ul class="reporting-task-references"></ul>');
+        $.each(references, function (_, reference) {
+            if (reference.referenceType === 'Processor') {
+                var processorItem = $('<li></li>').text(reference.name);
+                processors.append(processorItem);
+            } else if (reference.referenceType === 'ControllerService') {
+                var serviceItem = $('<li></li>').text(reference.name);
+                services.append(serviceItem);
+            } else if (reference.referenceType === 'ReportingTask') {
+                var taskItem = $('<li></li>').text(reference.name);
+                tasks.append(taskItem);
+            }
+        });
         
+//        .append('<span class="expansion-button expanded"></span>')
+        
+        var controllerServiceReferences = $('#controller-service-references');
+        $('<div>Processors</div>').on('click', function () {
+            
+        }).append(processors).appendTo(controllerServiceReferences);
+        $('<div>Controller Services</div>').on('click', function () {
+            
+        }).append(services).appendTo(controllerServiceReferences);
+        $('<div>Reporting Tasks</div>').on('click', function () {
+            
+        }).append(tasks).appendTo(controllerServiceReferences);
     };
     
     /**
@@ -251,7 +278,6 @@ nf.ControllerServiceConfiguration = (function () {
 
                         // removed the cached controller service details
                         $('#controller-service-configuration').removeData('controllerServiceDetails');
-                        $('#controller-service-configuration').removeData('controllerServiceHistory');
                     }
                 }
             });
@@ -269,160 +295,169 @@ nf.ControllerServiceConfiguration = (function () {
          * @argument {controllerService} controllerService      The controller service
          */
         showConfiguration: function (controllerService) {
-            // record the controller service details
-            $('#controller-service-configuration').data('controllerServiceDetails', controllerService);
-
-            // determine if the enabled checkbox is checked or not
-            var controllerServiceEnableStyle = 'checkbox-checked';
-            if (controllerService['enabled'] === false) {
-                controllerServiceEnableStyle = 'checkbox-unchecked';
-            }
-
-            // populate the controller service settings
-            $('#controller-service-id').text(controllerService['id']);
-            $('#controller-service-type').text(nf.Common.substringAfterLast(controllerService['type'], '.'));
-            $('#controller-service-name').val(controllerService['name']);
-            $('#controller-service-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(controllerServiceEnableStyle);
-            $('#controller-service-comments').val(controllerService['comments']);
-
-            // select the availability when appropriate
-            if (nf.Canvas.isClustered()) {
-                $('#availability-combo').combo('setSelectedOption', {
-                    value: controllerService['availability']
-                });
-            }
-
-            // load the controller references list
-            if (!nf.Common.isEmpty(controllerService.references)) {
-                $.each(controllerService.references, function (_, reference) {
-                    createReference(reference);
-                });
-            } else {
-                $('#controller-service-references').append('<div class="unset">This service has no components referencing it.</div>');
-            }
-
-            var buttons = [{
-                    buttonText: 'Apply',
-                    handler: {
-                        click: function () {
-                            // close all fields currently being edited
-                            $('#controller-service-properties').propertytable('saveRow');
-
-                            // marshal the settings and properties and update the controller service
-                            var updatedControllerService = marshalDetails();
-
-                            // ensure details are valid as far as we can tell
-                            if (validateDetails(updatedControllerService)) {
-                                // update the selected component
-                                $.ajax({
-                                    type: 'PUT',
-                                    data: JSON.stringify(updatedControllerService),
-                                    url: controllerService.uri,
-                                    dataType: 'json',
-                                    processData: false,
-                                    contentType: 'application/json'
-                                }).done(function (response) {
-                                    if (nf.Common.isDefinedAndNotNull(response.controllerService)) {
-                                        // update the revision
-                                        nf.Client.setRevision(response.revision);
-
-                                        // reload the controller service
-                                        renderControllerService(response.controllerService);
-
-                                        // close the details panel
-                                        $('#controller-service-configuration').modal('hide');
-                                    }
-                                }).fail(handleControllerServiceConfigurationError);
-                            }
-                        }
-                    }
-                }, {
-                    buttonText: 'Cancel',
-                    handler: {
-                        click: function () {
-                            $('#controller-service-configuration').modal('hide');
-                        }
-                    }
-                }];
-
-            // determine if we should show the advanced button
-            if (nf.Common.isDefinedAndNotNull(controllerService.customUiUrl) && controllerService.customUiUrl !== '') {
-                buttons.push({
-                    buttonText: 'Advanced',
-                    handler: {
-                        click: function () {
-                            var openCustomUi = function () {
-                                // reset state and close the dialog manually to avoid hiding the faded background
-                                $('#controller-service-configuration').modal('hide');
-
-                                // show the custom ui
-                                nf.CustomProcessorUi.showCustomUi($('#controller-service-id').text(), controllerService.customUiUrl, true).done(function () {
-                                    // once the custom ui is closed, reload the controller service
-                                    reloadControllerService(controllerService);
-                                });
-                            };
-
-                            // close all fields currently being edited
-                            $('#controller-service-properties').propertytable('saveRow');
-
-                            // determine if changes have been made
-                            if (isSaveRequired()) {
-                                // see if those changes should be saved
-                                nf.Dialog.showYesNoDialog({
-                                    dialogContent: 'Save changes before opening the advanced configuration?',
-                                    overlayBackground: false,
-                                    noHandler: openCustomUi,
-                                    yesHandler: function () {
-                                        // marshal the settings and properties and update the controller service
-                                        var updatedControllerService = marshalDetails();
-
-                                        // ensure details are valid as far as we can tell
-                                        if (validateDetails(updatedControllerService)) {
-                                            // update the selected component
-                                            $.ajax({
-                                                type: 'PUT',
-                                                data: JSON.stringify(updatedControllerService),
-                                                url: controllerService.uri,
-                                                dataType: 'json',
-                                                processData: false,
-                                                contentType: 'application/json'
-                                            }).done(function (response) {
-                                                if (nf.Common.isDefinedAndNotNull(response.controllerService)) {
-                                                    // update the revision
-                                                    nf.Client.setRevision(response.revision);
-
-                                                    // open the custom ui
-                                                    openCustomUi();
-                                                }
-                                            }).fail(handleControllerServiceConfigurationError);
-                                        }
-                                    }
-                                });
-                            } else {
-                                // if there were no changes, simply open the custom ui
-                                openCustomUi();
-                            }
-                        }
-                    }
-                });
-            }
-
-            // set the button model
-            $('#controller-service-configuration').modal('setButtonModel', buttons);
-
+            // reload the service in case the property descriptors have changed
+            var reloadService = $.ajax({
+                type: 'GET',
+                url: '../nifi-api/controller/controller-services/' + encodeURIComponent(controllerService.id),
+                dataType: 'json'
+            });
+            
             // get the controller service history
-            $.ajax({
+            var loadHistory = $.ajax({
                 type: 'GET',
                 url: '../nifi-api/controller/history/controller-services/' + encodeURIComponent(controllerService.id),
                 dataType: 'json'
-            }).done(function (response) {
-                var controllerServiceHistory = response.componentHistory;
+            });
+            
+            // once everything is loaded, show the dialog
+            $.when(reloadService, loadHistory).done(function (serviceResponse, historyResponse) {
+                // get the updated controller service
+                controllerService = serviceResponse[0].controllerService;
+                
+                // get the controller service history
+                var controllerServiceHistory = historyResponse[0].componentHistory;
+                
+                // record the controller service details
+                $('#controller-service-configuration').data('controllerServiceDetails', controllerService);
 
+                // determine if the enabled checkbox is checked or not
+                var controllerServiceEnableStyle = 'checkbox-checked';
+                if (controllerService['enabled'] === false) {
+                    controllerServiceEnableStyle = 'checkbox-unchecked';
+                }
+
+                // populate the controller service settings
+                $('#controller-service-id').text(controllerService['id']);
+                $('#controller-service-type').text(nf.Common.substringAfterLast(controllerService['type'], '.'));
+                $('#controller-service-name').val(controllerService['name']);
+                $('#controller-service-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(controllerServiceEnableStyle);
+                $('#controller-service-comments').val(controllerService['comments']);
+
+                // select the availability when appropriate
+                if (nf.Canvas.isClustered()) {
+                    $('#availability-combo').combo('setSelectedOption', {
+                        value: controllerService['availability']
+                    });
+                }
+
+                // load the controller references list
+                if (!nf.Common.isEmpty(controllerService.references)) {
+                    createReferences(controllerService.references);
+                } else {
+                    $('#controller-service-references').append('<div class="unset">This service has no components referencing it.</div>');
+                }
+
+                var buttons = [{
+                        buttonText: 'Apply',
+                        handler: {
+                            click: function () {
+                                // close all fields currently being edited
+                                $('#controller-service-properties').propertytable('saveRow');
+
+                                // marshal the settings and properties and update the controller service
+                                var updatedControllerService = marshalDetails();
+
+                                // ensure details are valid as far as we can tell
+                                if (validateDetails(updatedControllerService)) {
+                                    // update the selected component
+                                    $.ajax({
+                                        type: 'PUT',
+                                        data: JSON.stringify(updatedControllerService),
+                                        url: controllerService.uri,
+                                        dataType: 'json',
+                                        processData: false,
+                                        contentType: 'application/json'
+                                    }).done(function (response) {
+                                        if (nf.Common.isDefinedAndNotNull(response.controllerService)) {
+                                            // update the revision
+                                            nf.Client.setRevision(response.revision);
+
+                                            // reload the controller service
+                                            renderControllerService(response.controllerService);
+
+                                            // close the details panel
+                                            $('#controller-service-configuration').modal('hide');
+                                        }
+                                    }).fail(handleControllerServiceConfigurationError);
+                                }
+                            }
+                        }
+                    }, {
+                        buttonText: 'Cancel',
+                        handler: {
+                            click: function () {
+                                $('#controller-service-configuration').modal('hide');
+                            }
+                        }
+                    }];
+
+                // determine if we should show the advanced button
+                if (nf.Common.isDefinedAndNotNull(controllerService.customUiUrl) && controllerService.customUiUrl !== '') {
+                    buttons.push({
+                        buttonText: 'Advanced',
+                        handler: {
+                            click: function () {
+                                var openCustomUi = function () {
+                                    // reset state and close the dialog manually to avoid hiding the faded background
+                                    $('#controller-service-configuration').modal('hide');
+
+                                    // show the custom ui
+                                    nf.CustomProcessorUi.showCustomUi($('#controller-service-id').text(), controllerService.customUiUrl, true).done(function () {
+                                        // once the custom ui is closed, reload the controller service
+                                        reloadControllerService(controllerService);
+                                    });
+                                };
+
+                                // close all fields currently being edited
+                                $('#controller-service-properties').propertytable('saveRow');
+
+                                // determine if changes have been made
+                                if (isSaveRequired()) {
+                                    // see if those changes should be saved
+                                    nf.Dialog.showYesNoDialog({
+                                        dialogContent: 'Save changes before opening the advanced configuration?',
+                                        overlayBackground: false,
+                                        noHandler: openCustomUi,
+                                        yesHandler: function () {
+                                            // marshal the settings and properties and update the controller service
+                                            var updatedControllerService = marshalDetails();
+
+                                            // ensure details are valid as far as we can tell
+                                            if (validateDetails(updatedControllerService)) {
+                                                // update the selected component
+                                                $.ajax({
+                                                    type: 'PUT',
+                                                    data: JSON.stringify(updatedControllerService),
+                                                    url: controllerService.uri,
+                                                    dataType: 'json',
+                                                    processData: false,
+                                                    contentType: 'application/json'
+                                                }).done(function (response) {
+                                                    if (nf.Common.isDefinedAndNotNull(response.controllerService)) {
+                                                        // update the revision
+                                                        nf.Client.setRevision(response.revision);
+
+                                                        // open the custom ui
+                                                        openCustomUi();
+                                                    }
+                                                }).fail(handleControllerServiceConfigurationError);
+                                            }
+                                        }
+                                    });
+                                } else {
+                                    // if there were no changes, simply open the custom ui
+                                    openCustomUi();
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // set the button model
+                $('#controller-service-configuration').modal('setButtonModel', buttons);
+                
                 // load the property table
                 $('#controller-service-properties').propertytable('loadProperties', controllerService.properties, controllerService.descriptors, controllerServiceHistory.propertyHistory);
-
-                // record the controller service history
-                $('#controller-service-configuration').data('controllerServiceHistory', controllerServiceHistory);
 
                 // show the details
                 $('#controller-service-configuration').modal('show');

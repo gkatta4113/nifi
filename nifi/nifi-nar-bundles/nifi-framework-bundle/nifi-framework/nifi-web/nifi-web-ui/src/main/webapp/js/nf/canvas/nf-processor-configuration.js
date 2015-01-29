@@ -480,232 +480,242 @@ nf.ProcessorConfiguration = (function () {
                 // get the processor details
                 var processor = selectionData.component;
 
-                // record the processor details
-                $('#processor-configuration').data('processorDetails', processor);
-
-                // determine if the enabled checkbox is checked or not
-                var processorEnableStyle = 'checkbox-checked';
-                if (processor['state'] === 'DISABLED') {
-                    processorEnableStyle = 'checkbox-unchecked';
-                }
-
-                // populate the processor settings
-                $('#processor-id').text(processor['id']);
-                $('#processor-type').text(nf.Common.substringAfterLast(processor['type'], '.'));
-                $('#processor-name').val(processor['name']);
-                $('#processor-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(processorEnableStyle);
-                $('#penalty-duration').val(processor.config['penaltyDuration']);
-                $('#yield-duration').val(processor.config['yieldDuration']);
-                $('#processor-comments').val(processor.config['comments']);
-
-                // set the run duration
-                var runDuration = RUN_DURATION_VALUES.indexOf(processor.config['runDurationMillis']);
-                $('#run-duration-slider').slider('value', runDuration);
-
-                // select the appropriate bulletin level
-                $('#bulletin-level-combo').combo('setSelectedOption', {
-                    value: processor.config['bulletinLevel']
-                });
-
-                // initialize the scheduling strategy
-                $('#scheduling-strategy-combo').combo({
-                    options: getSchedulingStrategies(processor),
-                    selectedOption: {
-                        value: processor.config['schedulingStrategy']
-                    },
-                    select: function (selectedOption) {
-                        // show the appropriate panel
-                        if (selectedOption.value === 'EVENT_DRIVEN') {
-                            $('#event-driven-warning').show();
-                            
-                            $('#timer-driven-options').hide();
-                            $('#event-driven-options').show();
-                            $('#cron-driven-options').hide();
-                        } else {
-                            $('#event-driven-warning').hide();
-                            
-                            if (selectedOption.value === 'CRON_DRIVEN') {
-                                $('#timer-driven-options').hide();
-                                $('#event-driven-options').hide();
-                                $('#cron-driven-options').show();
-                            } else {
-                                $('#timer-driven-options').show();
-                                $('#event-driven-options').hide();
-                                $('#cron-driven-options').hide();
-                            }
-                        }
-                    }
-                });
-
-                // initialize the concurrentTasks
-                var defaultConcurrentTasks = processor.config['defaultConcurrentTasks'];
-                $('#timer-driven-concurrently-schedulable-tasks').val(defaultConcurrentTasks['TIMER_DRIVEN']);
-                $('#event-driven-concurrently-schedulable-tasks').val(defaultConcurrentTasks['EVENT_DRIVEN']);
-                $('#cron-driven-concurrently-schedulable-tasks').val(defaultConcurrentTasks['CRON_DRIVEN']);
-
-                // get the appropriate concurrent tasks field
-                var concurrentTasks;
-                if (processor.config['schedulingStrategy'] === 'EVENT_DRIVEN') {
-                    concurrentTasks = $('#event-driven-concurrently-schedulable-tasks').val(processor.config['concurrentlySchedulableTaskCount']);
-                } else if (processor.config['schedulingStrategy'] === 'CRON_DRIVEN') {
-                    concurrentTasks = $('#cron-driven-concurrently-schedulable-tasks').val(processor.config['concurrentlySchedulableTaskCount']);
-                } else {
-                    concurrentTasks = $('#timer-driven-concurrently-schedulable-tasks').val(processor.config['concurrentlySchedulableTaskCount']);
-                }
-
-                // conditionally allow the user to specify the concurrent tasks
-                if (nf.Common.isDefinedAndNotNull(concurrentTasks)) {
-                    if (processor.supportsParallelProcessing === true) {
-                        concurrentTasks.prop('disabled', false);
-                    } else {
-                        concurrentTasks.prop('disabled', true);
-                    }
-                }
-
-                // initialize the schedulingStrategy
-                var defaultSchedulingPeriod = processor.config['defaultSchedulingPeriod'];
-                $('#cron-driven-scheduling-period').val(defaultSchedulingPeriod['CRON_DRIVEN']);
-                $('#timer-driven-scheduling-period').val(defaultSchedulingPeriod['TIMER_DRIVEN']);
-
-                // set the scheduling period as appropriate
-                if (processor.config['schedulingStrategy'] === 'CRON_DRIVEN') {
-                    $('#cron-driven-scheduling-period').val(processor.config['schedulingPeriod']);
-                } else if (processor.config['schedulingStrategy'] !== 'EVENT_DRIVEN') {
-                    $('#timer-driven-scheduling-period').val(processor.config['schedulingPeriod']);
-                }
-
-                // load the relationship list
-                if (!nf.Common.isEmpty(processor.relationships)) {
-                    $.each(processor.relationships, function (i, relationship) {
-                        createRelationshipOption(relationship);
-                    });
-                } else {
-                    $('#auto-terminate-relationship-names').append('<div class="unset">This processor has no relationships.</div>');
-                }
-
-                var buttons = [{
-                        buttonText: 'Apply',
-                        handler: {
-                            click: function () {
-                                // close all fields currently being edited
-                                $('#processor-properties').propertytable('saveRow');
-
-                                // marshal the settings and properties and update the processor
-                                var updatedProcessor = marshalDetails();
-
-                                // ensure details are valid as far as we can tell
-                                if (validateDetails(updatedProcessor)) {
-                                    // update the selected component
-                                    $.ajax({
-                                        type: 'PUT',
-                                        data: JSON.stringify(updatedProcessor),
-                                        url: processor.uri,
-                                        dataType: 'json',
-                                        processData: false,
-                                        contentType: 'application/json'
-                                    }).done(function (response) {
-                                        if (nf.Common.isDefinedAndNotNull(response.processor)) {
-                                            // update the revision
-                                            nf.Client.setRevision(response.revision);
-
-                                            // set the new processor state based on the response
-                                            nf.Processor.set(response.processor);
-                                            
-                                            // reload the processor's outgoing connections
-                                            reloadProcessorConnections(processor);
-
-                                            // close the details panel
-                                            $('#processor-configuration').modal('hide');
-                                        }
-                                    }).fail(handleProcessorConfigurationError);
-                                }
-                            }
-                        }
-                    }, {
-                        buttonText: 'Cancel',
-                        handler: {
-                            click: function () {
-                                $('#processor-configuration').modal('hide');
-                            }
-                        }
-                    }];
-
-                // determine if we should show the advanced button
-                if (nf.Common.isDefinedAndNotNull(processor.config.customUiUrl) && processor.config.customUiUrl !== '') {
-                    buttons.push({
-                        buttonText: 'Advanced',
-                        handler: {
-                            click: function () {
-                                var openCustomUi = function () {
-                                    // reset state and close the dialog manually to avoid hiding the faded background
-                                    $('#processor-configuration').modal('hide');
-
-                                    // show the custom ui
-                                    nf.CustomProcessorUi.showCustomUi($('#processor-id').text(), processor.config.customUiUrl, true).done(function () {
-                                        // once the custom ui is closed, reload the processor
-                                        nf.Processor.reload(processor);
-                                        
-                                        // and reload the processor's outgoing connections
-                                        reloadProcessorConnections(processor);
-                                    });
-                                };
-
-                                // close all fields currently being edited
-                                $('#processor-properties').propertytable('saveRow');
-
-                                // determine if changes have been made
-                                if (isSaveRequired()) {
-                                    // see if those changes should be saved
-                                    nf.Dialog.showYesNoDialog({
-                                        dialogContent: 'Save changes before opening the advanced configuration?',
-                                        overlayBackground: false,
-                                        noHandler: openCustomUi,
-                                        yesHandler: function () {
-                                            // marshal the settings and properties and update the processor
-                                            var updatedProcessor = marshalDetails();
-
-                                            // ensure details are valid as far as we can tell
-                                            if (validateDetails(updatedProcessor)) {
-                                                // update the selected component
-                                                $.ajax({
-                                                    type: 'PUT',
-                                                    data: JSON.stringify(updatedProcessor),
-                                                    url: processor.uri,
-                                                    dataType: 'json',
-                                                    processData: false,
-                                                    contentType: 'application/json'
-                                                }).done(function (response) {
-                                                    if (nf.Common.isDefinedAndNotNull(response.processor)) {
-                                                        // update the revision
-                                                        nf.Client.setRevision(response.revision);
-
-                                                        // open the custom ui
-                                                        openCustomUi();
-                                                    }
-                                                }).fail(handleProcessorConfigurationError);
-                                            }
-                                        }
-                                    });
-                                } else {
-                                    // if there were no changes, simply open the custom ui
-                                    openCustomUi();
-                                }
-                            }
-                        }
-                    });
-                }
-
-                // set the button model
-                $('#processor-configuration').modal('setButtonModel', buttons);
+                // reload the processor in case an property descriptors have updated
+                var reloadProcessor = nf.Processor.reload(processor);
                 
                 // get the processor history
-                $.ajax({
+                var loadHistory = $.ajax({
                     type: 'GET',
                     url: '../nifi-api/controller/history/processors/' + encodeURIComponent(processor.id),
                     dataType: 'json'
-                }).done(function (response) {
-                    var processorHistory = response.componentHistory;
+                });
+                
+                // once everything is loaded, show the dialog
+                $.when(reloadProcessor, loadHistory).done(function (processorResponse, historyResponse) {
+                    // get the updated processor
+                    processor = processorResponse[0].processor;
+                    
+                    // get the processor history
+                    var processorHistory = historyResponse[0].componentHistory;
+                    
+                    // record the processor details
+                    $('#processor-configuration').data('processorDetails', processor);
 
+                    // determine if the enabled checkbox is checked or not
+                    var processorEnableStyle = 'checkbox-checked';
+                    if (processor['state'] === 'DISABLED') {
+                        processorEnableStyle = 'checkbox-unchecked';
+                    }
+
+                    // populate the processor settings
+                    $('#processor-id').text(processor['id']);
+                    $('#processor-type').text(nf.Common.substringAfterLast(processor['type'], '.'));
+                    $('#processor-name').val(processor['name']);
+                    $('#processor-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(processorEnableStyle);
+                    $('#penalty-duration').val(processor.config['penaltyDuration']);
+                    $('#yield-duration').val(processor.config['yieldDuration']);
+                    $('#processor-comments').val(processor.config['comments']);
+
+                    // set the run duration
+                    var runDuration = RUN_DURATION_VALUES.indexOf(processor.config['runDurationMillis']);
+                    $('#run-duration-slider').slider('value', runDuration);
+
+                    // select the appropriate bulletin level
+                    $('#bulletin-level-combo').combo('setSelectedOption', {
+                        value: processor.config['bulletinLevel']
+                    });
+
+                    // initialize the scheduling strategy
+                    $('#scheduling-strategy-combo').combo({
+                        options: getSchedulingStrategies(processor),
+                        selectedOption: {
+                            value: processor.config['schedulingStrategy']
+                        },
+                        select: function (selectedOption) {
+                            // show the appropriate panel
+                            if (selectedOption.value === 'EVENT_DRIVEN') {
+                                $('#event-driven-warning').show();
+
+                                $('#timer-driven-options').hide();
+                                $('#event-driven-options').show();
+                                $('#cron-driven-options').hide();
+                            } else {
+                                $('#event-driven-warning').hide();
+
+                                if (selectedOption.value === 'CRON_DRIVEN') {
+                                    $('#timer-driven-options').hide();
+                                    $('#event-driven-options').hide();
+                                    $('#cron-driven-options').show();
+                                } else {
+                                    $('#timer-driven-options').show();
+                                    $('#event-driven-options').hide();
+                                    $('#cron-driven-options').hide();
+                                }
+                            }
+                        }
+                    });
+
+                    // initialize the concurrentTasks
+                    var defaultConcurrentTasks = processor.config['defaultConcurrentTasks'];
+                    $('#timer-driven-concurrently-schedulable-tasks').val(defaultConcurrentTasks['TIMER_DRIVEN']);
+                    $('#event-driven-concurrently-schedulable-tasks').val(defaultConcurrentTasks['EVENT_DRIVEN']);
+                    $('#cron-driven-concurrently-schedulable-tasks').val(defaultConcurrentTasks['CRON_DRIVEN']);
+
+                    // get the appropriate concurrent tasks field
+                    var concurrentTasks;
+                    if (processor.config['schedulingStrategy'] === 'EVENT_DRIVEN') {
+                        concurrentTasks = $('#event-driven-concurrently-schedulable-tasks').val(processor.config['concurrentlySchedulableTaskCount']);
+                    } else if (processor.config['schedulingStrategy'] === 'CRON_DRIVEN') {
+                        concurrentTasks = $('#cron-driven-concurrently-schedulable-tasks').val(processor.config['concurrentlySchedulableTaskCount']);
+                    } else {
+                        concurrentTasks = $('#timer-driven-concurrently-schedulable-tasks').val(processor.config['concurrentlySchedulableTaskCount']);
+                    }
+
+                    // conditionally allow the user to specify the concurrent tasks
+                    if (nf.Common.isDefinedAndNotNull(concurrentTasks)) {
+                        if (processor.supportsParallelProcessing === true) {
+                            concurrentTasks.prop('disabled', false);
+                        } else {
+                            concurrentTasks.prop('disabled', true);
+                        }
+                    }
+
+                    // initialize the schedulingStrategy
+                    var defaultSchedulingPeriod = processor.config['defaultSchedulingPeriod'];
+                    $('#cron-driven-scheduling-period').val(defaultSchedulingPeriod['CRON_DRIVEN']);
+                    $('#timer-driven-scheduling-period').val(defaultSchedulingPeriod['TIMER_DRIVEN']);
+
+                    // set the scheduling period as appropriate
+                    if (processor.config['schedulingStrategy'] === 'CRON_DRIVEN') {
+                        $('#cron-driven-scheduling-period').val(processor.config['schedulingPeriod']);
+                    } else if (processor.config['schedulingStrategy'] !== 'EVENT_DRIVEN') {
+                        $('#timer-driven-scheduling-period').val(processor.config['schedulingPeriod']);
+                    }
+
+                    // load the relationship list
+                    if (!nf.Common.isEmpty(processor.relationships)) {
+                        $.each(processor.relationships, function (i, relationship) {
+                            createRelationshipOption(relationship);
+                        });
+                    } else {
+                        $('#auto-terminate-relationship-names').append('<div class="unset">This processor has no relationships.</div>');
+                    }
+
+                    var buttons = [{
+                            buttonText: 'Apply',
+                            handler: {
+                                click: function () {
+                                    // close all fields currently being edited
+                                    $('#processor-properties').propertytable('saveRow');
+
+                                    // marshal the settings and properties and update the processor
+                                    var updatedProcessor = marshalDetails();
+
+                                    // ensure details are valid as far as we can tell
+                                    if (validateDetails(updatedProcessor)) {
+                                        // update the selected component
+                                        $.ajax({
+                                            type: 'PUT',
+                                            data: JSON.stringify(updatedProcessor),
+                                            url: processor.uri,
+                                            dataType: 'json',
+                                            processData: false,
+                                            contentType: 'application/json'
+                                        }).done(function (response) {
+                                            if (nf.Common.isDefinedAndNotNull(response.processor)) {
+                                                // update the revision
+                                                nf.Client.setRevision(response.revision);
+
+                                                // set the new processor state based on the response
+                                                nf.Processor.set(response.processor);
+
+                                                // reload the processor's outgoing connections
+                                                reloadProcessorConnections(processor);
+
+                                                // close the details panel
+                                                $('#processor-configuration').modal('hide');
+                                            }
+                                        }).fail(handleProcessorConfigurationError);
+                                    }
+                                }
+                            }
+                        }, {
+                            buttonText: 'Cancel',
+                            handler: {
+                                click: function () {
+                                    $('#processor-configuration').modal('hide');
+                                }
+                            }
+                        }];
+
+                    // determine if we should show the advanced button
+                    if (nf.Common.isDefinedAndNotNull(processor.config.customUiUrl) && processor.config.customUiUrl !== '') {
+                        buttons.push({
+                            buttonText: 'Advanced',
+                            handler: {
+                                click: function () {
+                                    var openCustomUi = function () {
+                                        // reset state and close the dialog manually to avoid hiding the faded background
+                                        $('#processor-configuration').modal('hide');
+
+                                        // show the custom ui
+                                        nf.CustomProcessorUi.showCustomUi($('#processor-id').text(), processor.config.customUiUrl, true).done(function () {
+                                            // once the custom ui is closed, reload the processor
+                                            nf.Processor.reload(processor);
+
+                                            // and reload the processor's outgoing connections
+                                            reloadProcessorConnections(processor);
+                                        });
+                                    };
+
+                                    // close all fields currently being edited
+                                    $('#processor-properties').propertytable('saveRow');
+
+                                    // determine if changes have been made
+                                    if (isSaveRequired()) {
+                                        // see if those changes should be saved
+                                        nf.Dialog.showYesNoDialog({
+                                            dialogContent: 'Save changes before opening the advanced configuration?',
+                                            overlayBackground: false,
+                                            noHandler: openCustomUi,
+                                            yesHandler: function () {
+                                                // marshal the settings and properties and update the processor
+                                                var updatedProcessor = marshalDetails();
+
+                                                // ensure details are valid as far as we can tell
+                                                if (validateDetails(updatedProcessor)) {
+                                                    // update the selected component
+                                                    $.ajax({
+                                                        type: 'PUT',
+                                                        data: JSON.stringify(updatedProcessor),
+                                                        url: processor.uri,
+                                                        dataType: 'json',
+                                                        processData: false,
+                                                        contentType: 'application/json'
+                                                    }).done(function (response) {
+                                                        if (nf.Common.isDefinedAndNotNull(response.processor)) {
+                                                            // update the revision
+                                                            nf.Client.setRevision(response.revision);
+
+                                                            // open the custom ui
+                                                            openCustomUi();
+                                                        }
+                                                    }).fail(handleProcessorConfigurationError);
+                                                }
+                                            }
+                                        });
+                                    } else {
+                                        // if there were no changes, simply open the custom ui
+                                        openCustomUi();
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // set the button model
+                    $('#processor-configuration').modal('setButtonModel', buttons);
+                    
                     // load the property table
                     $('#processor-properties').propertytable('loadProperties', processor.config.properties, processor.config.descriptors, processorHistory.propertyHistory);
 
