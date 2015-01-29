@@ -169,34 +169,79 @@ nf.ControllerServiceConfiguration = (function () {
      * @param {array} references
      */
     var createReferences = function (references) {
-        var processors = $('<ul class="processor-references"></ul>');
-        var services = $('<ul class="controller-service-references"></ul>');
-        var tasks = $('<ul class="reporting-task-references"></ul>');
+        var processors = $('<ul class="reference-listing clear"></ul>');
+        var services = $('<ul class="reference-listing clear"></ul>');
+        var tasks = $('<ul class="reference-listing clear"></ul>');
         $.each(references, function (_, reference) {
             if (reference.referenceType === 'Processor') {
-                var processorItem = $('<li></li>').text(reference.name);
+                var processorLink = $('<span class="link"></span>').text(reference.name).on('click', function () {
+                    // show the component
+                    nf.CanvasUtils.showComponent(reference.groupId, reference.id);
+                    
+                    // close the dialog and shell
+                    $('#controller-service-configuration').modal('hide');
+                    $('#shell-close-button').click();
+                });
+                
+                var processorType = $('<span class="reference-type"></span>').text('(' + nf.Common.substringAfterLast(reference.type, '.') + ')');
+                var processorItem = $('<li></li>').append(processorLink).append(processorType);
                 processors.append(processorItem);
             } else if (reference.referenceType === 'ControllerService') {
-                var serviceItem = $('<li></li>').text(reference.name);
+                var serviceItem = $('<li></li>').text(reference.name).on('click', function () {
+                    
+                });
                 services.append(serviceItem);
             } else if (reference.referenceType === 'ReportingTask') {
-                var taskItem = $('<li></li>').text(reference.name);
+                var taskItem = $('<li></li>').text(reference.name).on('click', function () {
+                    
+                });
                 tasks.append(taskItem);
             }
         });
         
-//        .append('<span class="expansion-button expanded"></span>')
+        // toggles the visibility of a listing
+        var toggle = function (twist, list) {
+            if (twist.hasClass('expanded')) {
+                twist.removeClass('expanded').addClass('collapsed');
+                list.hide();
+            } else {
+                twist.removeClass('collapsed').addClass('expanded');
+                list.show();
+            }
+        };
         
+        // create the collapsable listing for each type
         var controllerServiceReferences = $('#controller-service-references');
-        $('<div>Processors</div>').on('click', function () {
+        var createReferenceBlock = function (titleText, list) {
+            var twist = $('<span class="expansion-button expanded"></span>');
+            var title = $('<span class="reference-title"></span>').text(titleText);
+            var count = $('<span class="reference-count"></span>').text('(' + list.children().length + ')');
             
-        }).append(processors).appendTo(controllerServiceReferences);
-        $('<div>Controller Services</div>').on('click', function () {
+            // create the reference block
+            $('<div class="reference-block pointer unselectable"></div>').on('click', function () {
+                // toggle this block
+                toggle(twist, list);
+                
+                // update the border if necessary
+                showReferencesBorder();
+            }).append(twist).append(title).append(count).appendTo(controllerServiceReferences);
             
-        }).append(services).appendTo(controllerServiceReferences);
-        $('<div>Reporting Tasks</div>').on('click', function () {
+            // show message for empty list
+            if (list.is(':empty')) {
+                list.append('<li class="unset" style="margin-top: 2px;">No ' + titleText.toLowerCase() + ' reference this service.</li>');
+            }
             
-        }).append(tasks).appendTo(controllerServiceReferences);
+            // add the listing
+            list.appendTo(controllerServiceReferences);
+        };
+        
+        // create blocks for each type of component
+        createReferenceBlock('Processors', processors);
+        createReferenceBlock('Controller Services', services);
+        createReferenceBlock('Reporting Tasks', tasks);
+        
+        // update the border if necessary
+        showReferencesBorder();
     };
     
     /**
