@@ -608,7 +608,7 @@ public class StandardFlowService implements FlowService, ProtocolHandler {
         if (firstControllerInitialization) {
             // load the controller services
             logger.debug("Loading controller services");
-            dao.loadControllerServices(controller);
+//            dao.loadControllerServices(controller);
         }
 
         // load the flow
@@ -625,7 +625,7 @@ public class StandardFlowService implements FlowService, ProtocolHandler {
             logger.debug("First controller initialization. Loading reporting tasks and initializing controller.");
 
             // load the controller tasks
-            dao.loadReportingTasks(controller);
+//            dao.loadReportingTasks(controller);
 
             // initialize the flow
             controller.initializeFlow();
