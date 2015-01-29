@@ -14,32 +14,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.web.api.entity;
+package org.apache.nifi.web.api.dto;
 
-import javax.xml.bind.annotation.XmlRootElement;
-import org.apache.nifi.web.api.dto.ProcessorHistoryDTO;
+import java.util.Map;
+import javax.xml.bind.annotation.XmlType;
 
 /**
- * A serialized representation of this class can be placed in the entity body of
- * a request or response to or from the API. This particular entity holds a
- * reference to a ProcessorHistoryDTO.
+ * History of a component's properties.
  */
-@XmlRootElement(name = "processorHistoryEntity")
-public class ProcessorHistoryEntity extends Entity {
+@XmlType(name = "componentHistory")
+public class ComponentHistoryDTO {
 
-    private ProcessorHistoryDTO propertyHistory;
+    private String componentId;
+    private Map<String, PropertyHistoryDTO> propertyHistory;
 
     /**
-     * The ProcessorHistoryDTO that is being serialized.
+     * The component id.
      *
-     * @return The ProcessorHistoryDTO object
+     * @return
      */
-    public ProcessorHistoryDTO getProcessorHistory() {
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    /**
+     * The history for this components properties.
+     *
+     * @return
+     */
+    public Map<String, PropertyHistoryDTO> getPropertyHistory() {
         return propertyHistory;
     }
 
-    public void setProcessorHistory(ProcessorHistoryDTO propertyHistory) {
+    public void setPropertyHistory(Map<String, PropertyHistoryDTO> propertyHistory) {
         this.propertyHistory = propertyHistory;
     }
-
 }

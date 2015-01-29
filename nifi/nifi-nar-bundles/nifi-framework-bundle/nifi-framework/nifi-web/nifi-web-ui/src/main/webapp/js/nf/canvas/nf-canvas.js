@@ -179,11 +179,18 @@ nf.Canvas = (function () {
                 // changes that need to be updated
                 if (revision.version > currentRevision.version && revision.clientId !== currentRevision.clientId) {
                     var refreshContainer = $('#refresh-required-container');
+                    var settingsRefreshIcon = $('#settings-refresh-required-icon');
 
-                    // insert the refresh needed text - if necessary
+                    // insert the refresh needed text in the canvas - if necessary
                     if (!refreshContainer.is(':visible')) {
                         $('#stats-last-refreshed').addClass('alert');
                         refreshContainer.show();
+                    }
+                    
+                    // insert the refresh needed text in the settings - if necessary
+                    if (!settingsRefreshIcon.is(':visible')) {
+                        $('#settings-last-refreshed').addClass('alert');
+                        settingsRefreshIcon.show();
                     }
                 }
             }
@@ -870,7 +877,8 @@ nf.Canvas = (function () {
                 // get the process group to refresh everything
                 var processGroupXhr = reloadProcessGroup(nf.Canvas.getGroupId());
                 var statusXhr = reloadFlowStatus();
-                $.when(processGroupXhr, statusXhr).done(function (processGroupResult) {
+                var settingsXhr = nf.Settings.loadSettings();
+                $.when(processGroupXhr, statusXhr, settingsXhr).done(function (processGroupResult) {
                     // adjust breadcrumbs if necessary
                     var title = $('#data-flow-title-container');
                     var titlePosition = title.position();
@@ -1005,6 +1013,7 @@ nf.Canvas = (function () {
 
                         // initialize components
                         nf.ConnectionConfiguration.init();
+                        nf.ControllerServiceConfiguration.init();
                         nf.ProcessorConfiguration.init();
                         nf.ProcessGroupConfiguration.init();
                         nf.RemoteProcessGroupConfiguration.init();

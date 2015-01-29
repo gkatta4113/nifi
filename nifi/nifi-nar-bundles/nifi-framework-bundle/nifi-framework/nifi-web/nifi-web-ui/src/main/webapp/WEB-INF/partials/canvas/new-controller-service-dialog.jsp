@@ -39,13 +39,6 @@
             <div id="controller-service-description-container" class="hidden">
                 <div id="controller-service-type-name" class="ellipsis"></div>
                 <div id="controller-service-type-description" class="ellipsis multiline"></div>
-                <div id="controller-service-name-container">
-                    <div class="setting-name">Name</div>
-                    <div class="setting-field">
-                        <input id="controller-service-name-field" type="text"/>
-                    </div>
-                    <div class="clear"></div>
-                </div>
                 <span class="hidden" id="selected-controller-service-name"></span>
                 <span class="hidden" id="selected-controller-service-type"></span>
             </div>

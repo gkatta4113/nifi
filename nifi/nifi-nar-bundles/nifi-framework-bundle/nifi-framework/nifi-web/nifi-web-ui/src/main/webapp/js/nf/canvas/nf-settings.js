@@ -35,62 +35,71 @@ nf.Settings = (function () {
      * Initializes the general tab.
      */
     var initGeneral = function () {
-        // register the click listener for the archive link
-        $('#archive-flow-link').click(function () {
-            var revision = nf.Client.getRevision();
+        // update the visibility of the controls
+        if (nf.Common.isDFM()) {
+            $('#general-settings div.editable').show();
+            $('#general-settings div.read-only').hide();
+            
+            // register the click listener for the archive link
+            $('#archive-flow-link').click(function () {
+                var revision = nf.Client.getRevision();
 
-            $.ajax({
-                type: 'POST',
-                url: config.urls.controllerArchive,
-                data: {
-                    version: revision.version,
-                    clientId: revision.clientId
-                },
-                dataType: 'json'
-            }).done(function (response) {
-                // update the revision
-                nf.Client.setRevision(response.revision);
+                $.ajax({
+                    type: 'POST',
+                    url: config.urls.controllerArchive,
+                    data: {
+                        version: revision.version,
+                        clientId: revision.clientId
+                    },
+                    dataType: 'json'
+                }).done(function (response) {
+                    // update the revision
+                    nf.Client.setRevision(response.revision);
 
-                // show the result dialog
-                nf.Dialog.showOkDialog({
-                    dialogContent: 'A new flow archive was successfully created.',
-                    overlayBackground: false
-                });
-            }).fail(nf.Common.handleAjaxError);
-        });
+                    // show the result dialog
+                    nf.Dialog.showOkDialog({
+                        dialogContent: 'A new flow archive was successfully created.',
+                        overlayBackground: false
+                    });
+                }).fail(nf.Common.handleAjaxError);
+            });
 
-        // register the click listener for the save button
-        $('#settings-save').click(function () {
-            var revision = nf.Client.getRevision();
+            // register the click listener for the save button
+            $('#settings-save').click(function () {
+                var revision = nf.Client.getRevision();
 
-            // marshal the configuration details
-            var configuration = marshalConfiguration();
-            configuration['version'] = revision.version;
-            configuration['clientId'] = revision.clientId;
+                // marshal the configuration details
+                var configuration = marshalConfiguration();
+                configuration['version'] = revision.version;
+                configuration['clientId'] = revision.clientId;
 
-            // save the new configuration details
-            $.ajax({
-                type: 'PUT',
-                url: config.urls.controllerConfig,
-                data: configuration,
-                dataType: 'json'
-            }).done(function (response) {
-                // update the revision
-                nf.Client.setRevision(response.revision);
+                // save the new configuration details
+                $.ajax({
+                    type: 'PUT',
+                    url: config.urls.controllerConfig,
+                    data: configuration,
+                    dataType: 'json'
+                }).done(function (response) {
+                    // update the revision
+                    nf.Client.setRevision(response.revision);
 
-                // update the displayed name
-                document.title = response.config.name;
+                    // update the displayed name
+                    document.title = response.config.name;
 
-                // set the data flow title and close the shell
-                $('#data-flow-title-container').children('span.link:first-child').text(response.config.name);
+                    // set the data flow title and close the shell
+                    $('#data-flow-title-container').children('span.link:first-child').text(response.config.name);
 
-                // close the settings dialog
-                nf.Dialog.showOkDialog({
-                    dialogContent: 'Settings successfully applied.',
-                    overlayBackground: false
-                });
-            }).fail(nf.Common.handleAjaxError);
-        });
+                    // close the settings dialog
+                    nf.Dialog.showOkDialog({
+                        dialogContent: 'Settings successfully applied.',
+                        overlayBackground: false
+                    });
+                }).fail(nf.Common.handleAjaxError);
+            });
+        } else {
+            $('#general-settings div.editable').hide();
+            $('#general-settings div.read-only').show();
+        }
     };
 
     /**
@@ -178,7 +187,6 @@ nf.Settings = (function () {
     var clearSelectedControllerService = function () {
         $('#controller-service-type-description').text('');
         $('#controller-service-type-name').text('');
-        $('#controller-service-name-field').val('');
         $('#selected-controller-service-name').text('');
         $('#selected-controller-service-type').text('');
         $('#controller-service-description-container').hide();
@@ -350,6 +358,39 @@ nf.Settings = (function () {
         
         return markup;
     };
+
+    /**
+     * Adds a new controller service of the specified type.
+     * 
+     * @param {string} controllerServiceType
+     */
+    var addControllerService = function (controllerServiceType) {
+        var revision = nf.Client.getRevision();
+
+        // add the new controller service
+        var addService = $.ajax({
+            type: 'POST',
+            url: config.urls.controllerServices,
+            data: {
+                version: revision.version,
+                clientId: revision.clientId,
+                type: controllerServiceType
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            // update the revision
+            nf.Client.setRevision(response.revision);
+
+            var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
+            var controllerServicesData = controllerServicesGrid.getData();
+            controllerServicesData.addItem(response.controllerService);
+        });
+        
+        // hide the dialog
+        $('#new-controller-service-dialog').modal('hide');
+        
+        return addService;
+    };
     
     /**
      * Initializes the new controller service dialog.
@@ -454,7 +495,6 @@ nf.Settings = (function () {
 
                     // populate the dom
                     $('#controller-service-type-name').text(controllerServiceType.label).ellipsis();
-                    $('#controller-service-name-field').val(controllerServiceType.label);
                     $('#selected-controller-service-name').text(controllerServiceType.label);
                     $('#selected-controller-service-type').text(controllerServiceType.type);
                     
@@ -466,12 +506,6 @@ nf.Settings = (function () {
         controllerServiceTypesGrid.onClick.subscribe(function (e, args) {
             var item = controllerServiceTypesData.getItem(args.row);
             if (item && item.children.length > 0) {
-                // determine if there are rows currectly selected
-                var selectedIndex = controllerServiceTypesGrid.getSelectedRows();
-                if ($.isArray(selectedIndex) && selectedIndex.length === 1) {
-                    
-                }
-
                 // update the grid
                 item.collapsed = !item.collapsed;
                 controllerServiceTypesData.updateItem(item.id, item);
@@ -479,6 +513,10 @@ nf.Settings = (function () {
                 // prevent selection within slickgrid
                 e.stopImmediatePropagation();
             }
+        });
+        controllerServiceTypesGrid.onDblClick.subscribe(function (e, args) {
+            var controllerServiceType = controllerServiceTypesGrid.getDataItem(args.row);
+            addControllerService(controllerServiceType.type);
         });
 
         // wire up the dataview to the grid
@@ -567,15 +605,8 @@ nf.Settings = (function () {
                 buttonText: 'Add',
                 handler: {
                     click: function () {
-                        // add the new controller service
-                        var selectedServiceName = $('#controller-service-name-field').val();
                         var selectedServiceType = $('#selected-controller-service-type').text();
-                        
-                        $.ajax({
-                            
-                        }).done(function () {
-                            
-                        });
+                        addControllerService(selectedServiceType);
                     }
                 }
             }, {
@@ -612,15 +643,46 @@ nf.Settings = (function () {
         initNewControllerServiceDialog();
         
         var moreControllerServiceDetails = function (row, cell, value, columnDef, dataContext) {
-            return '<img src="images/iconDetails.png" title="View Details" class="pointer" style="margin-top: 5px; float: left;" onclick="javascript:nf.Settings.showControllerServiceDetails(\'' + row + '\');"/>';
+            return '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />';
+        };
+        
+        var typeFormatter = function (row, cell, value, columnDef, dataContext) {
+            return nf.Common.substringAfterLast(value, '.');
+        };
+        
+        var enabledFormatter = function (row, cell, value, columnDef, dataContext) {
+            if (dataContext.enabled === true) {
+                return 'Enabled';
+            } else {
+                return 'Disabled';
+            }
         };
         
         // define the column model for the controller services table
         var controllerServicesColumns = [
-            {id: 'moreDetails', field: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreControllerServiceDetails, sortable: true, width: 50, maxWidth: 50},
+            {id: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreControllerServiceDetails, sortable: false, width: 50, maxWidth: 50},
             {id: 'name', field: 'name', name: 'Name', sortable: true, resizable: true},
-            {id: 'type', field: 'type', name: 'Type', sortable: true, resizable: true}
+            {id: 'type', field: 'type', name: 'Type', formatter: typeFormatter, sortable: true, resizable: true},
+            {id: 'enabled', field: 'enabled', name: 'State', formatter: enabledFormatter, sortable: true, resizeable: true}
         ];
+        
+        // only DFM can edit controller services
+        if (nf.Common.isDFM()) {
+            var controllerServiceActionFormatter = function (row, cell, value, columnDef, dataContext) {
+                var markup = '';
+
+                if (dataContext.enabled === true) {
+                    markup += '<img src="images/iconDisable.png" title="Disable" class="pointer disable-controller-service" style="margin-top: 2px;" />&nbsp;';
+                } else {
+                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-controller-service" style="margin-top: 2px;" />&nbsp;<img src="images/iconRun.png" title="Enable" class="pointer enable-controller-service" style="margin-top: 2px;"/>&nbsp;<img src="images/iconDelete.png" title="Remove" class="pointer delete-controller-service" style="margin-top: 2px;" />&nbsp;';
+                }
+
+                return markup;
+            };
+            
+            controllerServicesColumns.push({id: 'actions', name: '&nbsp;', resizable: false, formatter: controllerServiceActionFormatter, sortable: false, width: 75, maxWidth: 75});
+        }
+        
         var controllerServicesOptions = {
             forceFitColumns: true,
             enableTextSelectionOnCells: true,
@@ -635,25 +697,77 @@ nf.Settings = (function () {
             inlineFilters: false
         });
         controllerServicesData.setItems([]);
-//        controllerServicesData.setFilterArgs({
-//            searchString: getControllerServiceTypeFilterText(),
-//            property: $('#controller-service-type-filter-options').combo('getSelectedOption').value
-//        });
-        controllerServicesData.setFilter(filterControllerServiceTypes);
         
         // initialize the grid
         var controllerServicesGrid = new Slick.Grid('#controller-services-table', controllerServicesData, controllerServicesColumns, controllerServicesOptions);
         controllerServicesGrid.setSelectionModel(new Slick.RowSelectionModel());
         controllerServicesGrid.registerPlugin(new Slick.AutoTooltips());
         controllerServicesGrid.setSortColumn('name', true);
+        
+        // sets whether the specified controller service is enabled
+        var setEnabled = function (controllerService, enabled) {
+            var revision = nf.Client.getRevision();
+            return $.ajax({
+                type: 'PUT',
+                url: controllerService.uri,
+                data: {
+                    clientId: revision.clientId,
+                    version: revision.version,
+                    enabled: enabled
+                },
+                dataType: 'json'
+            }).done(function (response) {
+                // update the revision
+                nf.Client.setRevision(response.revision);
+
+                // update the service
+                controllerServicesData.updateItem(controllerService.id, response.controllerService);
+            }).fail(nf.Common.handleAjaxError);
+        };
+        
+        // configure a click listener
+        controllerServicesGrid.onClick.subscribe(function (e, args) {
+            var target = $(e.target);
+            
+            // get the service at this row
+            var controllerService = controllerServicesData.getItem(args.row);
+            
+            // determine the desired action
+            if (controllerServicesGrid.getColumns()[args.cell].id === 'actions') {
+                if (target.hasClass('edit-controller-service')) {
+                    nf.ControllerServiceConfiguration.showConfiguration(controllerService);
+                } else if (target.hasClass('enable-controller-service')) {
+                    setEnabled(controllerService, true);
+                } else if (target.hasClass('disable-controller-service')) {
+                    setEnabled(controllerService, false);
+                } else if (target.hasClass('delete-controller-service')) {
+                    var revision = nf.Client.getRevision();
+                    return $.ajax({
+                        type: 'DELETE',
+                        url: controllerService.uri + '?' + $.param({
+                            version: revision.version,
+                            clientId: revision.clientId
+                        }),
+                        dataType: 'json'
+                    }).done(function (response) {
+                        // update the revision
+                        nf.Client.setRevision(response.revision);
+                        
+                        // remove the service
+                        controllerServicesData.deleteItem(controllerService.id);
+                    }).fail(nf.Common.handleAjaxError);
+                }
+            } else if (controllerServicesGrid.getColumns()[args.cell].id === 'moreDetails') {
+                if (target.hasClass('view-controller-service')) {
+                    
+                }
+            }
+        });
 
         // wire up the dataview to the grid
         controllerServicesData.onRowCountChanged.subscribe(function (e, args) {
             controllerServicesGrid.updateRowCount();
             controllerServicesGrid.render();
-
-            // update the total number of displayed processors
-//            $('#displayed-controller-service-types').text(getVisibleControllerServiceCount());
         });
         controllerServicesData.onRowsChanged.subscribe(function (e, args) {
             controllerServicesGrid.invalidateRows(args.rows);
@@ -708,7 +822,7 @@ nf.Settings = (function () {
         initNewReportingTaskDialog();
         
         var moreReportingTaskDetails = function (row, cell, value, columnDef, dataContext) {
-            return '<img src="images/iconDetails.png" title="View Details" class="pointer" style="margin-top: 5px; float: left;" onclick="javascript:nf.Settings.showReportingTaskDetails(\'' + row + '\');"/>';
+            return '<img src="images/iconDetails.png" title="View Details" class="pointer view-reporting-task" style="margin-top: 5px; float: left;" />';
         };
         
         // define the column model for the reporting tasks table
@@ -767,6 +881,20 @@ nf.Settings = (function () {
                 }
             });
             
+            // setup the tooltip for the refresh icon
+            $('#settings-refresh-required-icon').qtip($.extend({
+                content: 'This flow has been modified by another user. Please refresh.'
+            }, nf.CanvasUtils.config.systemTooltipConfig));
+            
+            // refresh the system diagnostics when clicked
+            nf.Common.addHoverEffect('#settings-refresh-button', 'button-refresh', 'button-refresh-hover').click(function () {
+                if ($('#settings-refresh-required-icon').is(':visible')) {
+                    nf.CanvasHeader.reloadAndClearWarnings();
+                } else {
+                    nf.Settings.loadSettings();
+                }
+            });
+            
             // create a new controller service or reporting task
             $('#new-service-or-task').on('click', function() {
                 var selectedTab = $('li.settings-selected-tab').text();
@@ -776,7 +904,7 @@ nf.Settings = (function () {
                     
                 }
             });
-
+            
             // initialize each tab
             initGeneral();
             initControllerServices();
@@ -799,27 +927,22 @@ nf.Settings = (function () {
         },
         
         /**
-         * Shows the details of the controller service at the specified row.
-         * 
-         * @param {documentedType} row
-         */
-        showControllerServiceDetails: function (row) {
-            
-        },
-        
-        /**
-         * Shows the details of the reporting task at the specified row.
-         * 
-         * @param {documentedType} row
-         */
-        showReportingTaskDetails: function (row) {
-            
-        },
-        
-        /**
          * Shows the settings dialog.
          */
         showSettings: function () {
+            return nf.Settings.loadSettings().done(function () {
+                // show the settings dialog
+                nf.Shell.showContent('#settings').done(function () {
+                    // reset button state
+                    $('#settings-save').mouseout();
+                });
+            });
+        },
+        
+        /**
+         * Loads the settings.
+         */
+        loadSettings: function () {
             var settings = $.ajax({
                 type: 'GET',
                 url: config.urls.controllerConfig,
@@ -829,20 +952,22 @@ nf.Settings = (function () {
                 if (nf.Common.isDefinedAndNotNull(response.config)) {
                     // set the header
                     $('#settings-header-text').text(response.config.name + ' Settings');
+                    $('#settings-last-refreshed').text(response.config.currentTime);
 
                     // populate the controller settings
-                    $('#data-flow-title-field').val(response.config.name);
-                    $('#data-flow-comments-field').val(response.config.comments);
-                    $('#maximum-timer-driven-thread-count-field').val(response.config.maxTimerDrivenThreadCount);
-                    $('#maximum-event-driven-thread-count-field').val(response.config.maxEventDrivenThreadCount);
+                    if (nf.Common.isDFM()) {
+                        $('#data-flow-title-field').val(response.config.name);
+                        $('#data-flow-comments-field').val(response.config.comments);
+                        $('#maximum-timer-driven-thread-count-field').val(response.config.maxTimerDrivenThreadCount);
+                        $('#maximum-event-driven-thread-count-field').val(response.config.maxEventDrivenThreadCount);
+                    } else {
+                        $('#read-only-data-flow-title-field').html(nf.Common.formatValue(response.config.name));
+                        $('#read-only-data-flow-comments-field').html(nf.Common.formatValue(response.config.comments));
+                        $('#read-only-maximum-timer-driven-thread-count-field').text(response.config.maxTimerDrivenThreadCount);
+                        $('#read-only-maximum-event-driven-thread-count-field').text(response.config.maxEventDrivenThreadCount);
+                    }
                 }
-
-                // show the settings dialog
-                nf.Shell.showContent('#settings').done(function () {
-                    // reset button state
-                    $('#settings-save').mouseout();
-                });
-            }).fail(nf.Common.handleAjaxError);
+            });
             
             // load the controller services
             var controllerServices = loadControllerServices();
@@ -850,7 +975,10 @@ nf.Settings = (function () {
             // load the reporting tasks
             var reportingTasks = loadReportingTasks();
             
-            return $.when(settings, controllerServices, reportingTasks);
+            // return a deferred for all parts of the settings
+            return $.when(settings, controllerServices, reportingTasks).done(function () {
+                
+            }).fail(nf.Common.handleAjaxError);
         }
     };
 }());

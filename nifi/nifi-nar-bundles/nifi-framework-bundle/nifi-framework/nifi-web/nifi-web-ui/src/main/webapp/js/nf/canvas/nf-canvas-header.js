@@ -58,15 +58,11 @@ nf.CanvasHeader = (function () {
             });
 
             // mouse over for the flow settings link
-            if (nf.Common.isDFM()) {
-                nf.Common.addHoverEffect('#flow-settings-link', 'flow-settings-link', 'flow-settings-link-hover').click(function () {
-                    nf.Settings.showSettings().done(function () {
-                        nf.Settings.resetTableSize();
-                    });
+            nf.Common.addHoverEffect('#flow-settings-link', 'flow-settings-link', 'flow-settings-link-hover').click(function () {
+                nf.Settings.showSettings().done(function () {
+                    nf.Settings.resetTableSize();
                 });
-            } else {
-                $('#flow-settings-link').addClass('flow-settings-link-disabled');
-            }
+            });
 
             // mouse over for the users link
             if (nf.Common.isAdmin()) {
@@ -105,22 +101,7 @@ nf.CanvasHeader = (function () {
 
             // setup the refresh link actions
             $('#refresh-required-link').click(function () {
-                nf.Canvas.reload().done(function () {
-                    // update component visibility
-                    nf.Canvas.View.updateVisibility();
-
-                    // refresh the birdseye
-                    nf.Birdseye.refresh();
-
-                    // hide the refresh link
-                    $('#stats-last-refreshed').removeClass('alert');
-                    $('#refresh-required-container').hide();
-                }).fail(function () {
-                    nf.Dialog.showOkDialog({
-                        dialogContent: 'Unable to refresh the current group.',
-                        overlayBackground: true
-                    });
-                });
+                nf.CanvasHeader.reloadAndClearWarnings();
             });
 
             // get the about details
@@ -289,6 +270,32 @@ nf.CanvasHeader = (function () {
                         title.css('left', (titlePosition.left + increment) + 'px');
                     }
                 }
+            });
+        },
+        
+        /**
+         * Reloads and clears any warnings.
+         */
+        reloadAndClearWarnings: function () {
+            nf.Canvas.reload().done(function () {
+                // update component visibility
+                nf.Canvas.View.updateVisibility();
+
+                // refresh the birdseye
+                nf.Birdseye.refresh();
+
+                // hide the refresh link on the canvas
+                $('#stats-last-refreshed').removeClass('alert');
+                $('#refresh-required-container').hide();
+                
+                // hide the refresh link on the settings
+                $('#settings-last-refreshed').removeClass('alert');
+                $('#settings-refresh-required-icon').hide();
+            }).fail(function () {
+                nf.Dialog.showOkDialog({
+                    dialogContent: 'Unable to refresh the current group.',
+                    overlayBackground: true
+                });
             });
         }
     };

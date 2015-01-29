@@ -39,7 +39,7 @@ import javax.ws.rs.WebApplicationException;
 
 import org.apache.nifi.action.Action;
 import org.apache.nifi.action.component.details.ComponentDetails;
-import org.apache.nifi.action.component.details.ProcessorDetails;
+import org.apache.nifi.action.component.details.ExtensionDetails;
 import org.apache.nifi.action.component.details.RemoteProcessGroupDetails;
 import org.apache.nifi.action.details.ActionDetails;
 import org.apache.nifi.action.details.ConfigureDetails;
@@ -103,7 +103,7 @@ import org.apache.nifi.web.api.dto.PropertyDescriptorDTO.AllowableValueDTO;
 import org.apache.nifi.web.api.dto.action.ActionDTO;
 import org.apache.nifi.web.api.dto.action.HistoryDTO;
 import org.apache.nifi.web.api.dto.action.component.details.ComponentDetailsDTO;
-import org.apache.nifi.web.api.dto.action.component.details.ProcessorDetailsDTO;
+import org.apache.nifi.web.api.dto.action.component.details.ExtensionDetailsDTO;
 import org.apache.nifi.web.api.dto.action.component.details.RemoteProcessGroupDetailsDTO;
 import org.apache.nifi.web.api.dto.action.details.ActionDetailsDTO;
 import org.apache.nifi.web.api.dto.action.details.ConfigureDetailsDTO;
@@ -123,7 +123,9 @@ import org.apache.nifi.web.api.dto.status.ProcessorStatusDTO;
 import org.apache.nifi.web.api.dto.status.RemoteProcessGroupStatusDTO;
 import org.apache.nifi.web.api.dto.status.StatusDTO;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.web.api.dto.ControllerServiceDTO.ControllerServiceReferenceDTO;
 
 /**
  *
@@ -218,9 +220,9 @@ public final class DtoFactory {
             return null;
         }
 
-        if (componentDetails instanceof ProcessorDetails) {
-            final ProcessorDetailsDTO processorDetails = new ProcessorDetailsDTO();
-            processorDetails.setType(((ProcessorDetails) componentDetails).getType());
+        if (componentDetails instanceof ExtensionDetails) {
+            final ExtensionDetailsDTO processorDetails = new ExtensionDetailsDTO();
+            processorDetails.setType(((ExtensionDetails) componentDetails).getType());
             return processorDetails;
         } else if (componentDetails instanceof RemoteProcessGroupDetails) {
             final RemoteProcessGroupDetailsDTO remoteProcessGroupDetails = new RemoteProcessGroupDetailsDTO();
@@ -884,6 +886,29 @@ public final class DtoFactory {
 
             // set the property value
             dto.getProperties().put(descriptor.getName(), propertyValue);
+        }
+        
+        // initialize the references
+        dto.setReferences(new LinkedHashSet<ControllerServiceReferenceDTO>());
+        
+        // get all references
+        for (final ConfiguredComponent component : controllerServiceNode.getReferences().getReferencingComponents()) {
+            final ControllerServiceReferenceDTO reference = new ControllerServiceReferenceDTO();
+            reference.setId(component.getIdentifier());
+            reference.setName(component.getName());
+
+            if (component instanceof ProcessorNode) {
+                final ProcessorNode node = ((ProcessorNode) component);
+                reference.setGroupId(node.getProcessGroup().getIdentifier());
+                reference.setState(node.getScheduledState().name());
+                reference.setType(node.getProcessor().getClass().getName());
+            } else if (component instanceof ControllerServiceNode) {
+                final ControllerServiceNode node = ((ControllerServiceNode) component);
+                reference.setEnabled(!node.isDisabled());
+                reference.setType(node.getControllerServiceImplementation().getClass().getName());
+            }
+            
+            dto.getReferences().add(reference);
         }
         
         return dto;

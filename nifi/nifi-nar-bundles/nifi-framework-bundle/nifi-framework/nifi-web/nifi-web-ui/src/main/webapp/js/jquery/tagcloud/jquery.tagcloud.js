@@ -24,16 +24,6 @@
  *   select: selectHandler,
  *   remove: removeHandler
  * }
- * 
- * Options have a label (specified as the text property that is rendered
- * to users) and a value which is not. Additionally, options can be marked
- * as disabled. A disabled option cannot be selected by a user but may be
- * programmatically selected (supporting the restoration of options that have
- * become invalid). It is up to the developer to ensure that the selected 
- * option is not disabled.
- * 
- * The optionClass option supports specifying a class to apply to the 
- * option element.
  */
 
 /**

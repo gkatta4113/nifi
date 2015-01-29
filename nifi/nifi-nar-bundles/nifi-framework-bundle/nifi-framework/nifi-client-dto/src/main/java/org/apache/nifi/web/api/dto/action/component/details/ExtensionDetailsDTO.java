@@ -19,15 +19,15 @@ package org.apache.nifi.web.api.dto.action.component.details;
 import javax.xml.bind.annotation.XmlType;
 
 /**
- * Processor details for an action.
+ * Extension details for an action.
  */
-@XmlType(name = "processorDetails")
-public class ProcessorDetailsDTO extends ComponentDetailsDTO {
+@XmlType(name = "extensionDetails")
+public class ExtensionDetailsDTO extends ComponentDetailsDTO {
 
     private String type;
 
     /**
-     * The processors type.
+     * The extension type.
      *
      * @return
      */
