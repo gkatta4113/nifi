@@ -345,7 +345,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private void addControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
     	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
     	
-    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), false);
+    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), dto.getId(), false);
     	node.setName(dto.getName());
     	node.setAvailability(Availability.valueOf(dto.getAvailability()));
     	node.setComments(dto.getComments());
