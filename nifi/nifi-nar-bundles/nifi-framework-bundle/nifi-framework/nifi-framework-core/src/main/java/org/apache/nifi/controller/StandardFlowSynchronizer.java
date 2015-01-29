@@ -352,10 +352,14 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	node.setDisabled(dto.getEnabled() != Boolean.TRUE);
     	node.setAnnotationData(dto.getAnnotationData());
     	
-    	for ( final Map.Entry<String, String> property : dto.getProperties().entrySet() ) {
-    		node.setProperty(property.getKey(), property.getValue());
-    	}
-    	
+        for (final Map.Entry<String, String> entry : dto.getProperties().entrySet()) {
+            if (entry.getValue() == null) {
+                node.removeProperty(entry.getKey());
+            } else {
+                node.setProperty(entry.getKey(), entry.getValue());
+            }
+        }
+
     	if ( dto.getEnabled() == Boolean.TRUE ) {
     		controller.enableControllerService(node);
     	}
@@ -385,9 +389,13 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	
     	reportingTask.setAnnotationData(dto.getAnnotationData());
     	
-    	for ( final Map.Entry<String, String> entry : dto.getProperties().entrySet() ) {
-    		reportingTask.setProperty(entry.getKey(), entry.getValue());
-    	}
+        for (final Map.Entry<String, String> entry : dto.getProperties().entrySet()) {
+            if (entry.getValue() == null) {
+            	reportingTask.removeProperty(entry.getKey());
+            } else {
+            	reportingTask.setProperty(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     private void updateReportingTask(final FlowController controller, final Element reportingTaskElement, final StringEncryptor encryptor) {
