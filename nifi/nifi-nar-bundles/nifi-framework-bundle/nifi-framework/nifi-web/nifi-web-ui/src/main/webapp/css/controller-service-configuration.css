@@ -111,6 +111,10 @@ div.availability-setting {
     line-height: 18px;
 }
 
+/*
+    Service references
+*/
+
 #controller-service-references {
     border: 0 solid #CCCCCC;
     height: 280px;
@@ -118,6 +122,34 @@ div.availability-setting {
     overflow-x: hidden;
     padding: 2px;
     width: 376px;
+}
+
+div.reference-block {
+    margin-bottom: 4px;
+}
+
+span.reference-title {
+    margin-left: 5px;
+    font-weight: bold
+}
+
+span.reference-count {
+    margin-left: 5px;
+    color: #aaa;
+}
+
+ul.reference-listing {
+    margin-left: 20px;
+    margin-bottom: 8px;
+}
+
+ul.reference-listing li {
+    margin-bottom: 3px;
+}
+
+span.reference-type {
+    margin-left: 5px;
+    color: #aaa;
 }
 
 /*

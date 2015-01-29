@@ -46,7 +46,7 @@
 span.expansion-button {
     width: 10px;
     height: 10px;
-    float: left;
+    display: inline-block;
 }
 
 span.ancestor-type {
