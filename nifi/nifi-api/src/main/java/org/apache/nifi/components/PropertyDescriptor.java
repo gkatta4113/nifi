@@ -144,7 +144,7 @@ public final class PropertyDescriptor implements Comparable<PropertyDescriptor> 
                 final ControllerService controllerService = context.getControllerServiceLookup().getControllerService(input);
                 if (!context.getControllerServiceLookup().isControllerServiceEnabled(controllerService)) {
                     return new ValidationResult.Builder()
-                            .input(input)
+                            .input(context.getControllerServiceLookup().getControllerServiceName(controllerService.getIdentifier()))
                             .subject(getName())
                             .valid(false)
                             .explanation("Controller Service " + controllerService + " is disabled")
