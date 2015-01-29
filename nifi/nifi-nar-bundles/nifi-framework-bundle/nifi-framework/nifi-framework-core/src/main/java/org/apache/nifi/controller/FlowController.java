@@ -2469,12 +2469,14 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     }
     
     public ReportingTaskNode createReportingTask(final String type, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
-        if (type == null) {
+    	return createReportingTask(type, UUID.randomUUID().toString(), firstTimeAdded);
+    }
+    
+    public ReportingTaskNode createReportingTask(final String type, final String id, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+        if (type == null || id == null) {
             throw new NullPointerException();
         }
         
-        final String id = UUID.randomUUID().toString();
-
         ReportingTask task = null;
         final ClassLoader ctxClassLoader = Thread.currentThread().getContextClassLoader();
         try {

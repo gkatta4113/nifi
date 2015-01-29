@@ -379,7 +379,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private void addReportingTask(final FlowController controller, final Element reportingTaskElement, final StringEncryptor encryptor) throws ReportingTaskInstantiationException {
     	final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(reportingTaskElement, encryptor);
     	
-    	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), false);
+    	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), dto.getId(), false);
     	reportingTask.setName(dto.getName());
     	reportingTask.setComments(dto.getComment());
     	reportingTask.setAvailability(Availability.valueOf(dto.getAvailability()));
