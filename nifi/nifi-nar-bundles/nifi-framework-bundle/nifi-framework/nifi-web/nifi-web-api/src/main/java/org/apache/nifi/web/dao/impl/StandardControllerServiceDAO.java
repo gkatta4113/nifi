@@ -61,7 +61,8 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     @Override
     public ControllerServiceNode createControllerService(final ControllerServiceDTO controllerServiceDTO) {
         // create the controller service
-        final ControllerServiceNode controllerService = flowController.createControllerService(controllerServiceDTO.getType(), true);
+    	final Availability availability = Availability.valueOf(controllerServiceDTO.getAvailability().toUpperCase());
+        final ControllerServiceNode controllerService = flowController.createControllerService(controllerServiceDTO.getType(), availability, true);
         
         // ensure we can perform the update 
         verifyUpdate(controllerService, controllerServiceDTO);
@@ -222,9 +223,6 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         
         if (isNotNull(name)) {
             controllerService.setName(name);
-        }
-        if (isNotNull(availability)) {
-            controllerService.setAvailability(Availability.valueOf(availability));
         }
         if (isNotNull(annotationData)) {
             controllerService.setAnnotationData(annotationData);
