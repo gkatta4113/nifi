@@ -16,13 +16,12 @@
  */
 package org.apache.nifi.cluster.manager.impl;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.URI;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -55,7 +54,6 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
-import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -65,9 +63,6 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-import javax.xml.validation.Validator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.admin.service.AuditService;
@@ -140,6 +135,7 @@ import org.apache.nifi.controller.reporting.StandardReportingInitializationConte
 import org.apache.nifi.controller.scheduling.QuartzSchedulingAgent;
 import org.apache.nifi.controller.scheduling.StandardProcessScheduler;
 import org.apache.nifi.controller.scheduling.TimerDrivenSchedulingAgent;
+import org.apache.nifi.controller.service.ControllerServiceLoader;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.controller.service.StandardControllerServiceProvider;
@@ -444,14 +440,20 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                 }
 
                 // load flow
+                final ClusterDataFlow clusterDataFlow;
                 if (dataFlowManagementService.isFlowCurrent()) {
-                    final ClusterDataFlow clusterDataFlow = dataFlowManagementService.loadDataFlow();
+                    clusterDataFlow = dataFlowManagementService.loadDataFlow();
                     cachedDataFlow = clusterDataFlow.getDataFlow();
                     primaryNodeId = clusterDataFlow.getPrimaryNodeId();
                 } else {
                     throw new IOException("Flow is not current.");
                 }
 
+                final byte[] serializedServices = clusterDataFlow.getControllerServices();
+                if ( serializedServices != null && serializedServices.length > 0 ) {
+                	ControllerServiceLoader.loadControllerServices(this, new ByteArrayInputStream(serializedServices));
+                }
+                
                 // start multicast broadcasting service, if configured
                 if (servicesBroadcaster != null) {
                     servicesBroadcaster.start();
@@ -461,8 +463,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                 executeSafeModeTask();
 
                 // Load and start running Reporting Tasks
-                final File taskFile = new File(properties.getProperty(NiFiProperties.TASK_CONFIGURATION_FILE));
-                reportingTasks.putAll(loadReportingTasks(taskFile));
+                reportingTasks.putAll(loadReportingTasks(clusterDataFlow.getReportingTasks()));
             } catch (final IOException ioe) {
                 logger.warn("Failed to initialize cluster services due to: " + ioe, ioe);
                 stop();
@@ -876,16 +877,11 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         reconnectionThread.start();
     }
 
-    private Map<String, ReportingTaskNode> loadReportingTasks(final File taskConfigXml) {
+    private Map<String, ReportingTaskNode> loadReportingTasks(final byte[] serialized) {
         final Map<String, ReportingTaskNode> tasks = new HashMap<>();
-        if (taskConfigXml == null) {
-            logger.info("No controller tasks to start");
-            return tasks;
-        }
 
         try {
-            final URL schemaUrl = getClass().getResource("/ReportingTaskConfiguration.xsd");
-            final Document document = parse(taskConfigXml, schemaUrl);
+            final Document document = parse(serialized);
 
             final NodeList tasksNodes = document.getElementsByTagName("tasks");
             final Element tasksElement = (Element) tasksNodes.item(0);
@@ -957,7 +953,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                 tasks.put(reportingTaskNode.getIdentifier(), reportingTaskNode);
             }
         } catch (final SAXException | ParserConfigurationException | IOException | DOMException | NumberFormatException | InitializationException t) {
-            logger.error("Unable to load reporting tasks from {} due to {}", new Object[]{taskConfigXml, t});
+            logger.error("Unable to load reporting tasks due to {}", new Object[]{t});
             if (logger.isDebugEnabled()) {
                 logger.error("", t);
             }
@@ -999,11 +995,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         return taskNode;
     }
 
-    private Document parse(final File xmlFile, final URL schemaUrl) throws SAXException, ParserConfigurationException, IOException {
-        final SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-        final Schema schema = schemaFactory.newSchema(schemaUrl);
+    private Document parse(final byte[] serialized) throws SAXException, ParserConfigurationException, IOException {
         final DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-        docFactory.setSchema(schema);
         final DocumentBuilder builder = docFactory.newDocumentBuilder();
 
         builder.setErrorHandler(new org.xml.sax.ErrorHandler() {
@@ -1036,12 +1029,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         });
 
         // build the docuemnt
-        final Document document = builder.parse(xmlFile);
-
-        // ensure schema compliance
-        final Validator validator = schema.newValidator();
-        validator.validate(new DOMSource(document));
-
+        final Document document = builder.parse(new ByteArrayInputStream(serialized));
         return document;
     }
 
