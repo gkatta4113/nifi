@@ -463,7 +463,10 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                 executeSafeModeTask();
 
                 // Load and start running Reporting Tasks
-                reportingTasks.putAll(loadReportingTasks(clusterDataFlow.getReportingTasks()));
+                final byte[] serializedReportingTasks = clusterDataFlow.getReportingTasks();
+                if ( serializedReportingTasks != null && serializedReportingTasks.length > 0 ) {
+                	reportingTasks.putAll(loadReportingTasks(serializedReportingTasks));
+                }
             } catch (final IOException ioe) {
                 logger.warn("Failed to initialize cluster services due to: " + ioe, ioe);
                 stop();
