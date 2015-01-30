@@ -2651,7 +2651,7 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     }
     
     public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-    	return createControllerService(type, UUID.randomUUID().toString(), firstTimeAdded);
+    	return controllerServiceProvider.createControllerService(type, firstTimeAdded);
     }
     
     @Override

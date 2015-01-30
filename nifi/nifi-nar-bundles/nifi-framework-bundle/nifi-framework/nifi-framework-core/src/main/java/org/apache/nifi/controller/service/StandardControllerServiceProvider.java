@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -94,6 +95,11 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         if (superClass != null) {
             populateInterfaces(superClass, interfacesDefinedThusFar);
         }
+    }
+    
+    @Override
+    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
+    	return createControllerService(type, UUID.randomUUID().toString(), firstTimeAdded);
     }
 
     @Override
