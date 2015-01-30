@@ -16,6 +16,7 @@
  */
 package org.apache.nifi.web.api.dto;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import javax.xml.bind.annotation.XmlType;
@@ -38,6 +39,8 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
     private String annotationData;
     
     private Set<ControllerServiceReferenceDTO> references;
+    
+    private Collection<String> validationErrors;
 
     /**
      * The controller service name.
@@ -156,6 +159,21 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
         this.references = references;
     }
 
+    /**
+     * Gets the validation errors from this controller service. These validation errors
+     * represent the problems with the controller service that must be resolved before it
+     * can be enabled.
+     *
+     * @return The validation errors
+     */
+    public Collection<String> getValidationErrors() {
+        return validationErrors;
+    }
+
+    public void setValidationErrors(Collection<String> validationErrors) {
+        this.validationErrors = validationErrors;
+    }
+    
     /**
      * A component reference a controller service. This can either be another
      * controller service or a processor. Depending on the type of component

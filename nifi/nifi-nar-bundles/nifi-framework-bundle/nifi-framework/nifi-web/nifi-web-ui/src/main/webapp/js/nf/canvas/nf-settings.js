@@ -642,14 +642,21 @@ nf.Settings = (function () {
         // initialize the new controller service dialog
         initNewControllerServiceDialog();
         
+        // more details formatter
         var moreControllerServiceDetails = function (row, cell, value, columnDef, dataContext) {
-            return '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />';
+            var markup = '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />&nbsp;';
+            if (!nf.Common.isEmpty(dataContext.validationErrors)) {
+                markup += '<img src="images/iconAlert.png" class="has-errors" style="margin-top: 4px; float: left;" /><span class="hidden row-id">' + nf.Common.escapeHtml(dataContext.id) + '</span>';
+            }
+            return markup;
         };
         
+        // type formatter
         var typeFormatter = function (row, cell, value, columnDef, dataContext) {
             return nf.Common.substringAfterLast(value, '.');
         };
         
+        // service state formatter
         var enabledFormatter = function (row, cell, value, columnDef, dataContext) {
             if (dataContext.enabled === true) {
                 return 'Enabled';
@@ -776,7 +783,34 @@ nf.Settings = (function () {
         controllerServicesData.syncGridSelection(controllerServicesGrid, true);
 
         // hold onto an instance of the grid
-        $('#controller-services-table').data('gridInstance', controllerServicesGrid);
+        $('#controller-services-table').data('gridInstance', controllerServicesGrid).on('mouseenter', 'div.slick-cell', function (e) {
+            var errorIcon = $(this).find('img.has-errors');
+            if (errorIcon.length && !errorIcon.data('qtip')) {
+                var serviceId = $(this).find('span.row-id').text();
+
+                // get the service item
+                var item = controllerServicesData.getItemById(serviceId);
+
+                // format the errors
+                var tooltip = nf.Common.formatUnorderedList(item.validationErrors);
+
+                // show the tooltip
+                if (nf.Common.isDefinedAndNotNull(tooltip)) {
+                    errorIcon.qtip($.extend({
+                        content: tooltip,
+                        position: {
+                            target: 'mouse',
+                            viewport: $(window),
+                            adjust: {
+                                x: 8,
+                                y: 8,
+                                method: 'flipinvert flipinvert'
+                            }
+                        }
+                    }, nf.Common.config.tooltipConfig));
+                }
+            }
+        });
     };
     
     /**
@@ -790,7 +824,10 @@ nf.Settings = (function () {
         }).done(function (response) {
             var controllerServices = response.controllerServices;
             if (nf.Common.isDefinedAndNotNull(controllerServices)) {
-                var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
+                var controllerServicesElement = $('#controller-services-table');
+                nf.Common.cleanUpTooltips(controllerServicesElement, 'img.has-errors');
+                
+                var controllerServicesGrid = controllerServicesElement.data('gridInstance');
                 var controllerServicesData = controllerServicesGrid.getData();
 
                 // update the processors

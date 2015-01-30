@@ -920,6 +920,17 @@ public final class DtoFactory {
             dto.getReferences().add(reference);
         }
         
+        // add the validation errors
+        final Collection<ValidationResult> validationErrors = controllerServiceNode.getValidationErrors();
+        if (validationErrors != null && !validationErrors.isEmpty()) {
+            final List<String> errors = new ArrayList<>();
+            for (final ValidationResult validationResult : validationErrors) {
+                errors.add(validationResult.toString());
+            }
+
+            dto.setValidationErrors(errors);
+        }
+        
         return dto;
     }
     
