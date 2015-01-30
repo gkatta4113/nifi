@@ -347,9 +347,8 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private void addControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
     	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
     	
-    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), dto.getId(), false);
+    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), dto.getId(), Availability.valueOf(dto.getAvailability().toUpperCase()), false);
     	node.setName(dto.getName());
-    	node.setAvailability(Availability.valueOf(dto.getAvailability()));
     	node.setComments(dto.getComments());
     	node.setAnnotationData(dto.getAnnotationData());
     	
@@ -392,10 +391,9 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private void addReportingTask(final FlowController controller, final Element reportingTaskElement, final StringEncryptor encryptor) throws ReportingTaskInstantiationException {
     	final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(reportingTaskElement, encryptor);
     	
-    	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), dto.getId(), false);
+    	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), dto.getId(), Availability.valueOf(dto.getAvailability().toUpperCase()), false);
     	reportingTask.setName(dto.getName());
     	reportingTask.setComments(dto.getComment());
-    	reportingTask.setAvailability(Availability.valueOf(dto.getAvailability()));
     	reportingTask.setScheduldingPeriod(dto.getSchedulingPeriod());
     	reportingTask.setSchedulingStrategy(SchedulingStrategy.valueOf(dto.getSchedulingStrategy()));
     	

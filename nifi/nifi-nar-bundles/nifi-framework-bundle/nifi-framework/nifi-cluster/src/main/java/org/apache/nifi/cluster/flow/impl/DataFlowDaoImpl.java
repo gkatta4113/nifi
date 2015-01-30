@@ -111,6 +111,8 @@ public class DataFlowDaoImpl implements DataFlowDao {
     public static final String FLOW_XML_FILENAME = "flow.xml";
     public static final String TEMPLATES_FILENAME = "templates.xml";
     public static final String SNIPPETS_FILENAME = "snippets.xml";
+    public static final String CONTROLLER_SERVICES_FILENAME = "controller-services.xml";
+    public static final String REPORTING_TASKS_FILENAME = "reporting-tasks.xml";
     public static final String CLUSTER_INFO_FILENAME = "cluster-info.xml";
 
     private static final Logger logger = new NiFiLog(LoggerFactory.getLogger(DataFlowDaoImpl.class));
@@ -479,7 +481,9 @@ public class DataFlowDaoImpl implements DataFlowDao {
         byte[] templateBytes = new byte[0];
         byte[] snippetBytes = new byte[0];
         byte[] clusterInfoBytes = new byte[0];
-
+        byte[] controllerServiceBytes = new byte[0];
+        byte[] reportingTaskBytes = new byte[0];
+        
         try (final InputStream inStream = new FileInputStream(file);
                 final TarArchiveInputStream tarIn = new TarArchiveInputStream(new BufferedInputStream(inStream))) {
             TarArchiveEntry tarEntry;
@@ -501,6 +505,14 @@ public class DataFlowDaoImpl implements DataFlowDao {
                         clusterInfoBytes = new byte[(int) tarEntry.getSize()];
                         StreamUtils.fillBuffer(tarIn, clusterInfoBytes, true);
                         break;
+                    case CONTROLLER_SERVICES_FILENAME:
+                    	controllerServiceBytes = new byte[(int) tarEntry.getSize()];
+                    	StreamUtils.fillBuffer(tarIn, controllerServiceBytes, true);
+                    	break;
+                    case REPORTING_TASKS_FILENAME:
+                    	reportingTaskBytes = new byte[(int) tarEntry.getSize()];
+                    	StreamUtils.fillBuffer(tarIn, reportingTaskBytes, true);
+                    	break;
                     default:
                         throw new DaoException("Found Unexpected file in dataflow configuration: " + tarEntry.getName());
                 }
@@ -518,7 +530,7 @@ public class DataFlowDaoImpl implements DataFlowDao {
         final StandardDataFlow dataFlow = new StandardDataFlow(flowBytes, templateBytes, snippetBytes);
         dataFlow.setAutoStartProcessors(autoStart);
 
-        return new ClusterDataFlow(dataFlow, (clusterMetadata == null) ? null : clusterMetadata.getPrimaryNodeId());
+        return new ClusterDataFlow(dataFlow, (clusterMetadata == null) ? null : clusterMetadata.getPrimaryNodeId(), controllerServiceBytes, reportingTaskBytes);
     }
 
     private void writeDataFlow(final File file, final ClusterDataFlow clusterDataFlow) throws IOException, JAXBException {

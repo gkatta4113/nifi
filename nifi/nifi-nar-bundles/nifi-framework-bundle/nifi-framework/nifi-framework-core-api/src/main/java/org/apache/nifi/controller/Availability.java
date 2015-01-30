@@ -18,7 +18,13 @@ package org.apache.nifi.controller;
 
 public enum Availability {
 
-    CLUSTER_MANAGER_ONLY,
-    NODE_ONLY,
-    BOTH;
+	/**
+	 * Service or reporting task will run only on the NiFi Cluster Manager (NCM)
+	 */
+    NCM,
+    
+    /**
+     * Service or reporting task will run only on NiFi Nodes (or standalone instance, if not clustered)
+     */
+    NODE;
 }

@@ -36,6 +36,7 @@ import javax.xml.validation.SchemaFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.nifi.controller.Availability;
 import org.apache.nifi.util.DomUtils;
 import org.apache.nifi.util.file.FileUtils;
 import org.w3c.dom.Document;
@@ -124,9 +125,12 @@ public class ControllerServiceLoader {
                     //and schedulingPeriod must be set
                     final String serviceId = DomUtils.getChild(serviceElement, "identifier").getTextContent().trim();
                     final String serviceClass = DomUtils.getChild(serviceElement, "class").getTextContent().trim();
-
+                    final String availabilityName = DomUtils.getChild(serviceElement, "availability").getTextContent().trim();
+                    
+                    final Availability availability = Availability.valueOf(availabilityName);
+                    
                     //set the class to be used for the configured controller task
-                    final ControllerServiceNode serviceNode = provider.createControllerService(serviceClass, serviceId, false);
+                    final ControllerServiceNode serviceNode = provider.createControllerService(serviceClass, serviceId, availability, false);
 
                     //optional task-specific properties
                     for (final Element optionalProperty : DomUtils.getChildElementsByTagName(serviceElement, "property")) {

@@ -16,6 +16,7 @@
  */
 package org.apache.nifi.cluster.manager.impl;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,13 +59,19 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.admin.service.AuditService;
+import org.apache.nifi.annotation.lifecycle.OnRemoved;
 import org.apache.nifi.cluster.BulletinsPayload;
 import org.apache.nifi.cluster.ClusterNodeInformation;
 import org.apache.nifi.cluster.HeartbeatPayload;
@@ -125,6 +132,7 @@ import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.Heartbeater;
 import org.apache.nifi.controller.ReportingTaskNode;
+import org.apache.nifi.controller.StandardFlowSerializer;
 import org.apache.nifi.controller.ValidationContextFactory;
 import org.apache.nifi.controller.reporting.ClusteredReportingTaskNode;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
@@ -170,6 +178,7 @@ import org.apache.nifi.scheduling.SchedulingStrategy;
 import org.apache.nifi.util.DomUtils;
 import org.apache.nifi.util.FormatUtils;
 import org.apache.nifi.util.NiFiProperties;
+import org.apache.nifi.util.ReflectionUtils;
 import org.apache.nifi.web.Revision;
 import org.apache.nifi.web.api.dto.FlowSnippetDTO;
 import org.apache.nifi.web.api.dto.NodeDTO;
@@ -305,7 +314,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     private final ClusterManagerLock writeLock = new ClusterManagerLock(resourceRWLock.writeLock(), "Write");
 
     private final Set<Node> nodes = new HashSet<>();
-    private final Set<ReportingTaskNode> reportingTasks = new HashSet<>();
+    private final Map<String, ReportingTaskNode> reportingTasks = new HashMap<>();
 
     // null means the dataflow should be read from disk
     private StandardDataFlow cachedDataFlow = null;
@@ -453,7 +462,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
 
                 // Load and start running Reporting Tasks
                 final File taskFile = new File(properties.getProperty(NiFiProperties.TASK_CONFIGURATION_FILE));
-                reportingTasks.addAll(loadReportingTasks(taskFile));
+                reportingTasks.putAll(loadReportingTasks(taskFile));
             } catch (final IOException ioe) {
                 logger.warn("Failed to initialize cluster services due to: " + ioe, ioe);
                 stop();
@@ -867,8 +876,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         reconnectionThread.start();
     }
 
-    private List<ReportingTaskNode> loadReportingTasks(final File taskConfigXml) {
-        final List<ReportingTaskNode> tasks = new ArrayList<>();
+    private Map<String, ReportingTaskNode> loadReportingTasks(final File taskConfigXml) {
+        final Map<String, ReportingTaskNode> tasks = new HashMap<>();
         if (taskConfigXml == null) {
             logger.info("No controller tasks to start");
             return tasks;
@@ -945,7 +954,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                 }
 
                 processScheduler.schedule(reportingTaskNode);
-                tasks.add(reportingTaskNode);
+                tasks.put(reportingTaskNode.getIdentifier(), reportingTaskNode);
             }
         } catch (final SAXException | ParserConfigurationException | IOException | DOMException | NumberFormatException | InitializationException t) {
             logger.error("Unable to load reporting tasks from {} due to {}", new Object[]{taskConfigXml, t});
@@ -1295,8 +1304,15 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     }
     
     @Override
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-    	return controllerServiceProvider.createControllerService(type, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final Availability availability, final boolean firstTimeAdded) {
+    	if ( availability == null ) {
+    		throw new NullPointerException("availability is null");
+    	}
+    	if ( availability == Availability.NODE ) {
+    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NODE' on the Cluster Manager");
+    	}
+    	
+    	return controllerServiceProvider.createControllerService(type, availability, firstTimeAdded);
     }
 
     /**
@@ -1308,8 +1324,15 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
      * @return
      */
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
-        return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final String id, final Availability availability, final boolean firstTimeAdded) {
+    	if ( availability == null ) {
+    		throw new NullPointerException("availability is null");
+    	}
+    	if ( availability == Availability.NODE ) {
+    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NODE' on the Cluster Manager");
+    	}
+
+    	return controllerServiceProvider.createControllerService(type, id, availability, firstTimeAdded);
     }
 
     @Override
@@ -1345,21 +1368,11 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
 
     @Override
     public void enableControllerService(final ControllerServiceNode serviceNode) {
-    	if ( serviceNode.getAvailability() == Availability.NODE_ONLY ) {
-    		serviceNode.setDisabled(false);	// update disabled flag to stay in sync across cluster
-        	return;
-        }
-    	
         controllerServiceProvider.enableControllerService(serviceNode);
     }
     
     @Override
     public void disableControllerService(final ControllerServiceNode serviceNode) {
-    	if ( serviceNode.getAvailability() == Availability.NODE_ONLY ) {
-    		serviceNode.setDisabled(true);	// update disabled flag to stay in sync across cluster
-        	return;
-        }
-    	
         controllerServiceProvider.disableControllerService(serviceNode);
     }
     
@@ -1367,6 +1380,130 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     public Set<ControllerServiceNode> getAllControllerServices() {
     	return controllerServiceProvider.getAllControllerServices();
     }
+    
+    
+    private byte[] serialize(final Document doc) throws TransformerException {
+    	final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    	final DOMSource domSource = new DOMSource(doc);
+        final StreamResult streamResult = new StreamResult(baos);
+
+        // configure the transformer and convert the DOM
+        final TransformerFactory transformFactory = TransformerFactory.newInstance();
+        final Transformer transformer = transformFactory.newTransformer();
+        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+
+        // transform the document to byte stream
+        transformer.transform(domSource, streamResult);
+        return baos.toByteArray();
+    }
+    
+    private byte[] serializeControllerServices() throws ParserConfigurationException, TransformerException {
+    	final DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+        final DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+        final Document document = docBuilder.newDocument();
+    	final Element rootElement = document.createElement("controllerServices");
+    	
+    	for ( final ControllerServiceNode serviceNode : getAllControllerServices() ) {
+    		StandardFlowSerializer.addControllerService(rootElement, serviceNode, encryptor);
+    	}
+    	
+    	return serialize(document);
+    }
+    
+    private byte[] serializeReportingTasks() throws ParserConfigurationException, TransformerException {
+    	final DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+        final DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+        final Document document = docBuilder.newDocument();
+    	final Element rootElement = document.createElement("controllerServices");
+    	
+    	for ( final ReportingTaskNode taskNode : getReportingTasks() ) {
+    		StandardFlowSerializer.addReportingTask(rootElement, taskNode, encryptor);
+    	}
+    	
+    	return serialize(document);
+    }
+    
+    
+    public void saveControllerServices() {
+    	try {
+    		dataFlowManagementService.updateControllerServices(serializeControllerServices());
+    	} catch (final Exception e) {
+    		logger.error("Failed to save changes to NCM's Controller Services; changes may be lost on restart due to " + e);
+    		if ( logger.isDebugEnabled() ) {
+    			logger.error("", e);
+    		}
+    		
+    		getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Controller Services", Severity.ERROR.name(), 
+    				"Failed to save changes to NCM's Controller Services; changes may be lost on restart. See logs for more details."));
+    	}
+    }
+    
+    public void saveReportingTasks() {
+    	try {
+    		dataFlowManagementService.updateReportingTasks(serializeReportingTasks());
+    	} catch (final Exception e) {
+    		logger.error("Failed to save changes to NCM's Reporting Tasks; changes may be lost on restart due to " + e);
+    		if ( logger.isDebugEnabled() ) {
+    			logger.error("", e);
+    		}
+    		
+    		getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Reporting Tasks", Severity.ERROR.name(), 
+    				"Failed to save changes to NCM's Reporting Tasks; changes may be lost on restart. See logs for more details."));
+    	}
+    }
+
+    
+    public Set<ReportingTaskNode> getReportingTasks() {
+    	readLock.lock();
+    	try {
+    		return new HashSet<>(reportingTasks.values());
+    	} finally {
+    		readLock.unlock("getReportingTasks");
+    	}
+    }
+    
+    
+    public ReportingTaskNode getReportingTaskNode(final String taskId) {
+    	readLock.lock();
+    	try {
+    		return reportingTasks.get(taskId);
+    	} finally {
+    		readLock.unlock("getReportingTaskNode");
+    	}
+    }
+
+    public void startReportingTask(final ReportingTaskNode reportingTaskNode) {
+        reportingTaskNode.verifyCanStart();
+       	processScheduler.schedule(reportingTaskNode);
+    }
+
+    
+    public void stopReportingTask(final ReportingTaskNode reportingTaskNode) {
+        reportingTaskNode.verifyCanStop();
+        processScheduler.unschedule(reportingTaskNode);
+    }
+
+    public void removeReportingTask(final ReportingTaskNode reportingTaskNode) {
+    	writeLock.lock();
+    	try {
+	        final ReportingTaskNode existing = reportingTasks.get(reportingTaskNode.getIdentifier());
+	        if ( existing == null || existing != reportingTaskNode ) {
+	            throw new IllegalStateException("Reporting Task " + reportingTaskNode + " does not exist in this Flow");
+	        }
+	        
+	        reportingTaskNode.verifyCanDelete();
+	        
+	        try (final NarCloseable x = NarCloseable.withNarLoader()) {
+	            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnRemoved.class, reportingTaskNode.getReportingTask(), reportingTaskNode.getConfigurationContext());
+	        }
+	        
+	        reportingTasks.remove(reportingTaskNode.getIdentifier());
+    	} finally {
+    		writeLock.unlock("removeReportingTask");
+    	}
+    }
+    
     
     /**
      * Handle a bulletins message.
