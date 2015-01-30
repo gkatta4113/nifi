@@ -59,16 +59,15 @@ public class DistributedSetCacheClientService extends AbstractControllerService 
             .build();
     public static final PropertyDescriptor SSL_CONTEXT_SERVICE = new PropertyDescriptor.Builder()
             .name("SSL Context Service")
-            .description(
-                    "If specified, indicates the SSL Context Service that is used to communicate with the remote server. If not specified, communications will not be encrypted")
+            .description("If specified, indicates the SSL Context Service that is used to communicate with the "
+            		+ "remote server. If not specified, communications will not be encrypted")
             .required(false)
-            .addValidator(StandardValidators.createControllerServiceExistsValidator(SSLContextService.class))
-            .defaultValue(null)
+            .identifiesControllerService(SSLContextService.class)
             .build();
     public static final PropertyDescriptor COMMUNICATIONS_TIMEOUT = new PropertyDescriptor.Builder()
             .name("Communications Timeout")
-            .description(
-                    "Specifices how long to wait when communicating with the remote server before determining that there is a communications failure if data cannot be sent or received")
+            .description("Specifices how long to wait when communicating with the remote server before determining "
+            		+ "that there is a communications failure if data cannot be sent or received")
             .required(true)
             .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
             .defaultValue("30 secs")

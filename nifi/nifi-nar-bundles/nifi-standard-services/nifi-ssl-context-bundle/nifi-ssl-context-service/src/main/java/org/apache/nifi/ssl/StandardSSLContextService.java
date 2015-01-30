@@ -62,7 +62,6 @@ public class StandardSSLContextService extends AbstractControllerService impleme
             .description("The Type of the Truststore. Either JKS or PKCS12")
             .allowableValues(STORE_TYPE_JKS, STORE_TYPE_PKCS12)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .defaultValue(STORE_TYPE_JKS)
             .sensitive(false)
             .build();
     public static final PropertyDescriptor TRUSTSTORE_PASSWORD = new PropertyDescriptor.Builder()
@@ -84,7 +83,6 @@ public class StandardSSLContextService extends AbstractControllerService impleme
             .description("The Type of the Keystore")
             .allowableValues(STORE_TYPE_JKS, STORE_TYPE_PKCS12)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .defaultValue(STORE_TYPE_JKS)
             .sensitive(false)
             .build();
     public static final PropertyDescriptor KEYSTORE_PASSWORD = new PropertyDescriptor.Builder()
