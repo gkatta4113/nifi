@@ -189,13 +189,26 @@ nf.ControllerServiceConfiguration = (function () {
                 var processorItem = $('<li></li>').append(processorLink).append(processorType);
                 processors.append(processorItem);
             } else if (reference.referenceType === 'ControllerService') {
-                var serviceItem = $('<li></li>').text(reference.name).on('click', function () {
+                var serviceLink = $('<span class="link"></span>').text(reference.name).on('click', function () {
+                    var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+                    var controllerServiceData = controllerServiceGrid.getData();
                     
+                    // select the selected row
+                    var row = controllerServiceData.getRowById(reference.id);
+                    controllerServiceGrid.setSelectedRows([row]);
+                    
+                    // close the dialog and shell
+                    $('#controller-service-configuration').modal('hide');
                 });
+                
+                var serviceType = $('<span class="reference-type"></span>').text('(' + nf.Common.substringAfterLast(reference.type, '.') + ')');
+                var serviceItem = $('<li></li>').append(serviceLink).append(serviceType);
                 services.append(serviceItem);
             } else if (reference.referenceType === 'ReportingTask') {
                 var taskItem = $('<li></li>').text(reference.name).on('click', function () {
                     
+                    // close the dialog and shell
+                    $('#controller-service-configuration').modal('hide');
                 });
                 tasks.append(taskItem);
             }
