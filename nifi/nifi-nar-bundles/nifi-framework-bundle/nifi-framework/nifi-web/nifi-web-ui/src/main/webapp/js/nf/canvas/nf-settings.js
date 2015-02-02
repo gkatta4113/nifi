@@ -635,12 +635,76 @@ nf.Settings = (function () {
         });
     };
     
+    // sets whether the specified controller service is enabled
+    var setEnabled = function (controllerService, enabled) {
+        var revision = nf.Client.getRevision();
+        return $.ajax({
+            type: 'PUT',
+            url: controllerService.uri,
+            data: {
+                clientId: revision.clientId,
+                version: revision.version,
+                enabled: enabled
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            // update the revision
+            nf.Client.setRevision(response.revision);
+
+            // update the service
+            var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
+            var controllerServicesData = controllerServicesGrid.getData();
+            controllerServicesData.updateItem(controllerService.id, response.controllerService);
+        }).fail(nf.Common.handleAjaxError);
+    };
+    
+    /**
+     * Initializes the dialog used to disable controller services.
+     */
+    var initDisableControllerSerivceDialog = function () {
+        $('#disable-controller-service-dialog').modal({
+            headerText: 'Disable Controller Service',
+            overlayBackground: false,
+            buttons: [{
+                buttonText: 'Disable',
+                handler: {
+                    click: function () {
+                        
+                    }
+                }
+            }, {
+                buttonText: 'Cancel',
+                handler: {
+                    click: function () {
+                        $(this).modal('hide');
+                    }
+                }
+            }],
+            close: function() {
+                
+            }
+        });
+    };
+    
+    /**
+     * Shows the dialog for disabling a controller service.
+     * 
+     * @argument {object} controllerService The controller service to disable
+     */
+    var showDisableControllerServiceDialog = function (controllerService) {
+        $('#disable-controller-service-name').text(controllerService.name);
+        $('#disable-controller-service-dialog').modal('show');
+    };
+    
     /**
      * Initializes the controller services tab.
      */
     var initControllerServices = function () {
         // initialize the new controller service dialog
         initNewControllerServiceDialog();
+      
+        // initialize the disable controller service dialog
+        initDisableControllerSerivceDialog();
         
         // more details formatter
         var moreControllerServiceDetails = function (row, cell, value, columnDef, dataContext) {
@@ -711,27 +775,6 @@ nf.Settings = (function () {
         controllerServicesGrid.registerPlugin(new Slick.AutoTooltips());
         controllerServicesGrid.setSortColumn('name', true);
         
-        // sets whether the specified controller service is enabled
-        var setEnabled = function (controllerService, enabled) {
-            var revision = nf.Client.getRevision();
-            return $.ajax({
-                type: 'PUT',
-                url: controllerService.uri,
-                data: {
-                    clientId: revision.clientId,
-                    version: revision.version,
-                    enabled: enabled
-                },
-                dataType: 'json'
-            }).done(function (response) {
-                // update the revision
-                nf.Client.setRevision(response.revision);
-
-                // update the service
-                controllerServicesData.updateItem(controllerService.id, response.controllerService);
-            }).fail(nf.Common.handleAjaxError);
-        };
-        
         // configure a click listener
         controllerServicesGrid.onClick.subscribe(function (e, args) {
             var target = $(e.target);
@@ -746,7 +789,11 @@ nf.Settings = (function () {
                 } else if (target.hasClass('enable-controller-service')) {
                     setEnabled(controllerService, true);
                 } else if (target.hasClass('disable-controller-service')) {
-                    setEnabled(controllerService, false);
+                    if (nf.Common.isEmpty(controllerService.references)) {
+                        setEnabled(controllerService, false);
+                    } else {
+                        showDisableControllerServiceDialog(controllerService);
+                    }
                 } else if (target.hasClass('delete-controller-service')) {
                     var revision = nf.Client.getRevision();
                     return $.ajax({

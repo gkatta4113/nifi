@@ -192,6 +192,9 @@ public class ControllerServiceResource extends ApplicationResource {
         if (controllerServiceEntity.getRevision() == null) {
             throw new IllegalArgumentException("Revision must be specified.");
         }
+        
+        // get the revision
+        final RevisionDTO revision = controllerServiceEntity.getRevision();
 
         if (controllerServiceEntity.getControllerService().getId() != null) {
             throw new IllegalArgumentException("Controller service ID cannot be specified.");
@@ -200,6 +203,9 @@ public class ControllerServiceResource extends ApplicationResource {
         // if cluster manager, convert POST to PUT (to maintain same ID across nodes) and replicate
         if (properties.isClusterManager()) {
 
+            // apply action to the cluster manager first
+            serviceFacade.createControllerService(new Revision(revision.getVersion(), revision.getClientId()), controllerServiceEntity.getControllerService());
+            
             // create ID for resource
             final String id = UUID.randomUUID().toString();
 
@@ -229,7 +235,6 @@ public class ControllerServiceResource extends ApplicationResource {
         }
 
         // create the controller service and generate the json
-        final RevisionDTO revision = controllerServiceEntity.getRevision();
         final ConfigurationSnapshot<ControllerServiceDTO> controllerResponse = serviceFacade.createControllerService(
                 new Revision(revision.getVersion(), revision.getClientId()), controllerServiceEntity.getControllerService());
         final ControllerServiceDTO controllerService = controllerResponse.getConfiguration();
