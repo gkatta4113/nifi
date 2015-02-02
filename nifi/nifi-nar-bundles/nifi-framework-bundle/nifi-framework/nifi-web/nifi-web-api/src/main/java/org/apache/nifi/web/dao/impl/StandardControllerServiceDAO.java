@@ -22,17 +22,17 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.controller.Availability;
-import org.apache.nifi.controller.FlowController;
 
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
 
 public class StandardControllerServiceDAO extends ComponentDAO implements ControllerServiceDAO {
 
-    private FlowController flowController;
+    private ControllerServiceProvider serviceProvider;
 
     /**
      * Locates the specified controller service.
@@ -42,7 +42,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     private ControllerServiceNode locateControllerService(final String controllerServiceId) {
         // get the controller service
-        final ControllerServiceNode controllerService = flowController.getControllerServiceNode(controllerServiceId);
+        final ControllerServiceNode controllerService = serviceProvider.getControllerServiceNode(controllerServiceId);
 
         // ensure the controller service exists
         if (controllerService == null) {
@@ -62,7 +62,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     public ControllerServiceNode createControllerService(final ControllerServiceDTO controllerServiceDTO) {
         // create the controller service
     	final Availability availability = Availability.valueOf(controllerServiceDTO.getAvailability().toUpperCase());
-        final ControllerServiceNode controllerService = flowController.createControllerService(controllerServiceDTO.getType(), availability, true);
+        final ControllerServiceNode controllerService = serviceProvider.createControllerService(controllerServiceDTO.getType(), availability, true);
         
         // ensure we can perform the update 
         verifyUpdate(controllerService, controllerServiceDTO);
@@ -92,7 +92,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     @Override
     public boolean hasControllerService(final String controllerServiceId) {
-        return flowController.getControllerServiceNode(controllerServiceId) != null;
+        return serviceProvider.getControllerServiceNode(controllerServiceId) != null;
     }
 
     /**
@@ -102,7 +102,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     @Override
     public Set<ControllerServiceNode> getControllerServices() {
-        return flowController.getAllControllerServices();
+        return serviceProvider.getAllControllerServices();
     }
 
     /**
@@ -128,9 +128,9 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
             
             if (proposedDisabled != controllerService.isDisabled()) {
                 if (proposedDisabled) {
-                    flowController.disableControllerService(controllerService);
+                    serviceProvider.disableControllerService(controllerService);
                 } else {
-                    flowController.enableControllerService(controllerService);
+                    serviceProvider.enableControllerService(controllerService);
                 }
             }
         }
@@ -251,11 +251,11 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     @Override
     public void deleteControllerService(String controllerServiceId) {
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
-        flowController.removeControllerService(controllerService);
+        serviceProvider.removeControllerService(controllerService);
     }
 
     /* setters */
-    public void setFlowController(FlowController flowController) {
-        this.flowController = flowController;
+    public void setServiceProvider(ControllerServiceProvider serviceProvider) {
+        this.serviceProvider = serviceProvider;
     }
 }
