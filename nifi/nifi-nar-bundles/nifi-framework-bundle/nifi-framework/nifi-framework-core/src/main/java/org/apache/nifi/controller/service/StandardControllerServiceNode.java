@@ -19,7 +19,6 @@ package org.apache.nifi.controller.service;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,8 +39,8 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     private final ControllerService proxedControllerService;
     private final ControllerService implementation;
     private final ControllerServiceProvider serviceProvider;
+    private final Availability availability;
 
-    private final AtomicReference<Availability> availability = new AtomicReference<>(Availability.NODE_ONLY);
     private final AtomicBoolean disabled = new AtomicBoolean(true);
 
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
@@ -52,11 +51,12 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     private String comment;
 
     public StandardControllerServiceNode(final ControllerService proxiedControllerService, final ControllerService implementation, final String id,
-            final ValidationContextFactory validationContextFactory, final ControllerServiceProvider serviceProvider) {
+            final Availability availability, final ValidationContextFactory validationContextFactory, final ControllerServiceProvider serviceProvider) {
         super(proxiedControllerService, id, validationContextFactory, serviceProvider);
         this.proxedControllerService = proxiedControllerService;
         this.implementation = implementation;
         this.serviceProvider = serviceProvider;
+        this.availability = availability;
     }
 
     @Override
@@ -83,13 +83,9 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
 
     @Override
     public Availability getAvailability() {
-        return availability.get();
+    	return availability;
     }
 
-    @Override
-    public void setAvailability(final Availability availability) {
-        this.availability.set(availability);
-    }
 
     @Override
     public ControllerService getProxiedControllerService() {

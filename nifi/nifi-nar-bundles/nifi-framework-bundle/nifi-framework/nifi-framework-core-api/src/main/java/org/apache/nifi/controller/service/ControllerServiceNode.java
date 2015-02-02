@@ -28,8 +28,6 @@ public interface ControllerServiceNode extends ConfiguredComponent {
 
     Availability getAvailability();
 
-    void setAvailability(Availability availability);
-
     boolean isDisabled();
 
     void setDisabled(boolean disabled);

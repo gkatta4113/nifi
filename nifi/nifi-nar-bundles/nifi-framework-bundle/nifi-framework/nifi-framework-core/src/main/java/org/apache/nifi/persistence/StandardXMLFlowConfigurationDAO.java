@@ -54,10 +54,7 @@ import org.apache.nifi.controller.StandardFlowSynchronizer;
 import org.apache.nifi.controller.UninheritableFlowException;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
 import org.apache.nifi.controller.reporting.StandardReportingInitializationContext;
-import org.apache.nifi.controller.service.ControllerServiceLoader;
-import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.encrypt.StringEncryptor;
-import org.apache.nifi.util.file.FileUtils;
 import org.apache.nifi.nar.NarCloseable;
 import org.apache.nifi.reporting.InitializationException;
 import org.apache.nifi.reporting.ReportingInitializationContext;
@@ -65,7 +62,7 @@ import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.scheduling.SchedulingStrategy;
 import org.apache.nifi.util.DomUtils;
 import org.apache.nifi.util.NiFiProperties;
-
+import org.apache.nifi.util.file.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.DOMException;
@@ -81,7 +78,6 @@ public final class StandardXMLFlowConfigurationDAO implements FlowConfigurationD
 
     private final Path flowXmlPath;
     private final Path taskConfigXmlPath;
-    private final ControllerServiceLoader servicerLoader;
     private final StringEncryptor encryptor;
 
     private static final Logger LOG = LoggerFactory.getLogger(StandardXMLFlowConfigurationDAO.class);
@@ -103,7 +99,6 @@ public final class StandardXMLFlowConfigurationDAO implements FlowConfigurationD
 
         this.flowXmlPath = flowXml;
         this.taskConfigXmlPath = taskConfigXml;
-        this.servicerLoader = new ControllerServiceLoader(serviceConfigXml);
         this.encryptor = encryptor;
     }
 
@@ -292,10 +287,6 @@ public final class StandardXMLFlowConfigurationDAO implements FlowConfigurationD
         return tasks;
     }
 
-    @Override
-    public List<ControllerServiceNode> loadControllerServices(final FlowController controller) throws IOException {
-        return servicerLoader.loadControllerServices(controller);
-    }
 
     private Document parse(final File xmlFile, final URL schemaUrl) throws SAXException, ParserConfigurationException, IOException {
         final SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);

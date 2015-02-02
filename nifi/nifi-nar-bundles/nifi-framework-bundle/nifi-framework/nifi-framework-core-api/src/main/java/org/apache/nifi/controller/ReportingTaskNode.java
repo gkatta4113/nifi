@@ -26,8 +26,6 @@ public interface ReportingTaskNode extends ConfiguredComponent {
 
     Availability getAvailability();
 
-    void setAvailability(Availability availability);
-
     void setSchedulingStrategy(SchedulingStrategy schedulingStrategy);
 
     SchedulingStrategy getSchedulingStrategy();

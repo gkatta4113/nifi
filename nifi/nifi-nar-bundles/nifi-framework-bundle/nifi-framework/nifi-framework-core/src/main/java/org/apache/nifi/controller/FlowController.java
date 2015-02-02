@@ -2465,14 +2465,14 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     }
 
     public ReportingTaskNode createReportingTask(final String type) throws ReportingTaskInstantiationException {
-        return createReportingTask(type, true);
+        return createReportingTask(type, Availability.NODE, true);
     }
     
-    public ReportingTaskNode createReportingTask(final String type, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
-    	return createReportingTask(type, UUID.randomUUID().toString(), firstTimeAdded);
+    public ReportingTaskNode createReportingTask(final String type, final Availability availability, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+    	return createReportingTask(type, UUID.randomUUID().toString(), availability, firstTimeAdded);
     }
     
-    public ReportingTaskNode createReportingTask(final String type, final String id, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+    public ReportingTaskNode createReportingTask(final String type, final String id, final Availability availability, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
         if (type == null || id == null) {
             throw new NullPointerException();
         }
@@ -2520,17 +2520,8 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     }
 
     public void startReportingTask(final ReportingTaskNode reportingTaskNode) {
-    	if ( reportingTaskNode.getAvailability() == Availability.CLUSTER_MANAGER_ONLY ) {
-    		reportingTaskNode.setScheduledState(ScheduledState.RUNNING); // updated scheduled state to keep state in sync across cluster
-        	return;
-        }
-    	
         if (isTerminated()) {
             throw new IllegalStateException("Cannot start reporting task " + reportingTaskNode + " because the controller is terminated");
-        }
-
-        if ( reportingTaskNode.getAvailability() == Availability.CLUSTER_MANAGER_ONLY ) {
-        	return;
         }
 
         reportingTaskNode.verifyCanStart();
@@ -2539,17 +2530,11 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
 
     
     public void stopReportingTask(final ReportingTaskNode reportingTaskNode) {
-    	if ( reportingTaskNode.getAvailability() == Availability.CLUSTER_MANAGER_ONLY ) {
-    		reportingTaskNode.setScheduledState(ScheduledState.STOPPED); // updated scheduled state to keep state in sync across cluster
-        	return;
-        }
-    	
         if (isTerminated()) {
             return;
         }
 
         reportingTaskNode.verifyCanStop();
-        
         processScheduler.unschedule(reportingTaskNode);
     }
 
@@ -2650,53 +2635,47 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     	}
     }
     
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-    	return createControllerService(type, UUID.randomUUID().toString(), firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final Availability availability, final boolean firstTimeAdded) {
+    	if ( availability == null ) {
+    		throw new NullPointerException("availability is null");
+    	}
+    	if ( availability == Availability.NCM ) {
+    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NCM' on a standalone instance or a Node");
+    	}
+
+    	return controllerServiceProvider.createControllerService(type, availability, firstTimeAdded);
     }
     
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
-        return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final String id, final Availability availability, final boolean firstTimeAdded) {
+    	if ( availability == null ) {
+    		throw new NullPointerException("availability is null");
+    	}
+    	if ( availability == Availability.NCM ) {
+    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NCM' on a standalone instance or a Node");
+    	}
+
+        return controllerServiceProvider.createControllerService(type, id, availability, firstTimeAdded);
     }
     
     public void enableReportingTask(final ReportingTaskNode reportingTaskNode) {
-    	if ( reportingTaskNode.getAvailability() == Availability.CLUSTER_MANAGER_ONLY ) {
-    		reportingTaskNode.setScheduledState(ScheduledState.STOPPED); // updated scheduled state to keep state in sync across cluster
-        	return;
-        }
-    	
         reportingTaskNode.verifyCanEnable();
         processScheduler.enableReportingTask(reportingTaskNode);
     }
     
     public void disableReportingTask(final ReportingTaskNode reportingTaskNode) {
-    	if ( reportingTaskNode.getAvailability() == Availability.CLUSTER_MANAGER_ONLY ) {
-    		reportingTaskNode.setScheduledState(ScheduledState.DISABLED); // updated scheduled state to keep state in sync across cluster
-        	return;
-        }
-    	
         reportingTaskNode.verifyCanDisable();
         processScheduler.disableReportingTask(reportingTaskNode);
     }
     
     @Override
     public void enableControllerService(final ControllerServiceNode serviceNode) {
-        if ( serviceNode.getAvailability() == Availability.CLUSTER_MANAGER_ONLY ) {
-        	serviceNode.setDisabled(false);	// set the disabled flag so that we can keep in sync with cluster
-        	return;
-        }
-
         serviceNode.verifyCanEnable();
         controllerServiceProvider.enableControllerService(serviceNode);
     }
     
     @Override
     public void disableControllerService(final ControllerServiceNode serviceNode) {
-    	if ( serviceNode.getAvailability() == Availability.CLUSTER_MANAGER_ONLY ) {
-        	serviceNode.setDisabled(true);	// set the disabled flag so that we can keep in sync with cluster
-        	return;
-        }
-    	
         serviceNode.verifyCanDisable();
         controllerServiceProvider.disableControllerService(serviceNode);
     }

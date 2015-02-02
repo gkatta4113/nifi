@@ -43,6 +43,7 @@ import org.apache.nifi.connectable.Connectable;
 import org.apache.nifi.connectable.Connection;
 import org.apache.nifi.connectable.Funnel;
 import org.apache.nifi.connectable.Port;
+import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ContentAvailability;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.Counter;
@@ -404,13 +405,13 @@ public class ControllerFacade implements ControllerServiceProvider {
         return flowController.getControllerService(serviceIdentifier);
     }
 
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-    	return flowController.createControllerService(type, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final Availability availability, final boolean firstTimeAdded) {
+    	return flowController.createControllerService(type, availability, firstTimeAdded);
     }
     
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
-        return flowController.createControllerService(type, id, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final String id, final Availability availability, final boolean firstTimeAdded) {
+        return flowController.createControllerService(type, id, availability, firstTimeAdded);
     }
     
     public void removeControllerService(ControllerServiceNode serviceNode) {

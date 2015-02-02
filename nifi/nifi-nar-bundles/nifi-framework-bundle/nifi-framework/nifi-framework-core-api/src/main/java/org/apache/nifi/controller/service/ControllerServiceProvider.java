@@ -19,6 +19,7 @@ package org.apache.nifi.controller.service;
 import java.util.Set;
 
 import org.apache.nifi.annotation.lifecycle.OnAdded;
+import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ControllerServiceLookup;
 
 /**
@@ -27,14 +28,27 @@ import org.apache.nifi.controller.ControllerServiceLookup;
 public interface ControllerServiceProvider extends ControllerServiceLookup {
 
     /**
+     * Creates a new Controller Service of the specified type and assigns it a randomly generated ID. If <code>firstTimeadded</code>
+     * is true, calls any methods that are annotated with {@link OnAdded}
+     *
+     * @param type
+     * @param availabilty
+     * @param firstTimeAdded
+     * @return
+     */
+	ControllerServiceNode createControllerService(String type, Availability availabilty, boolean firstTimeAdded);
+	
+    /**
      * Creates a new Controller Service of the specified type and assigns it the given id. If <code>firstTimeadded</code>
      * is true, calls any methods that are annotated with {@link OnAdded}
      *
      * @param type
+     * @param id
+     * @param availabilty
      * @param firstTimeAdded
      * @return
      */
-    ControllerServiceNode createControllerService(String type, String id, boolean firstTimeAdded);
+    ControllerServiceNode createControllerService(String type, String id, Availability availabilty, boolean firstTimeAdded);
 
     /**
      * Gets the controller service node for the specified identifier. Returns

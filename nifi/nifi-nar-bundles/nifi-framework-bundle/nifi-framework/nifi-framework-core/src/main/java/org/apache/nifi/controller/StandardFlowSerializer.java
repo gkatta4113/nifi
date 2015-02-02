@@ -83,13 +83,13 @@ public class StandardFlowSerializer implements FlowSerializer {
             final Element controllerServicesNode = doc.createElement("controllerServices");
             rootNode.appendChild(controllerServicesNode);
             for ( final ControllerServiceNode serviceNode : controller.getAllControllerServices() ) {
-            	addControllerService(controllerServicesNode, serviceNode);
+            	addControllerService(controllerServicesNode, serviceNode, encryptor);
             }
             
             final Element reportingTasksNode = doc.createElement("reportingTasks");
             rootNode.appendChild(reportingTasksNode);
             for ( final ReportingTaskNode taskNode : controller.getReportingTasks() ) {
-            	addReportingTask(reportingTasksNode, taskNode);
+            	addReportingTask(reportingTasksNode, taskNode, encryptor);
             }
 
             final DOMSource domSource = new DOMSource(doc);
@@ -312,14 +312,14 @@ public class StandardFlowSerializer implements FlowSerializer {
         addTextElement(element, "schedulingStrategy", processor.getSchedulingStrategy().name());
         addTextElement(element, "runDurationNanos", processor.getRunDuration(TimeUnit.NANOSECONDS));
 
-        addConfiguration(element, processor.getProperties(), processor.getAnnotationData());
+        addConfiguration(element, processor.getProperties(), processor.getAnnotationData(), encryptor);
         
         for (final Relationship rel : processor.getAutoTerminatedRelationships()) {
             addTextElement(element, "autoTerminatedRelationship", rel.getName());
         }
     }
     
-    private void addConfiguration(final Element element, final Map<PropertyDescriptor, String> properties, final String annotationData) {
+    private static void addConfiguration(final Element element, final Map<PropertyDescriptor, String> properties, final String annotationData, final StringEncryptor encryptor) {
     	final Document doc = element.getOwnerDocument();
     	for (final Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
             final PropertyDescriptor descriptor = entry.getKey();
@@ -406,7 +406,7 @@ public class StandardFlowSerializer implements FlowSerializer {
     }
 
     
-    private void addControllerService(final Element element, final ControllerServiceNode serviceNode) {
+    public static void addControllerService(final Element element, final ControllerServiceNode serviceNode, final StringEncryptor encryptor) {
     	final Element serviceElement = element.getOwnerDocument().createElement("controllerService");
     	addTextElement(serviceElement, "id", serviceNode.getIdentifier());
     	addTextElement(serviceElement, "name", serviceNode.getName());
@@ -415,12 +415,12 @@ public class StandardFlowSerializer implements FlowSerializer {
         addTextElement(serviceElement, "enabled", String.valueOf(!serviceNode.isDisabled()));
         addTextElement(serviceElement, "availability", serviceNode.getAvailability().toString());
         
-        addConfiguration(serviceElement, serviceNode.getProperties(), serviceNode.getAnnotationData());
+        addConfiguration(serviceElement, serviceNode.getProperties(), serviceNode.getAnnotationData(), encryptor);
         
     	element.appendChild(serviceElement);
     }
     
-    private void addReportingTask(final Element element, final ReportingTaskNode taskNode) {
+    public static void addReportingTask(final Element element, final ReportingTaskNode taskNode, final StringEncryptor encryptor) {
     	final Element taskElement = element.getOwnerDocument().createElement("reportingTask");
     	addTextElement(taskElement, "id", taskNode.getIdentifier());
     	addTextElement(taskElement, "name", taskNode.getName());
@@ -431,16 +431,16 @@ public class StandardFlowSerializer implements FlowSerializer {
         addTextElement(taskElement, "schedulingStrategy", taskNode.getSchedulingStrategy().name());
     	addTextElement(taskElement, "availability", taskNode.getAvailability().toString());
     	
-    	addConfiguration(taskElement, taskNode.getProperties(), taskNode.getAnnotationData());
+    	addConfiguration(taskElement, taskNode.getProperties(), taskNode.getAnnotationData(), encryptor);
     	
     	element.appendChild(taskElement);
     }
     
-    private void addTextElement(final Element element, final String name, final long value) {
+    private static void addTextElement(final Element element, final String name, final long value) {
         addTextElement(element, name, String.valueOf(value));
     }
 
-    private void addTextElement(final Element element, final String name, final String value) {
+    private static void addTextElement(final Element element, final String name, final String value) {
         final Document doc = element.getOwnerDocument();
         final Element toAdd = doc.createElement(name);
         toAdd.setTextContent(value);

@@ -42,31 +42,27 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     private final ReportingTask reportingTask;
     private final ProcessScheduler processScheduler;
     private final ControllerServiceLookup serviceLookup;
+    private final Availability availability;
 
     private final AtomicReference<SchedulingStrategy> schedulingStrategy = new AtomicReference<>(SchedulingStrategy.TIMER_DRIVEN);
     private final AtomicReference<String> schedulingPeriod = new AtomicReference<>("5 mins");
-    private final AtomicReference<Availability> availability = new AtomicReference<>(Availability.NODE_ONLY);
     
     private volatile String comment;
     private volatile ScheduledState scheduledState = ScheduledState.STOPPED;
     
-    public AbstractReportingTaskNode(final ReportingTask reportingTask, final String id,
+    public AbstractReportingTaskNode(final ReportingTask reportingTask, final String id, final Availability availability,
             final ControllerServiceProvider controllerServiceProvider, final ProcessScheduler processScheduler,
             final ValidationContextFactory validationContextFactory) {
         super(reportingTask, id, validationContextFactory, controllerServiceProvider);
         this.reportingTask = reportingTask;
         this.processScheduler = processScheduler;
         this.serviceLookup = controllerServiceProvider;
+        this.availability = availability;
     }
 
     @Override
     public Availability getAvailability() {
-        return availability.get();
-    }
-
-    @Override
-    public void setAvailability(final Availability availability) {
-        this.availability.set(availability);
+        return availability;
     }
 
     @Override

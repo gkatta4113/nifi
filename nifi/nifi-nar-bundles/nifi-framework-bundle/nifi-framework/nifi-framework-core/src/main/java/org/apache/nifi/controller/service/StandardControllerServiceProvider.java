@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -35,6 +36,7 @@ import org.apache.nifi.annotation.lifecycle.OnAdded;
 import org.apache.nifi.annotation.lifecycle.OnDisabled;
 import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.annotation.lifecycle.OnRemoved;
+import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.ValidationContextFactory;
@@ -95,9 +97,14 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
             populateInterfaces(superClass, interfacesDefinedThusFar);
         }
     }
+    
+    @Override
+    public ControllerServiceNode createControllerService(final String type, final Availability availability, final boolean firstTimeAdded) {
+    	return createControllerService(type, UUID.randomUUID().toString(), availability, firstTimeAdded);
+    }
 
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+    public ControllerServiceNode createControllerService(final String type, final String id, final Availability availability, final boolean firstTimeAdded) {
         if (type == null || id == null) {
             throw new NullPointerException();
         }
@@ -141,7 +148,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
 
             final ValidationContextFactory validationContextFactory = new StandardValidationContextFactory(this);
 
-            final ControllerServiceNode serviceNode = new StandardControllerServiceNode(proxiedService, originalService, id, validationContextFactory, this);
+            final ControllerServiceNode serviceNode = new StandardControllerServiceNode(proxiedService, originalService, id, availability, validationContextFactory, this);
             serviceNodeHolder.set(serviceNode);
             serviceNode.setName(rawClass.getSimpleName());
             

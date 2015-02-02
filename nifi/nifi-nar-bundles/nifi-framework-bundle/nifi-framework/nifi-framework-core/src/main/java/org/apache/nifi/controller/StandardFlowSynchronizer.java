@@ -100,9 +100,11 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private static final Logger logger = LoggerFactory.getLogger(StandardFlowSynchronizer.class);
     public static final URL FLOW_XSD_RESOURCE = StandardFlowSynchronizer.class.getResource("/FlowConfiguration.xsd");
     private final StringEncryptor encryptor;
+    private final boolean autoResumeState;
 
     public StandardFlowSynchronizer(final StringEncryptor encryptor) {
         this.encryptor = encryptor;
+        autoResumeState = NiFiProperties.getInstance().getAutoResumeState();
     }
 
     public static boolean isEmpty(final DataFlow dataFlow, final StringEncryptor encryptor) {
@@ -345,11 +347,9 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private void addControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
     	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
     	
-    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), dto.getId(), false);
+    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), dto.getId(), Availability.valueOf(dto.getAvailability().toUpperCase()), false);
     	node.setName(dto.getName());
-    	node.setAvailability(Availability.valueOf(dto.getAvailability()));
     	node.setComments(dto.getComments());
-    	node.setDisabled(dto.getEnabled() != Boolean.TRUE);
     	node.setAnnotationData(dto.getAnnotationData());
     	
         for (final Map.Entry<String, String> entry : dto.getProperties().entrySet()) {
@@ -360,9 +360,21 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
             }
         }
 
-    	if ( dto.getEnabled() == Boolean.TRUE ) {
-    		controller.enableControllerService(node);
-    	}
+        if ( autoResumeState ) {
+	    	if ( dto.getEnabled() == Boolean.TRUE ) {
+	    		try {
+	    			controller.enableControllerService(node);
+	    		} catch (final Exception e) {
+	    			logger.error("Failed to enable " + node + " due to " + e);
+	    			if ( logger.isDebugEnabled() ) {
+	    				logger.error("", e);
+	    			}
+	    			
+	    			controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(
+	    					"Controller Service", Severity.ERROR.name(), "Could not start " + node + " due to " + e));
+	    		}
+	    	}
+        }
     }
     
     private void updateControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
@@ -379,12 +391,10 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private void addReportingTask(final FlowController controller, final Element reportingTaskElement, final StringEncryptor encryptor) throws ReportingTaskInstantiationException {
     	final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(reportingTaskElement, encryptor);
     	
-    	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), dto.getId(), false);
+    	final ReportingTaskNode reportingTask = controller.createReportingTask(dto.getType(), dto.getId(), Availability.valueOf(dto.getAvailability().toUpperCase()), false);
     	reportingTask.setName(dto.getName());
     	reportingTask.setComments(dto.getComment());
-    	reportingTask.setAvailability(Availability.valueOf(dto.getAvailability()));
     	reportingTask.setScheduldingPeriod(dto.getSchedulingPeriod());
-    	reportingTask.setScheduledState(ScheduledState.valueOf(dto.getScheduledState()));
     	reportingTask.setSchedulingStrategy(SchedulingStrategy.valueOf(dto.getSchedulingStrategy()));
     	
     	reportingTask.setAnnotationData(dto.getAnnotationData());
@@ -395,6 +405,32 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
             } else {
             	reportingTask.setProperty(entry.getKey(), entry.getValue());
             }
+        }
+        
+        if ( autoResumeState ) {
+	        if ( ScheduledState.RUNNING.name().equals(dto.getScheduledState()) ) {
+	        	try {
+	        		controller.startReportingTask(reportingTask);
+	        	} catch (final Exception e) {
+	        		logger.error("Failed to start {} due to {}", reportingTask, e);
+	        		if ( logger.isDebugEnabled() ) {
+	        			logger.error("", e);
+	        		}
+	        		controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(
+	        				"Reporting Tasks", Severity.ERROR.name(), "Failed to start " + reportingTask + " due to " + e));
+	        	}
+	        } else if ( ScheduledState.DISABLED.name().equals(dto.getScheduledState()) ) {
+	        	try {
+	        		controller.disableReportingTask(reportingTask);
+	        	} catch (final Exception e) {
+	        		logger.error("Failed to mark {} as disabled due to {}", reportingTask, e);
+	        		if ( logger.isDebugEnabled() ) {
+	        			logger.error("", e);
+	        		}
+	        		controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(
+	        				"Reporting Tasks", Severity.ERROR.name(), "Failed to mark " + reportingTask + " as disabled due to " + e));
+	        	}
+	        }
         }
     }
 

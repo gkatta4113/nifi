@@ -27,7 +27,6 @@ import org.apache.nifi.controller.FlowSerializationException;
 import org.apache.nifi.controller.FlowSynchronizationException;
 import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.UninheritableFlowException;
-import org.apache.nifi.controller.service.ControllerServiceNode;
 
 /**
  * Interface to define service methods for FlowController configuration.
@@ -120,16 +119,5 @@ public interface FlowConfigurationDAO {
      * @returns all of the ReportingTasks that were instantiated & scheduled
      */
     List<ReportingTaskNode> loadReportingTasks(FlowController controller) throws IOException;
-
-    /**
-     * Instantiates all controller services from the file used in the
-     * constructor
-     *
-     * @param controller
-     * @return 
-     * @throws java.io.IOException
-     * @returns all of the ReportingTasks that were instantiated & scheduled
-     */
-    List<ControllerServiceNode> loadControllerServices(FlowController controller) throws IOException;
 
 }
