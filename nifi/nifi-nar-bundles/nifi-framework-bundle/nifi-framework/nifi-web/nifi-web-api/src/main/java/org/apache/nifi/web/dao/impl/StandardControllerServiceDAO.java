@@ -216,7 +216,6 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     private void configureControllerService(final ControllerServiceNode controllerService, final ControllerServiceDTO controllerServiceDTO) {
         final String name = controllerServiceDTO.getName();
-        final String availability = controllerServiceDTO.getAvailability();
         final String annotationData = controllerServiceDTO.getAnnotationData();
         final String comments = controllerServiceDTO.getComments();
         final Map<String, String> properties = controllerServiceDTO.getProperties();

@@ -25,11 +25,7 @@
     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd">
 
     <!-- optimistic locking manager -->
-    <bean id="optimisticLockingManager" class="org.apache.nifi.web.ClusterAwareOptimisticLockingManager">
-        <constructor-arg>
-            <bean class="org.apache.nifi.web.StandardOptimisticLockingManager" />
-        </constructor-arg>
-    </bean>
+    <bean id="webOptimisticLockingManager" class="org.apache.nifi.web.spring.OptimisticLockingManagerFactoryBean" depends-on="clusterManagerOptimisticLockingManager"/>
 
     <!-- dto factory -->
     <bean id="dtoFactory" class="org.apache.nifi.web.api.dto.DtoFactory">
@@ -103,7 +99,7 @@
         <property name="auditService" ref="auditService"/>
         <property name="userService" ref="userService"/>
         <property name="snippetUtils" ref="snippetUtils"/>
-        <property name="optimisticLockingManager" ref="optimisticLockingManager"/>
+        <property name="optimisticLockingManager" ref="webOptimisticLockingManager"/>
         <property name="dtoFactory" ref="dtoFactory"/>
         <property name="clusterManager" ref="clusterManager"/>
     </bean>

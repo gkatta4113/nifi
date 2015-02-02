@@ -29,6 +29,7 @@ import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.io.socket.multicast.DiscoverableService;
 import org.apache.nifi.io.socket.multicast.DiscoverableServiceImpl;
 import org.apache.nifi.util.NiFiProperties;
+import org.apache.nifi.web.OptimisticLockingManager;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
@@ -48,6 +49,8 @@ public class WebClusterManagerFactoryBean implements FactoryBean, ApplicationCon
     private NiFiProperties properties;
 
     private StringEncryptor encryptor;
+    
+    private OptimisticLockingManager optimisticLockingManager;
 
     @Override
     public Object getObject() throws Exception {
@@ -79,7 +82,8 @@ public class WebClusterManagerFactoryBean implements FactoryBean, ApplicationCon
                     dataFlowService,
                     senderListener,
                     properties,
-                    encryptor
+                    encryptor,
+                    optimisticLockingManager
             );
 
             // set the service broadcaster
@@ -129,5 +133,9 @@ public class WebClusterManagerFactoryBean implements FactoryBean, ApplicationCon
 
     public void setEncryptor(final StringEncryptor encryptor) {
         this.encryptor = encryptor;
+    }
+    
+    public void setOptimisticLockingManager(OptimisticLockingManager optimisticLockingManager) {
+        this.optimisticLockingManager = optimisticLockingManager;
     }
 }

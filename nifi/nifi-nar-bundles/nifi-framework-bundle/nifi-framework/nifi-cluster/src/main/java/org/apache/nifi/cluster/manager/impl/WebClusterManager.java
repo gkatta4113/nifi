@@ -210,6 +210,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
 import com.sun.jersey.api.client.ClientResponse;
+import org.apache.nifi.web.OptimisticLockingManager;
 
 /**
  * Provides a cluster manager implementation. The manager federates incoming
@@ -303,6 +304,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     private final HttpResponseMapper httpResponseMapper;
     private final DataFlowManagementService dataFlowManagementService;
     private final ClusterManagerProtocolSenderListener senderListener;
+    private final OptimisticLockingManager optimisticLockingManager;
     private final StringEncryptor encryptor;
     private final Queue<Heartbeat> pendingHeartbeats = new ConcurrentLinkedQueue<>();
     private final ReentrantReadWriteLock resourceRWLock = new ReentrantReadWriteLock();
@@ -315,7 +317,6 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     // null means the dataflow should be read from disk
     private StandardDataFlow cachedDataFlow = null;
     private NodeIdentifier primaryNodeId = null;
-    private Revision revision = new Revision(0L, "");
     private Timer heartbeatMonitor;
     private Timer heartbeatProcessor;
     private volatile ClusterServicesBroadcaster servicesBroadcaster = null;
@@ -336,7 +337,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
 
     public WebClusterManager(final HttpRequestReplicator httpRequestReplicator, final HttpResponseMapper httpResponseMapper,
             final DataFlowManagementService dataFlowManagementService, final ClusterManagerProtocolSenderListener senderListener,
-            final NiFiProperties properties, final StringEncryptor encryptor) {
+            final NiFiProperties properties, final StringEncryptor encryptor, final OptimisticLockingManager optimisticLockingManager) {
 
         if (httpRequestReplicator == null) {
             throw new IllegalArgumentException("HttpRequestReplicator may not be null.");
@@ -360,6 +361,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         this.instanceId = UUID.randomUUID().toString();
         this.senderListener = senderListener;
         this.encryptor = encryptor;
+        this.optimisticLockingManager = optimisticLockingManager;
         senderListener.addHandler(this);
         senderListener.setBulletinRepository(bulletinRepository);
 
@@ -2135,7 +2137,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         final Map<String, String> updatedHeaders = new HashMap<>(headers);
         final ClusterContext clusterCtx = new ClusterContextImpl();
         clusterCtx.setRequestSentByClusterManager(true);                 // indicate request is sent from cluster manager
-        clusterCtx.setRevision(revision);
+        clusterCtx.setRevision(optimisticLockingManager.getRevision());
 
         // serialize cluster context and add to request header
         final String serializedClusterCtx = WebUtils.serializeObjectToHex(clusterCtx);
@@ -2804,7 +2806,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                                     }
                                 }
                             }
-                            revision = clusterContext.getRevision();
+                            optimisticLockingManager.setRevision(clusterContext.getRevision());
                         }
                     }
                 } catch (final ClassNotFoundException cnfe) {
