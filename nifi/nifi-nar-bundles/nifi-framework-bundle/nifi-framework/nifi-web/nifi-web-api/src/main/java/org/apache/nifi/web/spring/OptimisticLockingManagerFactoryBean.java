@@ -16,16 +16,10 @@
  */
 package org.apache.nifi.web.spring;
 
-import org.apache.nifi.cluster.manager.impl.WebClusterManager;
-import org.apache.nifi.controller.FlowController;
-import org.apache.nifi.controller.repository.FlowFileEventRepository;
 import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.web.ClusterAwareOptimisticLockingManager;
-import org.apache.nifi.web.ClusterRequestException;
 import org.apache.nifi.web.OptimisticLockingManager;
 import org.apache.nifi.web.StandardOptimisticLockingManager;
-import org.apache.nifi.web.dao.ControllerServiceDAO;
-import org.apache.nifi.web.dao.impl.StandardControllerServiceDAO;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
