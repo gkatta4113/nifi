@@ -353,29 +353,27 @@ public class PostHTTP extends AbstractProcessor {
     private SSLContext createSSLContext(final SSLContextService service) throws KeyStoreException, IOException, NoSuchAlgorithmException, 
         CertificateException, KeyManagementException, UnrecoverableKeyException 
     {
-    	final SSLContextBuilder builder = SSLContexts.custom();
-    	
-    	final String trustStoreFilename = service.getTrustStoreFile();
-    	if ( trustStoreFilename != null ) {
-	        final KeyStore truststore  = KeyStore.getInstance(service.getTrustStoreType());
-	        try (final InputStream in = new FileInputStream(new File(trustStoreFilename))) {
-	            truststore.load(in, service.getTrustStorePassword().toCharArray());
-	        }
-	        
-	        builder.loadTrustMaterial(truststore, new TrustSelfSignedStrategy());
-    	}
+        SSLContextBuilder builder = SSLContexts.custom();
+        final String trustFilename = service.getTrustStoreFile();
+        if ( trustFilename != null ) {
+            final KeyStore truststore  = KeyStore.getInstance(service.getTrustStoreType());
+            try (final InputStream in = new FileInputStream(new File(service.getTrustStoreFile()))) {
+                truststore.load(in, service.getTrustStorePassword().toCharArray());
+            }
+            builder = builder.loadTrustMaterial(truststore, new TrustSelfSignedStrategy());
+        }
+
+        final String keyFilename = service.getKeyStoreFile();
+        if ( keyFilename != null ) {
+            final KeyStore keystore  = KeyStore.getInstance(service.getKeyStoreType());
+            try (final InputStream in = new FileInputStream(new File(service.getKeyStoreFile()))) {
+                keystore.load(in, service.getKeyStorePassword().toCharArray());
+            }
+            builder = builder.loadKeyMaterial(keystore, service.getKeyStorePassword().toCharArray());
+        }
         
-    	final String keyStoreFilename = service.getKeyStoreFile();
-    	if ( keyStoreFilename != null ) {
-	        final KeyStore keystore  = KeyStore.getInstance(service.getKeyStoreType());
-	        try (final InputStream in = new FileInputStream(new File(service.getKeyStoreFile()))) {
-	            keystore.load(in, service.getKeyStorePassword().toCharArray());
-	        }
-	        
-	        builder.loadKeyMaterial(keystore, service.getKeyStorePassword().toCharArray());
-    	}
-    	
-        return builder.build();
+        SSLContext sslContext = builder.build();
+        return sslContext;
     }
 
     @Override

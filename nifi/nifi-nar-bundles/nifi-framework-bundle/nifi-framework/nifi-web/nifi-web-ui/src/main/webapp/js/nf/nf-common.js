@@ -475,18 +475,17 @@ nf.Common = {
      * Creates a form inline in order to submit the specified params to the specified URL
      * using the specified method.
      * 
-     * @param {string} method       The method to use
      * @param {string} url          The URL
      * @param {object} params       An object with the params to include in the submission
      */
-    submit: function (method, url, params) {
+    post: function (url, params) {
         // temporarily override beforeunload
         var previousBeforeUnload = window.onbeforeunload;
         window.onbeforeunload = null;
 
         // create a form for submission
         var form = $('<form></form>').attr({
-            'method': method,
+            'method': 'POST',
             'action': url,
             'style': 'display: none;'
         });
