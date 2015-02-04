@@ -1289,8 +1289,10 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         final Revision updatedRevision = updateRevision(revision);
         final ConfigurationSnapshot<ControllerServiceDTO> response = new ConfigurationSnapshot<>(updatedRevision.getVersion(), dtoFactory.createControllerServiceDto(controllerService));
 
-        // save the flow on the node
-        if (properties.isNode()) {
+        // save the update
+        if (properties.isClusterManager()) {
+            clusterManager.saveControllerServices();
+        } else {
             controllerFacade.save();
         }
 
@@ -1313,8 +1315,10 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         final Revision updatedRevision = updateRevision(revision);
         final ConfigurationSnapshot<ControllerServiceDTO> response = new ConfigurationSnapshot<>(updatedRevision.getVersion(), dtoFactory.createControllerServiceDto(controllerService));
 
-        // save the flow
-        if (properties.isNode()) {
+        // save the update
+        if (properties.isClusterManager()) {
+            clusterManager.saveControllerServices();
+        } else {
             controllerFacade.save();
         }
 
@@ -1333,8 +1337,10 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         final Revision updatedRevision = updateRevision(revision);
         final ConfigurationSnapshot<Void> response = new ConfigurationSnapshot<>(updatedRevision.getVersion());
 
-        // save the flow
-        if (properties.isNode()) {
+        // save the update
+        if (properties.isClusterManager()) {
+            clusterManager.saveControllerServices();
+        } else {
             controllerFacade.save();
         }
 
