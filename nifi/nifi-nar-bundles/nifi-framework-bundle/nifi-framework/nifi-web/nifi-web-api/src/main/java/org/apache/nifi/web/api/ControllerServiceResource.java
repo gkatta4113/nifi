@@ -281,7 +281,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(revision.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // build the response entity
         final ControllerServiceEntity entity = new ControllerServiceEntity();
@@ -502,7 +502,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(revision.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // build the response entity
         final ControllerServiceEntity entity = new ControllerServiceEntity();
@@ -563,7 +563,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO revision = new RevisionDTO();
         revision.setClientId(clientId.getClientId());
-        revision.setVersion(controllerResponse.getRevision());
+        revision.setVersion(controllerResponse.getVersion());
 
         // build the response entity
         final ControllerServiceEntity entity = new ControllerServiceEntity();

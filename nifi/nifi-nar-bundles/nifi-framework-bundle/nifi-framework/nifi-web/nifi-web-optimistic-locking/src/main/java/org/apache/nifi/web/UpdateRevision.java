@@ -14,29 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.cluster.context;
+package org.apache.nifi.web;
 
 /**
- * Manages a cluster context on a threadlocal.
+ * 
  */
-public class ClusterContextThreadLocal {
-    
-    private static final ThreadLocal<ClusterContext> contextHolder = new ThreadLocal<>();
-    
-    public static void removeContext() {
-        contextHolder.remove();
-    }
-    
-    public static ClusterContext createEmptyContext() {
-        return new ClusterContextImpl();
-    }
-    
-    public static ClusterContext getContext() {
-        return contextHolder.get();
-    }
-    
-    public static void setContext(final ClusterContext context) {
-        contextHolder.set(context);
-    }
-    
+public interface UpdateRevision {
+
+    Revision execute(Revision currentRevision);
+
 }

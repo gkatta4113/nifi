@@ -17,7 +17,6 @@
 package org.apache.nifi.web.spring;
 
 import org.apache.nifi.util.NiFiProperties;
-import org.apache.nifi.web.ClusterAwareOptimisticLockingManager;
 import org.apache.nifi.web.OptimisticLockingManager;
 import org.apache.nifi.web.StandardOptimisticLockingManager;
 import org.springframework.beans.BeansException;
@@ -40,7 +39,7 @@ public class OptimisticLockingManagerFactoryBean implements FactoryBean, Applica
             if (properties.isClusterManager()) {
                 optimisticLockingManager = context.getBean("clusterManagerOptimisticLockingManager", OptimisticLockingManager.class);
             } else {
-                optimisticLockingManager = new ClusterAwareOptimisticLockingManager(new StandardOptimisticLockingManager());
+                optimisticLockingManager = new StandardOptimisticLockingManager();
             }
         }
 

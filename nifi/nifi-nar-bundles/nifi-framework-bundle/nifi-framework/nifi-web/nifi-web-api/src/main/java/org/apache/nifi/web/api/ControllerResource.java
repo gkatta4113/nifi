@@ -315,7 +315,7 @@ public class ControllerResource extends ApplicationResource {
         // create the revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(clientId.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // create the response entity
         final ProcessGroupEntity controllerEntity = new ProcessGroupEntity();
@@ -337,11 +337,6 @@ public class ControllerResource extends ApplicationResource {
     @PreAuthorize("hasAnyRole('ROLE_MONITOR', 'ROLE_DFM', 'ROLE_ADMIN')")
     @TypeHint(Entity.class)
     public Response getRevision() {
-        // replicate if cluster manager
-        if (properties.isClusterManager()) {
-            return clusterManager.applyRequest(HttpMethod.GET, getAbsolutePath(), getRequestParameters(true), getHeaders()).getResponse();
-        }
-
         // create the current revision
         final RevisionDTO revision = serviceFacade.getRevision();
 
@@ -607,7 +602,7 @@ public class ControllerResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(revision.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // create the response entity
         final ControllerConfigurationEntity entity = new ControllerConfigurationEntity();

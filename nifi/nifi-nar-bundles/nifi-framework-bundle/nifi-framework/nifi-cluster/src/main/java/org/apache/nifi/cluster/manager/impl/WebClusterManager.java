@@ -210,7 +210,9 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
 import com.sun.jersey.api.client.ClientResponse;
+import org.apache.nifi.util.ObjectHolder;
 import org.apache.nifi.web.OptimisticLockingManager;
+import org.apache.nifi.web.UpdateRevision;
 
 /**
  * Provides a cluster manager implementation. The manager federates incoming
@@ -2133,65 +2135,114 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         // check if this request can change the flow
         final boolean mutableRequest = canChangeNodeState(method, uri);
 
-        // update headers to contain cluster contextual information to send to the node
-        final Map<String, String> updatedHeaders = new HashMap<>(headers);
-        final ClusterContext clusterCtx = new ClusterContextImpl();
-        clusterCtx.setRequestSentByClusterManager(true);                 // indicate request is sent from cluster manager
-        clusterCtx.setRevision(optimisticLockingManager.getRevision());
+        final ObjectHolder<NodeResponse> holder = new ObjectHolder<>(null);
+        final UpdateRevision federateRequest = new UpdateRevision() {
+            @Override
+            public Revision execute(Revision currentRevision) {
+                // update headers to contain cluster contextual information to send to the node
+                final Map<String, String> updatedHeaders = new HashMap<>(headers);
+                final ClusterContext clusterCtx = new ClusterContextImpl();
+                clusterCtx.setRequestSentByClusterManager(true);                 // indicate request is sent from cluster manager
+                clusterCtx.setRevision(currentRevision);
 
-        // serialize cluster context and add to request header
-        final String serializedClusterCtx = WebUtils.serializeObjectToHex(clusterCtx);
-        updatedHeaders.put(CLUSTER_CONTEXT_HTTP_HEADER, serializedClusterCtx);
+                // serialize cluster context and add to request header
+                final String serializedClusterCtx = WebUtils.serializeObjectToHex(clusterCtx);
+                updatedHeaders.put(CLUSTER_CONTEXT_HTTP_HEADER, serializedClusterCtx);
 
-        // if the request is mutable, we need to verify that it is a valid request for all nodes in the cluster.
-        if (mutableRequest) {
-            updatedHeaders.put(NCM_EXPECTS_HTTP_HEADER, "150-NodeContinue");
+                // if the request is mutable, we need to verify that it is a valid request for all nodes in the cluster.
+                if (mutableRequest) {
+                    updatedHeaders.put(NCM_EXPECTS_HTTP_HEADER, "150-NodeContinue");
 
-            final Set<NodeResponse> nodeResponses;
-            if (entity == null) {
-                nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, parameters, updatedHeaders);
-            } else {
-                nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, entity, updatedHeaders);
-            }
-
-            updatedHeaders.remove(NCM_EXPECTS_HTTP_HEADER);
-
-            for (final NodeResponse response : nodeResponses) {
-                if (response.getStatus() != NODE_CONTINUE_STATUS_CODE) {
-                    final String nodeDescription = response.getNodeId().getApiAddress() + ":" + response.getNodeId().getApiPort();
-                    final ClientResponse clientResponse = response.getClientResponse();
-                    if (clientResponse == null) {
-                        throw new IllegalClusterStateException("Node " + nodeDescription + " is unable to fulfill this request due to: Unexpected Response Code " + response.getStatus());
+                    final Set<NodeResponse> nodeResponses;
+                    if (entity == null) {
+                        nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, parameters, updatedHeaders);
+                    } else {
+                        nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, entity, updatedHeaders);
                     }
-                    final String nodeExplanation = clientResponse.getEntity(String.class);
-                    throw new IllegalClusterStateException("Node " + nodeDescription + " is unable to fulfill this request due to: " + nodeExplanation, response.getThrowable());
+
+                    updatedHeaders.remove(NCM_EXPECTS_HTTP_HEADER);
+
+                    for (final NodeResponse response : nodeResponses) {
+                        if (response.getStatus() != NODE_CONTINUE_STATUS_CODE) {
+                            final String nodeDescription = response.getNodeId().getApiAddress() + ":" + response.getNodeId().getApiPort();
+                            final ClientResponse clientResponse = response.getClientResponse();
+                            if (clientResponse == null) {
+                                throw new IllegalClusterStateException("Node " + nodeDescription + " is unable to fulfill this request due to: Unexpected Response Code " + response.getStatus());
+                            }
+                            final String nodeExplanation = clientResponse.getEntity(String.class);
+                            throw new IllegalClusterStateException("Node " + nodeDescription + " is unable to fulfill this request due to: " + nodeExplanation, response.getThrowable());
+                        }
+                    }
+
+                    // set flow state to unknown to denote a mutable request replication in progress
+                    logger.debug("Setting Flow State to UNKNOWN due to mutable request to {} {}", method, uri);
+                    notifyDataFlowManagmentServiceOfFlowStateChange(PersistedFlowState.UNKNOWN);
                 }
-            }
 
-            // set flow state to unknown to denote a mutable request replication in progress
-            logger.debug("Setting Flow State to UNKNOWN due to mutable request to {} {}", method, uri);
-            notifyDataFlowManagmentServiceOfFlowStateChange(PersistedFlowState.UNKNOWN);
+                // replicate request
+                final Set<NodeResponse> nodeResponses;
+                try {
+                    if (entity == null) {
+                        nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, parameters, updatedHeaders);
+                    } else {
+                        nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, entity, updatedHeaders);
+                    }
+                } catch (final UriConstructionException uce) {
+                    // request was not replicated, so mark the flow with its original state
+                    if (mutableRequest) {
+                        notifyDataFlowManagmentServiceOfFlowStateChange(originalPersistedFlowState);
+                    }
+
+                    throw uce;
+                }
+
+                // merge the response
+                final NodeResponse clientResponse = mergeResponses(uri, method, nodeResponses, mutableRequest);
+                holder.set(clientResponse);
+                
+                // if we have a response get the updated cluster context for auditing and revision updating
+                Revision updatedRevision = null;
+                if (mutableRequest && clientResponse != null) {
+                    try {
+                        // get the cluster context from the response header
+                        final String serializedClusterContext = clientResponse.getClientResponse().getHeaders().getFirst(CLUSTER_CONTEXT_HTTP_HEADER);
+                        if (StringUtils.isNotBlank(serializedClusterContext)) {
+                            // deserialize object
+                            final Serializable clusterContextObj = WebUtils.deserializeHexToObject(serializedClusterContext);
+
+                            // if we have a valid object, audit the actions
+                            if (clusterContextObj instanceof ClusterContext) {
+                                final ClusterContext clusterContext = (ClusterContext) clusterContextObj;
+                                if (auditService != null) {
+                                    try {
+                                        auditService.addActions(clusterContext.getActions());
+                                    } catch (Throwable t) {
+                                        logger.warn("Unable to record actions: " + t.getMessage());
+                                        if (logger.isDebugEnabled()) {
+                                            logger.warn(StringUtils.EMPTY, t);
+                                        }
+                                    }
+                                }
+                                updatedRevision = clusterContext.getRevision();
+                            }
+                        }
+                    } catch (final ClassNotFoundException cnfe) {
+                        logger.warn("Classpath issue detected because failed to deserialize cluster context from node response due to: " + cnfe, cnfe);
+                    }
+                }
+                
+                return updatedRevision;
+            }
+        };
+        
+        // federate the request and lock on the revision
+        if (mutableRequest) {
+            optimisticLockingManager.setRevision(federateRequest);
+        } else {
+            federateRequest.execute(optimisticLockingManager.getLastModification().getRevision());
         }
-
-        // replicate request
-        final Set<NodeResponse> nodeResponses;
-        try {
-            if (entity == null) {
-                nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, parameters, updatedHeaders);
-            } else {
-                nodeResponses = httpRequestReplicator.replicate(nodeIds, method, uri, entity, updatedHeaders);
-            }
-        } catch (final UriConstructionException uce) {
-            // request was not replicated, so mark the flow with its original state
-            if (mutableRequest) {
-                notifyDataFlowManagmentServiceOfFlowStateChange(originalPersistedFlowState);
-            }
-
-            throw uce;
-        }
-
-        final NodeResponse clientResponse = mergeResponses(uri, method, nodeResponses, mutableRequest);
-        return clientResponse;
+        
+        return holder.get();
     }
 
     private static boolean isProcessorsEndpoint(final URI uri, final String method) {
@@ -2781,36 +2832,6 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                     disconnectNodes(problematicNodeResponses, "Failed to process URI " + uri);
                 } else {
                     logger.warn("All nodes failed to process URI {}. As a result, no node will be disconnected from cluster", uri);
-                }
-            }
-
-            // if at least one node satisfied the request, then audit the action 
-            if (hasClientResponse) {
-                try {
-                    // get the cluster context from the response header
-                    final String serializedClusterContext = clientResponse.getClientResponse().getHeaders().getFirst(CLUSTER_CONTEXT_HTTP_HEADER);
-                    if (StringUtils.isNotBlank(serializedClusterContext)) {
-                        // deserialize object
-                        final Serializable clusterContextObj = WebUtils.deserializeHexToObject(serializedClusterContext);
-
-                        // if we have a valid object, audit the actions
-                        if (clusterContextObj instanceof ClusterContext) {
-                            final ClusterContext clusterContext = (ClusterContext) clusterContextObj;
-                            if (auditService != null) {
-                                try {
-                                    auditService.addActions(clusterContext.getActions());
-                                } catch (Throwable t) {
-                                    logger.warn("Unable to record actions: " + t.getMessage());
-                                    if (logger.isDebugEnabled()) {
-                                        logger.warn(StringUtils.EMPTY, t);
-                                    }
-                                }
-                            }
-                            optimisticLockingManager.setRevision(clusterContext.getRevision());
-                        }
-                    }
-                } catch (final ClassNotFoundException cnfe) {
-                    logger.warn("Classpath issue detected because failed to deserialize cluster context from node response due to: " + cnfe, cnfe);
                 }
             }
         }

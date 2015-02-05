@@ -127,6 +127,7 @@ import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.reporting.ReportingTask;
+import org.apache.nifi.web.FlowModification;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO.ControllerServiceReferenceDTO;
 
 /**
@@ -2252,14 +2253,17 @@ public final class DtoFactory {
     /**
      * Factory method for creating a new RevisionDTO based on this controller.
      *
-     * @param revision
+     * @param lastMod
      * @return
      */
-    public RevisionDTO createRevisionDTO(Revision revision) {
+    public RevisionDTO createRevisionDTO(FlowModification lastMod) {
+        final Revision revision = lastMod.getRevision();
+        
         // create the dto
         final RevisionDTO revisionDTO = new RevisionDTO();
         revisionDTO.setVersion(revision.getVersion());
         revisionDTO.setClientId(revision.getClientId());
+        revisionDTO.setLastModifier(lastMod.getLastModifier());
 
         return revisionDTO;
     }
