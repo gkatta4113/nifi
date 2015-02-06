@@ -17,6 +17,8 @@
 nf.Settings = (function () {
 
     var config = {
+        node: 'node',
+        ncm: 'ncm',
         filterText: 'Filter',
         styles: {
             filterList: 'filter-list'
@@ -25,7 +27,7 @@ nf.Settings = (function () {
             controllerConfig: '../nifi-api/controller/config',
             controllerArchive: '../nifi-api/controller/archive',
             controllerServiceTypes: '../nifi-api/controller/controller-service-types',
-            controllerServices: '../nifi-api/controller/controller-services/node',
+            controllerServices: '../nifi-api/controller/controller-services',
             reportingTaskTypes: '../nifi-api/controller/reporting-task-types',
             reportingTasks: '../nifi-api/controller/reporting-tasks'
         }
@@ -187,6 +189,9 @@ nf.Settings = (function () {
     var clearSelectedControllerService = function () {
         $('#controller-service-type-description').text('');
         $('#controller-service-type-name').text('');
+        $('#controller-service-availability-combo').combo('setSelectedOption', {
+            value: config.node
+        });
         $('#selected-controller-service-name').text('');
         $('#selected-controller-service-type').text('');
         $('#controller-service-description-container').hide();
@@ -367,10 +372,18 @@ nf.Settings = (function () {
     var addControllerService = function (controllerServiceType) {
         var revision = nf.Client.getRevision();
 
+        // get the desired availability
+        var availability;
+        if (nf.Canvas.isClustered()) {
+            availability = $('#controller-service-availability-combo').combo('getSelectedOption');
+        } else {
+            availability = config.node;
+        }
+
         // add the new controller service
         var addService = $.ajax({
             type: 'POST',
-            url: config.urls.controllerServices,
+            url: config.urls.controllerServices + '/' + encodeURIComponent(availability.value),
             data: {
                 version: revision.version,
                 clientId: revision.clientId,
@@ -409,6 +422,22 @@ nf.Settings = (function () {
                 applyControllerServiceTypeFilter();
             }
         });
+        
+        // specify the controller service availability
+        if (nf.Canvas.isClustered()) {
+            $('#controller-service-availability-combo').combo({
+                options: [{
+                        text: 'Node',
+                        value: config.node,
+                        description: 'This controller service will be available on the nodes only.'
+                    }, {
+                        text: 'Cluster Manager',
+                        value: config.ncm,
+                        description: 'This controller service will be available on the cluster manager only.'
+                    }]
+            });
+            $('#controller-service-availability-container').show();
+        }
         
         // define the function for filtering the list
         $('#controller-service-type-filter').keyup(function () {
@@ -708,7 +737,7 @@ nf.Settings = (function () {
         
         // more details formatter
         var moreControllerServiceDetails = function (row, cell, value, columnDef, dataContext) {
-            var markup = '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />&nbsp;';
+            var markup = '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />&nbsp;&nbsp;';
             if (!nf.Common.isEmpty(dataContext.validationErrors)) {
                 markup += '<img src="images/iconAlert.png" class="has-errors" style="margin-top: 4px; float: left;" /><span class="hidden row-id">' + nf.Common.escapeHtml(dataContext.id) + '</span>';
             }
@@ -722,7 +751,7 @@ nf.Settings = (function () {
         
         // service state formatter
         var enabledFormatter = function (row, cell, value, columnDef, dataContext) {
-            if (dataContext.enabled === true) {
+            if (value === true) {
                 return 'Enabled';
             } else {
                 return 'Disabled';
@@ -736,6 +765,19 @@ nf.Settings = (function () {
             {id: 'type', field: 'type', name: 'Type', formatter: typeFormatter, sortable: true, resizable: true},
             {id: 'enabled', field: 'enabled', name: 'State', formatter: enabledFormatter, sortable: true, resizeable: true}
         ];
+        
+        // only show availability when clustered
+        if (nf.Canvas.isClustered()) {
+            var availabilityFormatter = function (row, cell, value, columnDef, dataContext) {
+                if (value === config.node) {
+                    return 'Node';
+                } else {
+                    return 'Cluster Manager';
+                }
+            };
+            
+            controllerServicesColumns.push({id: 'availability', field: 'availability', name: 'Availability', formatter: availabilityFormatter, sortable: true, resizeable: true});
+        }
         
         // only DFM can edit controller services
         if (nf.Common.isDFM()) {
@@ -864,24 +906,57 @@ nf.Settings = (function () {
      * Loads the controller services.
      */
     var loadControllerServices = function () {
-        return $.ajax({
+        var services = [];
+        
+        // get the controller services that are running on the nodes
+        var nodeControllerServices = $.ajax({
             type: 'GET',
-            url: config.urls.controllerServices,
+            url: config.urls.controllerServices + '/' + encodeURIComponent(config.node),
             dataType: 'json'
-        }).done(function (response) {
-            var controllerServices = response.controllerServices;
-            if (nf.Common.isDefinedAndNotNull(controllerServices)) {
-                var controllerServicesElement = $('#controller-services-table');
-                nf.Common.cleanUpTooltips(controllerServicesElement, 'img.has-errors');
-                
-                var controllerServicesGrid = controllerServicesElement.data('gridInstance');
-                var controllerServicesData = controllerServicesGrid.getData();
-
-                // update the processors
-                controllerServicesData.setItems(controllerServices);
-                controllerServicesData.reSort();
-                controllerServicesGrid.invalidate();
+        }).done(function(response) {
+            var nodeServices = response.controllerServices;
+            if (nf.Common.isDefinedAndNotNull(nodeServices)) {
+                $.each(nodeServices, function(_, nodeService) {
+                    services.push(nodeService);
+                });
             }
+        });
+        
+        // get the controller services that are running on the ncm
+        var ncmControllerServices = $.Deferred(function(deferred) {
+            if (nf.Canvas.isClustered()) {
+                $.ajax({
+                    type: 'GET',
+                    url: config.urls.controllerServices + '/' + encodeURIComponent(config.ncm),
+                    dataType: 'json'
+                }).done(function(response) {
+                    var ncmServices = response.controllerServices;
+                    if (nf.Common.isDefinedAndNotNull(ncmServices)) {
+                        $.each(ncmServices, function(_, ncmService) {
+                            services.push(ncmService);
+                        });
+                    }
+                    deferred.resolve();
+                }).fail(function() {
+                    deferred.reject();
+                });
+            } else {
+                deferred.resolve();
+            }
+        }).promise();
+        
+        // add all controller services
+        return $.when(nodeControllerServices, ncmControllerServices).done(function() {
+            var controllerServicesElement = $('#controller-services-table');
+            nf.Common.cleanUpTooltips(controllerServicesElement, 'img.has-errors');
+
+            var controllerServicesGrid = controllerServicesElement.data('gridInstance');
+            var controllerServicesData = controllerServicesGrid.getData();
+
+            // update the processors
+            controllerServicesData.setItems(services);
+            controllerServicesData.reSort();
+            controllerServicesGrid.invalidate();
         });
     };
     

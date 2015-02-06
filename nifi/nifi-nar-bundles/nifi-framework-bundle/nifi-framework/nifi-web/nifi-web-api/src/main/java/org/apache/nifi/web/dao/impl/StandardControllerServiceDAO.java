@@ -20,8 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.nifi.controller.Availability;
 
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
@@ -61,8 +59,7 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     @Override
     public ControllerServiceNode createControllerService(final ControllerServiceDTO controllerServiceDTO) {
         // create the controller service
-    	final Availability availability = Availability.valueOf(controllerServiceDTO.getAvailability().toUpperCase());
-        final ControllerServiceNode controllerService = serviceProvider.createControllerService(controllerServiceDTO.getType(), availability, true);
+        final ControllerServiceNode controllerService = serviceProvider.createControllerService(controllerServiceDTO.getType(), controllerServiceDTO.getId(), true);
         
         // ensure we can perform the update 
         verifyUpdate(controllerService, controllerServiceDTO);
@@ -147,15 +144,6 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      */
     private List<String> validateProposedConfiguration(final ControllerServiceNode controllerService, final ControllerServiceDTO controllerServiceDTO) {
         final List<String> validationErrors = new ArrayList<>();
-        
-        if (isNotNull(controllerServiceDTO.getAvailability())) {
-            try {
-                Availability.valueOf(controllerServiceDTO.getAvailability());
-            } catch (IllegalArgumentException iae) {
-                validationErrors.add(String.format("Availability: Value must be one of [%s]", StringUtils.join(Availability.values(), ", ")));
-            }
-        }
-        
         return validationErrors;
     }
     
@@ -188,7 +176,6 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         
         boolean modificationRequest = false;
         if (isAnyNotNull(controllerServiceDTO.getName(),
-                controllerServiceDTO.getAvailability(),
                 controllerServiceDTO.getAnnotationData(),
                 controllerServiceDTO.getComments(),
                 controllerServiceDTO.getProperties())) {

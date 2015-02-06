@@ -47,10 +47,10 @@
                         <div class="availability-setting">
                             <div class="setting-name">
                                 Availability
-                                <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Where this controller service will be available."/>
+                                <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Where this controller service is available."/>
                             </div>
                             <div class="setting-field">
-                                <div id="availability-combo"></div>
+                                <div id="availability"></div>
                             </div>
                         </div>
                         <div class="clear"></div>

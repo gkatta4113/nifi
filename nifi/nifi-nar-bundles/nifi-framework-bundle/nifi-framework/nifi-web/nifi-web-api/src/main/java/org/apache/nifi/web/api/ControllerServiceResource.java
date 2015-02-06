@@ -51,10 +51,10 @@ import org.apache.nifi.web.api.dto.RevisionDTO;
 import org.apache.nifi.web.api.request.ClientIdParameter;
 import org.apache.nifi.web.api.request.LongParameter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.nifi.controller.Availability;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.entity.ControllerServiceEntity;
 import org.apache.nifi.web.api.entity.ControllerServicesEntity;
+import org.apache.nifi.web.util.Availability;
 import org.codehaus.enunciate.jaxrs.TypeHint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,19 +77,20 @@ public class ControllerServiceResource extends ApplicationResource {
      * @param controllerServices
      * @return 
      */
-    private Set<ControllerServiceDTO> populateRemainingControllerServicesContent(Set<ControllerServiceDTO> controllerServices) {
+    private Set<ControllerServiceDTO> populateRemainingControllerServicesContent(final String availability, final Set<ControllerServiceDTO> controllerServices) {
         for (ControllerServiceDTO controllerService : controllerServices) {
-            populateRemainingControllerServiceContent(controllerService);
+            populateRemainingControllerServiceContent(availability, controllerService);
         }
         return controllerServices;
     }
-
+    
     /**
      * Populates the uri for the specified controller service.
      */
-    private ControllerServiceDTO populateRemainingControllerServiceContent(ControllerServiceDTO controllerService) {
+    private ControllerServiceDTO populateRemainingControllerServiceContent(final String availability, final ControllerServiceDTO controllerService) {
         // populate the controller service href
-        controllerService.setUri(generateResourceUri("controller", "controller-services", controllerService.getId()));
+        controllerService.setUri(generateResourceUri("controller", "controller-services", availability, controllerService.getId()));
+        controllerService.setAvailability(availability);
         return controllerService;
     }
 
@@ -140,8 +141,8 @@ public class ControllerServiceResource extends ApplicationResource {
         }
 
         // get all the controller services
-        final Set<ControllerServiceDTO> controllerServices = populateRemainingControllerServicesContent(serviceFacade.getControllerServices());
-
+        final Set<ControllerServiceDTO> controllerServices = populateRemainingControllerServicesContent(availability, serviceFacade.getControllerServices());
+        
         // create the revision
         final RevisionDTO revision = new RevisionDTO();
         revision.setClientId(clientId.getClientId());
@@ -240,10 +241,6 @@ public class ControllerServiceResource extends ApplicationResource {
 
         // if cluster manager, convert POST to PUT (to maintain same ID across nodes) and replicate
         if (properties.isClusterManager() && Availability.NODE.equals(avail)) {
-
-            // apply action to the cluster manager first
-            serviceFacade.createControllerService(new Revision(revision.getVersion(), revision.getClientId()), controllerServiceEntity.getControllerService());
-            
             // create ID for resource
             final String id = UUID.randomUUID().toString();
 
@@ -276,7 +273,6 @@ public class ControllerServiceResource extends ApplicationResource {
         final ConfigurationSnapshot<ControllerServiceDTO> controllerResponse = serviceFacade.createControllerService(
                 new Revision(revision.getVersion(), revision.getClientId()), controllerServiceEntity.getControllerService());
         final ControllerServiceDTO controllerService = controllerResponse.getConfiguration();
-        populateRemainingControllerServiceContent(controllerService);
 
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
@@ -286,7 +282,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // build the response entity
         final ControllerServiceEntity entity = new ControllerServiceEntity();
         entity.setRevision(updatedRevision);
-        entity.setControllerService(controllerService);
+        entity.setControllerService(populateRemainingControllerServiceContent(availability, controllerService));
 
         // build the response
         return clusterContext(generateCreatedResponse(URI.create(controllerService.getUri()), entity)).build();
@@ -328,7 +324,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // create the response entity
         final ControllerServiceEntity entity = new ControllerServiceEntity();
         entity.setRevision(revision);
-        entity.setControllerService(populateRemainingControllerServiceContent(controllerService));
+        entity.setControllerService(populateRemainingControllerServiceContent(availability, controllerService));
 
         return clusterContext(generateOkResponse(entity)).build();
     }
@@ -482,7 +478,7 @@ public class ControllerServiceResource extends ApplicationResource {
             // replicate the request
             return clusterManager.applyRequest(HttpMethod.PUT, getAbsolutePath(), updateClientId(controllerServiceEntity), getHeaders(headersToOverride)).getResponse();
         }
-
+        
         // handle expects request (usually from the cluster manager)
         final String expects = httpServletRequest.getHeader(WebClusterManager.NCM_EXPECTS_HTTP_HEADER);
         if (expects != null) {
@@ -497,7 +493,6 @@ public class ControllerServiceResource extends ApplicationResource {
 
         // get the results
         final ControllerServiceDTO responseControllerServiceDTO = controllerResponse.getConfiguration();
-        populateRemainingControllerServiceContent(responseControllerServiceDTO);
 
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
@@ -507,7 +502,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // build the response entity
         final ControllerServiceEntity entity = new ControllerServiceEntity();
         entity.setRevision(updatedRevision);
-        entity.setControllerService(responseControllerServiceDTO);
+        entity.setControllerService(populateRemainingControllerServiceContent(availability, responseControllerServiceDTO));
 
         return clusterContext(generateOkResponse(entity)).build();
     }

@@ -14,17 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nifi.controller;
+package org.apache.nifi.web.util;
 
+/**
+ * Where a given controller service or reporting task should run.
+ */
 public enum Availability {
 
-	/**
-	 * Service or reporting task will run only on the NiFi Cluster Manager (NCM)
-	 */
+    /**
+     * Service or reporting task will run only on the NiFi Cluster Manager (NCM)
+     */
     NCM,
     
     /**
-     * Service or reporting task will run only on NiFi Nodes (or standalone instance, if not clustered)
+     * Service or reporting task will run only on NiFi Nodes (or standalone
+     * instance, if not clustered)
      */
     NODE;
 }

@@ -66,12 +66,6 @@ nf.ControllerServiceConfiguration = (function () {
             return true;
         }
         
-        if (nf.Canvas.isClustered()) {
-            if ($('#availability-combo').combo('getSelectedOption').value !== (details['availability'] + '')) {
-                return true;
-            }
-        }
-
         // defer to the properties
         return $('#controller-service-properties').propertytable('isSaveRequired');
     };
@@ -98,11 +92,6 @@ nf.ControllerServiceConfiguration = (function () {
             controllerServiceDto['enabled'] = false;
         } else if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
             controllerServiceDto['enabled'] = true;
-        }
-
-        // add the availability if appropriate
-        if (nf.Canvas.isClustered()) {
-            controllerServiceDto['availability'] = $('#availability-combo').combo('getSelectedOption').value;
         }
 
         // create the controller service entity
@@ -303,21 +292,6 @@ nf.ControllerServiceConfiguration = (function () {
             
             // we clustered we need to show the controls for editing the availability
             if (nf.Canvas.isClustered()) {
-                $('#availability-combo').combo({
-                    options: [{
-                        text: 'Cluster Manager',
-                        value: 'CLUSTER_MANAGER_ONLY',
-                        description: 'This controller service will be available on the cluster manager only.'
-                    }, {
-                        text: 'Node',
-                        value: 'NODE_ONLY',
-                        description: 'This controller service will be available on the nodes only.'
-                    }, {
-                        text: 'Both',
-                        value: 'BOTH',
-                        description: 'This controller service will be available on the cluster manager and the nodes.'
-                    }]
-                });
                 $('#availability-setting-container').show();
             }
 
@@ -358,7 +332,7 @@ nf.ControllerServiceConfiguration = (function () {
             // reload the service in case the property descriptors have changed
             var reloadService = $.ajax({
                 type: 'GET',
-                url: '../nifi-api/controller/controller-services/' + encodeURIComponent(controllerService.id),
+                url: controllerService.uri,
                 dataType: 'json'
             });
             
@@ -395,9 +369,11 @@ nf.ControllerServiceConfiguration = (function () {
 
                 // select the availability when appropriate
                 if (nf.Canvas.isClustered()) {
-                    $('#availability-combo').combo('setSelectedOption', {
-                        value: controllerService['availability']
-                    });
+                    if (controllerService['availability'] === 'node') {
+                        $('#availability').text('Node');
+                    } else {
+                        $('#availability').text('Cluster Manager');
+                    }
                 }
 
                 // load the controller references list

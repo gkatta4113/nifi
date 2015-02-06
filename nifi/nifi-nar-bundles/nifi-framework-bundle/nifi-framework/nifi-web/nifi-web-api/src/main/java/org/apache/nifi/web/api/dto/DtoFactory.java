@@ -848,7 +848,6 @@ public final class DtoFactory {
         dto.setId(controllerServiceNode.getIdentifier());
         dto.setName(controllerServiceNode.getName());
         dto.setType(controllerServiceNode.getControllerServiceImplementation().getClass().getName());
-        dto.setAvailability(controllerServiceNode.getAvailability().name());
         dto.setEnabled(!controllerServiceNode.isDisabled());
         dto.setComments(controllerServiceNode.getComments());
         

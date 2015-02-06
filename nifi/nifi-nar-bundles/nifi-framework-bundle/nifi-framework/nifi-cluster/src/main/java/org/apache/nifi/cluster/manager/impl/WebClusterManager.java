@@ -1297,11 +1297,6 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         }
     }
     
-    @Override
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-    	return controllerServiceProvider.createControllerService(type, firstTimeAdded);
-    }
-
     /**
      * Adds an instance of a specified controller service.
      *

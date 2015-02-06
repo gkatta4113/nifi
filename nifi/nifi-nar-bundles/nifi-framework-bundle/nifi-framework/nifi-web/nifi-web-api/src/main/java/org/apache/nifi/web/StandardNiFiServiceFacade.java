@@ -321,7 +321,11 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     @Override
     public void verifyUpdateControllerService(ControllerServiceDTO controllerServiceDTO) {
-        controllerServiceDAO.verifyUpdate(controllerServiceDTO);
+        // if group does not exist, then the update request is likely creating it
+        // so we don't verify since it will fail
+        if (controllerServiceDAO.hasControllerService(controllerServiceDTO.getId())) {
+            controllerServiceDAO.verifyUpdate(controllerServiceDTO);
+        }
     }
 
     @Override

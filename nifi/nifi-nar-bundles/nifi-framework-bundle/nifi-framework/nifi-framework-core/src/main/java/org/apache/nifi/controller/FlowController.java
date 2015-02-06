@@ -2465,14 +2465,14 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     }
 
     public ReportingTaskNode createReportingTask(final String type) throws ReportingTaskInstantiationException {
-        return createReportingTask(type, Availability.NODE, true);
+        return createReportingTask(type, true);
     }
     
-    public ReportingTaskNode createReportingTask(final String type, final Availability availability, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
-    	return createReportingTask(type, UUID.randomUUID().toString(), availability, firstTimeAdded);
+    public ReportingTaskNode createReportingTask(final String type, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+    	return createReportingTask(type, UUID.randomUUID().toString(), firstTimeAdded);
     }
     
-    public ReportingTaskNode createReportingTask(final String type, final String id, final Availability availability, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+    public ReportingTaskNode createReportingTask(final String type, final String id, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
         if (type == null || id == null) {
             throw new NullPointerException();
         }
@@ -2633,10 +2633,6 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     			}
     		}
     	}
-    }
-    
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-    	return controllerServiceProvider.createControllerService(type, firstTimeAdded);
     }
     
     @Override

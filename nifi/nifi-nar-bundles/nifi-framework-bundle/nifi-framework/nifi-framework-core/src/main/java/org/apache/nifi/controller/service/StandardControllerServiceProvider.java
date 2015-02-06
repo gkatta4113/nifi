@@ -98,11 +98,6 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
     }
     
     @Override
-    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
-    	return createControllerService(type, UUID.randomUUID().toString(), firstTimeAdded);
-    }
-
-    @Override
     public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
         if (type == null || id == null) {
             throw new NullPointerException();

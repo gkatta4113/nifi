@@ -16,7 +16,6 @@
  */
 package org.apache.nifi.controller.service;
 
-import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.ControllerService;
 
