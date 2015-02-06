@@ -132,7 +132,7 @@ public class StandardOptimisticLockingManager implements OptimisticLockingManage
             // record the last modifier
             lastModifier = lastModification.getLastModifier();
             
-            // record the updated revision
+            // record the updated revision in the cluster context if possible
             final ClusterContext ctx = ClusterContextThreadLocal.getContext();
             if (ctx != null) {
                 ctx.setRevision(lastModification.getRevision());

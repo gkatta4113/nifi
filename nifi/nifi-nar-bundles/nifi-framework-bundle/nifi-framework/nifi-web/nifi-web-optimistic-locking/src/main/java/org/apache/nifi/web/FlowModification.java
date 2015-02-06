@@ -17,22 +17,39 @@
 package org.apache.nifi.web;
 
 /**
- * 
+ * Records a flow modification. This includes the resulting revision and the
+ * user that performed the modification.
  */
 public class FlowModification {
 
     private final Revision revision;
     private final String lastModifier;
 
+    /**
+     * Creates a new FlowModification.
+     * 
+     * @param revision
+     * @param lastModifier 
+     */
     public FlowModification(Revision revision, String lastModifier) {
         this.revision = revision;
         this.lastModifier = lastModifier;
     }
 
+    /**
+     * Get the revision.
+     * 
+     * @return 
+     */
     public Revision getRevision() {
         return revision;
     }
 
+    /**
+     * Get the last modifier.
+     * 
+     * @return 
+     */
     public String getLastModifier() {
         return lastModifier;
     }

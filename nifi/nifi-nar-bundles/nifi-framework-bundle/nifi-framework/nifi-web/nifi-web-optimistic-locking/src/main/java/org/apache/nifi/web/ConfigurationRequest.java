@@ -17,10 +17,18 @@
 package org.apache.nifi.web;
 
 /**
+ * Represents a request to configure. The implementations execute method will
+ * perform the configuration action. It will return type T which will be
+ * encapsulated in a ConfigurationSnapshot.
  * 
  * @param <T>
  */
 public interface ConfigurationRequest<T> {
 
+    /**
+     * Executes a configuration action and returns the updated resulting configuration.
+     * 
+     * @return The resulting configuration
+     */
     T execute();
 }

@@ -25,7 +25,6 @@ package org.apache.nifi.web;
  */
 public interface OptimisticLockingManager {
 
-    
     /**
      * Attempts to execute the specified configuration request using the specified revision within a lock.
      * 
@@ -44,6 +43,9 @@ public interface OptimisticLockingManager {
     void setRevision(UpdateRevision updateRevision);
 
     /**
+     * Returns the last flow modification. This is a combination of the revision and the user
+     * who performed the modification.
+     * 
      * @return the last modification
      */
     FlowModification getLastModification();
