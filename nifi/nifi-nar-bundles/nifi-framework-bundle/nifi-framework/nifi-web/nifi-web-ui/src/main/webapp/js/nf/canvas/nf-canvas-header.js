@@ -94,11 +94,6 @@ nf.CanvasHeader = (function () {
                 nf.Shell.showPage('bulletin-board');
             });
 
-            // setup the tooltip for the refresh icon
-            $('#refresh-required-icon').qtip($.extend({
-                content: 'This flow has been modified by another user. Please refresh.'
-            }, nf.CanvasUtils.config.systemTooltipConfig));
-
             // setup the refresh link actions
             $('#refresh-required-link').click(function () {
                 nf.CanvasHeader.reloadAndClearWarnings();

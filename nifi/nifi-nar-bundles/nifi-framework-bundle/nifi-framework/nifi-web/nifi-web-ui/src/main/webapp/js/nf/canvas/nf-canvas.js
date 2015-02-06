@@ -184,6 +184,18 @@ nf.Canvas = (function () {
                     // insert the refresh needed text in the canvas - if necessary
                     if (!refreshContainer.is(':visible')) {
                         $('#stats-last-refreshed').addClass('alert');
+                        var refreshMessage = "This flow has been modified by '" + revision.lastModifier + "'. Please refresh.";
+                        
+                        // update the tooltip
+                        var refreshRequiredIcon = $('#refresh-required-icon');
+                        if (refreshRequiredIcon.data('qtip')) {
+                            refreshRequiredIcon.qtip('option', 'content.text', refreshMessage);
+                        } else {
+                            refreshRequiredIcon.qtip($.extend({
+                                content: refreshMessage
+                            }, nf.CanvasUtils.config.systemTooltipConfig));
+                        }
+                    
                         refreshContainer.show();
                     }
                     
