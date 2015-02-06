@@ -16,7 +16,6 @@
  */
 package org.apache.nifi.controller.reporting;
 
-import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.controller.ProcessScheduler;
 import org.apache.nifi.controller.ReportingTaskNode;
@@ -30,7 +29,7 @@ public class StandardReportingTaskNode extends AbstractReportingTaskNode impleme
 
     public StandardReportingTaskNode(final ReportingTask reportingTask, final String id, final FlowController controller,
             final ProcessScheduler processScheduler, final ValidationContextFactory validationContextFactory) {
-        super(reportingTask, id, Availability.NODE, controller, processScheduler, validationContextFactory);
+        super(reportingTask, id, controller, processScheduler, validationContextFactory);
         this.flowController = controller;
     }
 

@@ -345,20 +345,11 @@
     		<xs:element name="comment" type="xs:string" />
     		<xs:element name="class" type="NonEmptyStringType" />
     		<xs:element name="enabled" type="xs:boolean" />
-    		<xs:element name="availability" type="Availability" />
     		
             <xs:element name="property" type="PropertyType" minOccurs="0" maxOccurs="unbounded"/>
             <xs:element name="annotationData" type="xs:string" minOccurs="0" maxOccurs="1" />
     	</xs:sequence>
     </xs:complexType>
-    
-    <xs:simpleType name="Availability">
-    	<xs:restriction base="xs:string">
-    		<xs:enumeration value="CLUSTER_MANAGER_ONLY"></xs:enumeration>
-    		<xs:enumeration value="NODE_ONLY"></xs:enumeration>
-    		<xs:enumeration value="BOTH"></xs:enumeration>
-    	</xs:restriction>
-    </xs:simpleType>
     
     <xs:complexType name="ReportingTasksType">
     	<xs:sequence>
@@ -375,7 +366,6 @@
             <xs:element name="schedulingPeriod" type="NonEmptyStringType"/>
             <xs:element name="schedulingState" type="ScheduledState" />
             <xs:element name="schedulingStrategy" type="SchedulingStrategy" />
-            <xs:element name="availability" type="Availability" />
     		
             <xs:element name="property" type="PropertyType" minOccurs="0" maxOccurs="unbounded"/>
             <xs:element name="annotationData" type="xs:string" minOccurs="0" maxOccurs="1" />

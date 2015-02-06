@@ -2635,27 +2635,13 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     	}
     }
     
-    public ControllerServiceNode createControllerService(final String type, final Availability availability, final boolean firstTimeAdded) {
-    	if ( availability == null ) {
-    		throw new NullPointerException("availability is null");
-    	}
-    	if ( availability == Availability.NCM ) {
-    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NCM' on a standalone instance or a Node");
-    	}
-
-    	return controllerServiceProvider.createControllerService(type, availability, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
+    	return controllerServiceProvider.createControllerService(type, firstTimeAdded);
     }
     
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final Availability availability, final boolean firstTimeAdded) {
-    	if ( availability == null ) {
-    		throw new NullPointerException("availability is null");
-    	}
-    	if ( availability == Availability.NCM ) {
-    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NCM' on a standalone instance or a Node");
-    	}
-
-        return controllerServiceProvider.createControllerService(type, id, availability, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+        return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
     }
     
     public void enableReportingTask(final ReportingTaskNode reportingTaskNode) {

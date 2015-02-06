@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.nifi.controller.AbstractConfiguredComponent;
-import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.ControllerServiceLookup;
 import org.apache.nifi.controller.ProcessScheduler;
@@ -42,7 +41,6 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     private final ReportingTask reportingTask;
     private final ProcessScheduler processScheduler;
     private final ControllerServiceLookup serviceLookup;
-    private final Availability availability;
 
     private final AtomicReference<SchedulingStrategy> schedulingStrategy = new AtomicReference<>(SchedulingStrategy.TIMER_DRIVEN);
     private final AtomicReference<String> schedulingPeriod = new AtomicReference<>("5 mins");
@@ -50,19 +48,13 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     private volatile String comment;
     private volatile ScheduledState scheduledState = ScheduledState.STOPPED;
     
-    public AbstractReportingTaskNode(final ReportingTask reportingTask, final String id, final Availability availability,
+    public AbstractReportingTaskNode(final ReportingTask reportingTask, final String id,
             final ControllerServiceProvider controllerServiceProvider, final ProcessScheduler processScheduler,
             final ValidationContextFactory validationContextFactory) {
         super(reportingTask, id, validationContextFactory, controllerServiceProvider);
         this.reportingTask = reportingTask;
         this.processScheduler = processScheduler;
         this.serviceLookup = controllerServiceProvider;
-        this.availability = availability;
-    }
-
-    @Override
-    public Availability getAvailability() {
-        return availability;
     }
 
     @Override

@@ -24,8 +24,6 @@ import org.apache.nifi.scheduling.SchedulingStrategy;
 
 public interface ReportingTaskNode extends ConfiguredComponent {
 
-    Availability getAvailability();
-
     void setSchedulingStrategy(SchedulingStrategy schedulingStrategy);
 
     SchedulingStrategy getSchedulingStrategy();

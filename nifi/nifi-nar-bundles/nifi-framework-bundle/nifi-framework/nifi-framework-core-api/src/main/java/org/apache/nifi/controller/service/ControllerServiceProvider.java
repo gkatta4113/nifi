@@ -32,11 +32,10 @@ public interface ControllerServiceProvider extends ControllerServiceLookup {
      * is true, calls any methods that are annotated with {@link OnAdded}
      *
      * @param type
-     * @param availabilty
      * @param firstTimeAdded
      * @return
      */
-	ControllerServiceNode createControllerService(String type, Availability availabilty, boolean firstTimeAdded);
+	ControllerServiceNode createControllerService(String type, boolean firstTimeAdded);
 	
     /**
      * Creates a new Controller Service of the specified type and assigns it the given id. If <code>firstTimeadded</code>
@@ -44,11 +43,10 @@ public interface ControllerServiceProvider extends ControllerServiceLookup {
      *
      * @param type
      * @param id
-     * @param availabilty
      * @param firstTimeAdded
      * @return
      */
-    ControllerServiceNode createControllerService(String type, String id, Availability availabilty, boolean firstTimeAdded);
+    ControllerServiceNode createControllerService(String type, String id, boolean firstTimeAdded);
 
     /**
      * Gets the controller service node for the specified identifier. Returns

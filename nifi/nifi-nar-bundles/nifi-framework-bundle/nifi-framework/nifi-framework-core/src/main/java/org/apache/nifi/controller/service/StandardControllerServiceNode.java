@@ -24,7 +24,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.nifi.controller.AbstractConfiguredComponent;
-import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.ControllerService;
@@ -39,7 +38,6 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     private final ControllerService proxedControllerService;
     private final ControllerService implementation;
     private final ControllerServiceProvider serviceProvider;
-    private final Availability availability;
 
     private final AtomicBoolean disabled = new AtomicBoolean(true);
 
@@ -51,12 +49,11 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     private String comment;
 
     public StandardControllerServiceNode(final ControllerService proxiedControllerService, final ControllerService implementation, final String id,
-            final Availability availability, final ValidationContextFactory validationContextFactory, final ControllerServiceProvider serviceProvider) {
+            final ValidationContextFactory validationContextFactory, final ControllerServiceProvider serviceProvider) {
         super(proxiedControllerService, id, validationContextFactory, serviceProvider);
         this.proxedControllerService = proxiedControllerService;
         this.implementation = implementation;
         this.serviceProvider = serviceProvider;
-        this.availability = availability;
     }
 
     @Override
@@ -80,12 +77,6 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
 
         this.disabled.set(disabled);
     }
-
-    @Override
-    public Availability getAvailability() {
-    	return availability;
-    }
-
 
     @Override
     public ControllerService getProxiedControllerService() {

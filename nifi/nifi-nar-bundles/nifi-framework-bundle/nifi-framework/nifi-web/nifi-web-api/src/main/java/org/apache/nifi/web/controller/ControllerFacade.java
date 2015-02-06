@@ -37,13 +37,16 @@ import java.util.concurrent.TimeUnit;
 
 import javax.ws.rs.WebApplicationException;
 
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.admin.service.UserService;
+import org.apache.nifi.authorization.DownloadAuthorization;
 import org.apache.nifi.cluster.protocol.NodeIdentifier;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.connectable.Connectable;
 import org.apache.nifi.connectable.Connection;
 import org.apache.nifi.connectable.Funnel;
 import org.apache.nifi.connectable.Port;
-import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ContentAvailability;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.Counter;
@@ -64,6 +67,7 @@ import org.apache.nifi.groups.ProcessGroupCounts;
 import org.apache.nifi.groups.RemoteProcessGroup;
 import org.apache.nifi.nar.ExtensionManager;
 import org.apache.nifi.nar.NarCloseable;
+import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.processor.Processor;
 import org.apache.nifi.processor.QueueSize;
 import org.apache.nifi.processor.Relationship;
@@ -80,11 +84,11 @@ import org.apache.nifi.provenance.search.SearchableField;
 import org.apache.nifi.remote.RootGroupPort;
 import org.apache.nifi.reporting.Bulletin;
 import org.apache.nifi.reporting.BulletinRepository;
+import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.scheduling.SchedulingStrategy;
 import org.apache.nifi.search.SearchContext;
 import org.apache.nifi.search.SearchResult;
 import org.apache.nifi.search.Searchable;
-import org.apache.nifi.web.security.user.NiFiUserUtils;
 import org.apache.nifi.services.FlowService;
 import org.apache.nifi.user.NiFiUser;
 import org.apache.nifi.util.FormatUtils;
@@ -109,13 +113,8 @@ import org.apache.nifi.web.api.dto.search.SearchResultsDTO;
 import org.apache.nifi.web.api.dto.status.ControllerStatusDTO;
 import org.apache.nifi.web.api.dto.status.ProcessGroupStatusDTO;
 import org.apache.nifi.web.api.dto.status.StatusHistoryDTO;
+import org.apache.nifi.web.security.user.NiFiUserUtils;
 import org.apache.nifi.web.util.DownloadableContent;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.nifi.admin.service.UserService;
-import org.apache.nifi.authorization.DownloadAuthorization;
-import org.apache.nifi.processor.DataUnit;
-import org.apache.nifi.reporting.ReportingTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -405,13 +404,13 @@ public class ControllerFacade implements ControllerServiceProvider {
         return flowController.getControllerService(serviceIdentifier);
     }
 
-    public ControllerServiceNode createControllerService(final String type, final Availability availability, final boolean firstTimeAdded) {
-    	return flowController.createControllerService(type, availability, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
+    	return flowController.createControllerService(type, firstTimeAdded);
     }
     
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final Availability availability, final boolean firstTimeAdded) {
-        return flowController.createControllerService(type, id, availability, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+        return flowController.createControllerService(type, id, firstTimeAdded);
     }
     
     public void removeControllerService(ControllerServiceNode serviceNode) {

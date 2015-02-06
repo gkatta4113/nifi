@@ -87,7 +87,6 @@ public class FlowFromDOMFactory {
     	dto.setComments(getString(element, "comment"));
     	dto.setType(getString(element, "class"));
     	dto.setEnabled(getBoolean(element, "enabled"));
-    	dto.setAvailability(getString(element, "availability"));
     	
         dto.setProperties(getProperties(element, encryptor));
         dto.setAnnotationData(getString(element, "annotationData"));
@@ -105,7 +104,6 @@ public class FlowFromDOMFactory {
     	dto.setSchedulingPeriod(getString(element, "schedulingPeriod"));
     	dto.setScheduledState(getString(element, "scheduledState"));
     	dto.setSchedulingStrategy(getString(element, "schedulingStrategy"));
-    	dto.setAvailability(getString(element, "availability"));
     	
     	dto.setProperties(getProperties(element, encryptor));
     	dto.setAnnotationData(getString(element, "annotationData"));

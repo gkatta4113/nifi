@@ -123,7 +123,6 @@ import org.apache.nifi.cluster.protocol.message.ProtocolMessage.MessageType;
 import org.apache.nifi.cluster.protocol.message.ReconnectionFailureMessage;
 import org.apache.nifi.cluster.protocol.message.ReconnectionRequestMessage;
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.controller.Availability;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.Heartbeater;
 import org.apache.nifi.controller.ReportingTaskNode;
@@ -174,8 +173,11 @@ import org.apache.nifi.scheduling.SchedulingStrategy;
 import org.apache.nifi.util.DomUtils;
 import org.apache.nifi.util.FormatUtils;
 import org.apache.nifi.util.NiFiProperties;
+import org.apache.nifi.util.ObjectHolder;
 import org.apache.nifi.util.ReflectionUtils;
+import org.apache.nifi.web.OptimisticLockingManager;
 import org.apache.nifi.web.Revision;
+import org.apache.nifi.web.UpdateRevision;
 import org.apache.nifi.web.api.dto.FlowSnippetDTO;
 import org.apache.nifi.web.api.dto.NodeDTO;
 import org.apache.nifi.web.api.dto.ProcessGroupDTO;
@@ -210,9 +212,6 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
 import com.sun.jersey.api.client.ClientResponse;
-import org.apache.nifi.util.ObjectHolder;
-import org.apache.nifi.web.OptimisticLockingManager;
-import org.apache.nifi.web.UpdateRevision;
 
 /**
  * Provides a cluster manager implementation. The manager federates incoming
@@ -1299,15 +1298,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     }
     
     @Override
-    public ControllerServiceNode createControllerService(final String type, final Availability availability, final boolean firstTimeAdded) {
-    	if ( availability == null ) {
-    		throw new NullPointerException("availability is null");
-    	}
-    	if ( availability == Availability.NODE ) {
-    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NODE' on the Cluster Manager");
-    	}
-    	
-    	return controllerServiceProvider.createControllerService(type, availability, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final boolean firstTimeAdded) {
+    	return controllerServiceProvider.createControllerService(type, firstTimeAdded);
     }
 
     /**
@@ -1319,15 +1311,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
      * @return
      */
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final Availability availability, final boolean firstTimeAdded) {
-    	if ( availability == null ) {
-    		throw new NullPointerException("availability is null");
-    	}
-    	if ( availability == Availability.NODE ) {
-    		throw new IllegalArgumentException("Cannot create Controller Service with Availability 'NODE' on the Cluster Manager");
-    	}
-
-    	return controllerServiceProvider.createControllerService(type, id, availability, firstTimeAdded);
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+    	return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
     }
 
     @Override
