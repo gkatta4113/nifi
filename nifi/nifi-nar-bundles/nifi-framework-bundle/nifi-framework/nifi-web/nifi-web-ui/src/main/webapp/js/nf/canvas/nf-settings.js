@@ -375,7 +375,7 @@ nf.Settings = (function () {
         // get the desired availability
         var availability;
         if (nf.Canvas.isClustered()) {
-            availability = $('#controller-service-availability-combo').combo('getSelectedOption');
+            availability = $('#controller-service-availability-combo').combo('getSelectedOption').value;
         } else {
             availability = config.node;
         }
@@ -383,7 +383,7 @@ nf.Settings = (function () {
         // add the new controller service
         var addService = $.ajax({
             type: 'POST',
-            url: config.urls.controllerServices + '/' + encodeURIComponent(availability.value),
+            url: config.urls.controllerServices + '/' + encodeURIComponent(availability),
             data: {
                 version: revision.version,
                 clientId: revision.clientId,
