@@ -684,6 +684,9 @@ nf.Settings = (function () {
             var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
             var controllerServicesData = controllerServicesGrid.getData();
             controllerServicesData.updateItem(controllerService.id, response.controllerService);
+            
+            // update references as necessary
+            nf.CanvasUtils.reloadControllerServiceReferences(response.controllerService);
         }).fail(nf.Common.handleAjaxError);
     };
     
@@ -787,7 +790,7 @@ nf.Settings = (function () {
                 if (dataContext.enabled === true) {
                     markup += '<img src="images/iconDisable.png" title="Disable" class="pointer disable-controller-service" style="margin-top: 2px;" />&nbsp;';
                 } else {
-                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-controller-service" style="margin-top: 2px;" />&nbsp;<img src="images/iconRun.png" title="Enable" class="pointer enable-controller-service" style="margin-top: 2px;"/>&nbsp;<img src="images/iconDelete.png" title="Remove" class="pointer delete-controller-service" style="margin-top: 2px;" />&nbsp;';
+                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-controller-service" style="margin-top: 2px;" />&nbsp;<img src="images/iconEnable.png" title="Enable" class="pointer enable-controller-service" style="margin-top: 2px;"/>&nbsp;<img src="images/iconDelete.png" title="Remove" class="pointer delete-controller-service" style="margin-top: 2px;" />&nbsp;';
                 }
 
                 return markup;
@@ -837,6 +840,8 @@ nf.Settings = (function () {
                         showDisableControllerServiceDialog(controllerService);
                     }
                 } else if (target.hasClass('delete-controller-service')) {
+                    // prompt for removal?
+                    
                     var revision = nf.Client.getRevision();
                     return $.ajax({
                         type: 'DELETE',
@@ -851,6 +856,9 @@ nf.Settings = (function () {
                         
                         // remove the service
                         controllerServicesData.deleteItem(controllerService.id);
+                        
+                        // reload the as necessary
+                        nf.CanvasUtils.reloadControllerServiceReferences(controllerService);
                     }).fail(nf.Common.handleAjaxError);
                 }
             } else if (controllerServicesGrid.getColumns()[args.cell].id === 'moreDetails') {

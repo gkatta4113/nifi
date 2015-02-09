@@ -139,7 +139,7 @@ nf.ControllerServiceConfiguration = (function () {
         controllerServiceData.updateItem(controllerService.id, controllerService);
 
         // reload the controller service references
-        reloadControllerServiceReferences(controllerService);
+        nf.CanvasUtils.reloadControllerServiceReferences(controllerService);
     };
     
     /**
@@ -248,15 +248,6 @@ nf.ControllerServiceConfiguration = (function () {
         updateReferencesBorder();
     };
     
-    /**
-     * Reloads components that reference this controller service.
-     * 
-     * @param {object} controllerService
-     */
-    var reloadControllerServiceReferences = function (controllerService) {
-        
-    };
-
     return {
         /**
          * Initializes the controller service configuration dialog.
