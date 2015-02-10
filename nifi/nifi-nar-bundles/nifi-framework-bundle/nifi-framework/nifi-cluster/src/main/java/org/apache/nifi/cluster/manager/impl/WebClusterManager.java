@@ -1378,6 +1378,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         final DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
         final Document document = docBuilder.newDocument();
     	final Element rootElement = document.createElement("controllerServices");
+    	document.appendChild(rootElement);
     	
     	for ( final ControllerServiceNode serviceNode : getAllControllerServices() ) {
     		StandardFlowSerializer.addControllerService(rootElement, serviceNode, encryptor);
@@ -1390,7 +1391,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	final DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         final DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
         final Document document = docBuilder.newDocument();
-    	final Element rootElement = document.createElement("controllerServices");
+    	final Element rootElement = document.createElement("reportingTasks");
+    	document.appendChild(rootElement);
     	
     	for ( final ReportingTaskNode taskNode : getReportingTasks() ) {
     		StandardFlowSerializer.addReportingTask(rootElement, taskNode, encryptor);
