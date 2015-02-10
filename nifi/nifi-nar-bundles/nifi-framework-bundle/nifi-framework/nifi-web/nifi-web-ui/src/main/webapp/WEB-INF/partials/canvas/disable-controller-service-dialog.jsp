@@ -23,5 +23,11 @@
                 <span id="disable-controller-service-name"></span>
             </div>
         </div>
+        <div class="setting">
+            <div class="setting-name">References</div>
+            <div class="setting-field">
+                <div id="disable-controller-service-references"></div>
+            </div>
+        </div>
     </div>
 </div>

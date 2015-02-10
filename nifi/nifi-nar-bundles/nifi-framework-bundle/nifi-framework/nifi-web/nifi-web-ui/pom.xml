@@ -267,7 +267,7 @@
                                                 <include>${staging.dir}/js/nf/canvas/nf-canvas-toolbox.js</include>
                                                 <include>${staging.dir}/js/nf/canvas/nf-custom-processor-ui.js</include>
                                                 <include>${staging.dir}/js/nf/canvas/nf-registration.js</include>
-                                                <include>${staging.dir}/js/nf/canvas/nf-controller-service-configuration.js</include>
+                                                <include>${staging.dir}/js/nf/canvas/nf-controller-service.js</include>
                                                 <include>${staging.dir}/js/nf/canvas/nf-processor-configuration.js</include>
                                                 <include>${staging.dir}/js/nf/nf-processor-details.js</include>
                                                 <include>${staging.dir}/js/nf/canvas/nf-process-group-configuration.js</include>
@@ -403,7 +403,7 @@
                                             <insertNewLine>true</insertNewLine>
                                             <output>${project.build.directory}/${project.build.finalName}/css/nf-canvas-all.css</output>
                                             <includes>
-                                                <include>${staging.dir}/css/controller-service-configuration.css</include>
+                                                <include>${staging.dir}/css/controller-service.css</include>
                                                 <include>${staging.dir}/css/processor-configuration.css</include>
                                                 <include>${staging.dir}/css/processor-details.css</include>
                                                 <include>${staging.dir}/css/process-group-configuration.css</include>
@@ -419,7 +419,6 @@
                                                 <include>${staging.dir}/css/dialog.css</include>
                                                 <include>${staging.dir}/css/new-processor-dialog.css</include>
                                                 <include>${staging.dir}/css/new-controller-service-dialog.css</include>
-                                                <include>${staging.dir}/css/disable-controller-service-dialog.css</include>
                                                 <include>${staging.dir}/css/graph.css</include>
                                                 <include>${staging.dir}/css/header.css</include>
                                                 <include>${staging.dir}/css/main.css</include>

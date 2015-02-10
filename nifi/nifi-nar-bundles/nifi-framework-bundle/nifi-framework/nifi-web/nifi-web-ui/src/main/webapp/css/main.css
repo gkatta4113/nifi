@@ -210,6 +210,13 @@ div.disabled {
     background: transparent url(../images/iconDisable.png) repeat scroll 0 0;
 }
 
+div.enabled {
+    float: left;
+    width: 16px;
+    height: 16px;
+    background: transparent url(../images/iconEnable.png) repeat scroll 0 0;
+}
+
 div.stopped {
     float: left;
     width: 16px;

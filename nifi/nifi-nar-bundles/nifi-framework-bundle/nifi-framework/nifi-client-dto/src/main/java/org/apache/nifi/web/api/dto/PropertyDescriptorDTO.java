@@ -34,6 +34,7 @@ public class PropertyDescriptorDTO {
     private boolean sensitive;
     private boolean dynamic;
     private boolean supportsEl;
+    private boolean identifiesControllerService;
 
     /**
      * The set of allowable values for this property. If empty then the
@@ -154,6 +155,19 @@ public class PropertyDescriptorDTO {
 
     public void setSupportsEl(boolean supportsEl) {
         this.supportsEl = supportsEl;
+    }
+
+    /**
+     * Whether this descriptor represents a controller service.
+     * 
+     * @return 
+     */
+    public boolean isIdentifiesControllerService() {
+        return identifiesControllerService;
+    }
+
+    public void setIdentifiesControllerService(boolean identifiesControllerService) {
+        this.identifiesControllerService = identifiesControllerService;
     }
     
     /**

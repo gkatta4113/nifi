@@ -189,6 +189,8 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
         private Boolean enabled;
         
         private String referenceType;
+        private Integer activeThreadCount;
+        private Set<ControllerServiceReferenceDTO> references;
 
         /**
          * Group id for this component referencing a controller service. If this
@@ -282,5 +284,33 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
         public void setReferenceType(String referenceType) {
             this.referenceType = referenceType;
         }
+
+        /**
+         * The active thread count for the referencing component.
+         * 
+         * @return 
+         */
+        public Integer getActiveThreadCount() {
+            return activeThreadCount;
+        }
+
+        public void setActiveThreadCount(Integer activeThreadCount) {
+            this.activeThreadCount = activeThreadCount;
+        }
+
+        /**
+         * If this referencing component represents a ControllerService, these
+         * are the components that reference it.
+         * 
+         * @return 
+         */
+        public Set<ControllerServiceReferenceDTO> getReferences() {
+            return references;
+        }
+
+        public void setReferences(Set<ControllerServiceReferenceDTO> references) {
+            this.references = references;
+        }
+        
     }
 }

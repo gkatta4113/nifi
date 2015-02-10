@@ -400,32 +400,6 @@ nf.CanvasUtils = (function () {
         },
         
         /**
-         * Reloads components that reference this controller service.
-         * 
-         * @param {object} controllerService
-         */
-        reloadControllerServiceReferences: function (controllerService) {
-            var reloadOther = false;
-
-            // reload all dependent processors if they are currently visible
-            $.each(controllerService.references, function(_, reference) {
-                if (reference.referenceType === 'Processor') {
-                    if (nf.Canvas.getGroupId() === reference.groupId) {
-                        var processor = nf.Processor.get(reference.id);
-                        nf.Processor.reload(processor.component);
-                    }
-                } else {
-                    reloadOther = true;
-                }
-            });
-
-            // reload the controller services and reporting tasks if necessary
-            if (reloadOther) {
-                nf.Settings.loadSettings();
-            }
-        },
-        
-        /**
          * Handles component bulletins.
          * 
          * @param {selection} selection                    The component

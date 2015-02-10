@@ -118,7 +118,7 @@ div.availability-setting {
 }
 
 div.reference-block {
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 span.reference-title {
@@ -133,16 +133,39 @@ span.reference-count {
 
 ul.reference-listing {
     margin-left: 20px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 ul.reference-listing li {
-    margin-bottom: 3px;
+    margin-bottom: 6px;
+}
+
+div.reference-state {
+    margin-top: -2px;
+}
+
+span.service.expansion-button {
+    margin-right: 4px;
+    margin-top: 2px;
+}
+
+span.reference-active-thread-count {
+}
+
+span.reference-name {
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 span.reference-type {
-    margin-left: 5px;
     color: #aaa;
+    font-style: italic;
+}
+
+div.reference-references {
+    margin-left: 20px;
+    margin-top: 6px;
+    clear: left;
 }
 
 /*
@@ -153,4 +176,24 @@ span.reference-type {
     height: 250px;
     width: 748px !important;
     margin-top: 10px;
+}
+
+/*
+    Disable dialog
+*/
+
+#disable-controller-service-dialog {
+    z-index: 1301;
+    display: none;
+    width: 500px;
+    height: 450px;
+    line-height: normal;
+}
+
+#disable-controller-service-references {
+    border: 0 solid #CCCCCC;
+    padding: 2px;
+    width: 474px;
+    height: 290px;
+    overflow: auto;
 }

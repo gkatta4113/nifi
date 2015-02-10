@@ -394,9 +394,19 @@ nf.Settings = (function () {
             // update the revision
             nf.Client.setRevision(response.revision);
 
+            // add the item
+            var controllerService = response.controllerService;
             var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
             var controllerServicesData = controllerServicesGrid.getData();
-            controllerServicesData.addItem(response.controllerService);
+            controllerServicesData.addItem(controllerService);
+            
+            // resort
+            controllerServicesData.reSort();
+            controllerServicesGrid.invalidate();
+            
+            // select the new controller service
+            var row = controllerServicesData.getRowById(controllerService.id);
+            controllerServicesGrid.setSelectedRows([row]);
         });
         
         // hide the dialog
@@ -664,68 +674,22 @@ nf.Settings = (function () {
         });
     };
     
-    // sets whether the specified controller service is enabled
-    var setEnabled = function (controllerService, enabled) {
-        var revision = nf.Client.getRevision();
-        return $.ajax({
-            type: 'PUT',
-            url: controllerService.uri,
-            data: {
-                clientId: revision.clientId,
-                version: revision.version,
-                enabled: enabled
-            },
-            dataType: 'json'
-        }).done(function (response) {
-            // update the revision
-            nf.Client.setRevision(response.revision);
-
-            // update the service
-            var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
-            var controllerServicesData = controllerServicesGrid.getData();
-            controllerServicesData.updateItem(controllerService.id, response.controllerService);
-            
-            // update references as necessary
-            nf.CanvasUtils.reloadControllerServiceReferences(response.controllerService);
-        }).fail(nf.Common.handleAjaxError);
-    };
-    
     /**
-     * Initializes the dialog used to disable controller services.
-     */
-    var initDisableControllerSerivceDialog = function () {
-        $('#disable-controller-service-dialog').modal({
-            headerText: 'Disable Controller Service',
-            overlayBackground: false,
-            buttons: [{
-                buttonText: 'Disable',
-                handler: {
-                    click: function () {
-                        
-                    }
-                }
-            }, {
-                buttonText: 'Cancel',
-                handler: {
-                    click: function () {
-                        $(this).modal('hide');
-                    }
-                }
-            }],
-            close: function() {
-                
-            }
-        });
-    };
-    
-    /**
-     * Shows the dialog for disabling a controller service.
+     * Sorts the specified data using the specified sort details.
      * 
-     * @argument {object} controllerService The controller service to disable
+     * @param {object} sortDetails
+     * @param {object} data
      */
-    var showDisableControllerServiceDialog = function (controllerService) {
-        $('#disable-controller-service-name').text(controllerService.name);
-        $('#disable-controller-service-dialog').modal('show');
+    var sort = function (sortDetails, data) {
+        // defines a function for sorting
+        var comparer = function (a, b) {
+            var aString = nf.Common.isDefinedAndNotNull(a[sortDetails.columnId]) ? a[sortDetails.columnId] : '';
+            var bString = nf.Common.isDefinedAndNotNull(b[sortDetails.columnId]) ? b[sortDetails.columnId] : '';
+            return aString === bString ? 0 : aString > bString ? 1 : -1;
+        };
+
+        // perform the sort
+        data.sort(comparer, sortDetails.sortAsc);
     };
     
     /**
@@ -735,9 +699,6 @@ nf.Settings = (function () {
         // initialize the new controller service dialog
         initNewControllerServiceDialog();
       
-        // initialize the disable controller service dialog
-        initDisableControllerSerivceDialog();
-        
         // more details formatter
         var moreControllerServiceDetails = function (row, cell, value, columnDef, dataContext) {
             var markup = '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />&nbsp;&nbsp;';
@@ -814,11 +775,23 @@ nf.Settings = (function () {
         });
         controllerServicesData.setItems([]);
         
+        // initialize the sort
+        sort({
+            columnId: 'name',
+            sortAsc: true
+        }, controllerServicesData);
+        
         // initialize the grid
         var controllerServicesGrid = new Slick.Grid('#controller-services-table', controllerServicesData, controllerServicesColumns, controllerServicesOptions);
         controllerServicesGrid.setSelectionModel(new Slick.RowSelectionModel());
         controllerServicesGrid.registerPlugin(new Slick.AutoTooltips());
         controllerServicesGrid.setSortColumn('name', true);
+        controllerServicesGrid.onSort.subscribe(function (e, args) {
+            sort({
+                columnId: args.sortCol.field,
+                sortAsc: args.sortAsc
+            }, controllerServicesData);
+        });
         
         // configure a click listener
         controllerServicesGrid.onClick.subscribe(function (e, args) {
@@ -830,36 +803,13 @@ nf.Settings = (function () {
             // determine the desired action
             if (controllerServicesGrid.getColumns()[args.cell].id === 'actions') {
                 if (target.hasClass('edit-controller-service')) {
-                    nf.ControllerServiceConfiguration.showConfiguration(controllerService);
+                    nf.ControllerService.showConfiguration(controllerService);
                 } else if (target.hasClass('enable-controller-service')) {
-                    setEnabled(controllerService, true);
+                    nf.ControllerService.enable(controllerService);
                 } else if (target.hasClass('disable-controller-service')) {
-                    if (nf.Common.isEmpty(controllerService.references)) {
-                        setEnabled(controllerService, false);
-                    } else {
-                        showDisableControllerServiceDialog(controllerService);
-                    }
+                    nf.ControllerService.disable(controllerService);
                 } else if (target.hasClass('delete-controller-service')) {
-                    // prompt for removal?
-                    
-                    var revision = nf.Client.getRevision();
-                    return $.ajax({
-                        type: 'DELETE',
-                        url: controllerService.uri + '?' + $.param({
-                            version: revision.version,
-                            clientId: revision.clientId
-                        }),
-                        dataType: 'json'
-                    }).done(function (response) {
-                        // update the revision
-                        nf.Client.setRevision(response.revision);
-                        
-                        // remove the service
-                        controllerServicesData.deleteItem(controllerService.id);
-                        
-                        // reload the as necessary
-                        nf.CanvasUtils.reloadControllerServiceReferences(controllerService);
-                    }).fail(nf.Common.handleAjaxError);
+                    nf.ControllerService.delete(controllerService);
                 }
             } else if (controllerServicesGrid.getColumns()[args.cell].id === 'moreDetails') {
                 if (target.hasClass('view-controller-service')) {

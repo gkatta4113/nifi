@@ -20,7 +20,7 @@
 @import url(process-group-configuration.css);
 @import url(process-group-details.css);
 @import url(remote-process-group-configuration.css);
-@import url(controller-service-configuration.css);
+@import url(controller-service.css);
 @import url(port-configuration.css);
 @import url(port-details.css);
 @import url(label-configuration.css);
@@ -31,7 +31,6 @@
 @import url(dialog.css);
 @import url(new-processor-dialog.css);
 @import url(new-controller-service-dialog.css);
-@import url(disable-controller-service-dialog.css);
 @import url(graph.css);
 @import url(header.css);
 @import url(main.css);

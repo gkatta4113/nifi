@@ -903,6 +903,7 @@ public final class DtoFactory {
                 final ProcessorNode node = ((ProcessorNode) component);
                 reference.setGroupId(node.getProcessGroup().getIdentifier());
                 reference.setState(node.getScheduledState().name());
+                reference.setActiveThreadCount(node.getActiveThreadCount());
                 reference.setType(node.getProcessor().getClass().getName());
                 reference.setReferenceType(Processor.class.getSimpleName());
             } else if (component instanceof ControllerServiceNode) {
@@ -913,6 +914,7 @@ public final class DtoFactory {
             } else if (component instanceof ReportingTask) {
                 final ReportingTaskNode node = ((ReportingTaskNode) component);
                 reference.setState(node.getScheduledState().name());
+                reference.setActiveThreadCount(node.getActiveThreadCount());
                 reference.setType(node.getReportingTask().getClass().getName());
                 reference.setReferenceType(ReportingTask.class.getSimpleName());
             }
@@ -1816,6 +1818,7 @@ public final class DtoFactory {
         dto.setDescription(propertyDescriptor.getDescription());
         dto.setDefaultValue(propertyDescriptor.getDefaultValue());
         dto.setSupportsEl(propertyDescriptor.isExpressionLanguageSupported());
+        dto.setIdentifiesControllerService(propertyDescriptor.getControllerServiceDefinition() != null);
 
         final Class<? extends ControllerService> serviceDefinition = propertyDescriptor.getControllerServiceDefinition();
         if (propertyDescriptor.getAllowableValues() == null) {
