@@ -1473,6 +1473,19 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
 	            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnRemoved.class, reportingTaskNode.getReportingTask(), reportingTaskNode.getConfigurationContext());
 	        }
 	        
+	        for ( final Map.Entry<PropertyDescriptor, String> entry : reportingTaskNode.getProperties().entrySet() ) {
+	            final PropertyDescriptor descriptor = entry.getKey();
+	            if (descriptor.getControllerServiceDefinition() != null ) {
+	                final String value = entry.getValue() == null ? descriptor.getDefaultValue() : entry.getValue();
+	                if ( value != null ) {
+	                    final ControllerServiceNode serviceNode = controllerServiceProvider.getControllerServiceNode(value);
+	                    if ( serviceNode != null ) {
+	                        serviceNode.removeReference(reportingTaskNode);
+	                    }
+	                }
+	            }
+	        }
+	        
 	        reportingTasks.remove(reportingTaskNode.getIdentifier());
     	} finally {
     		writeLock.unlock("removeReportingTask");

@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -36,6 +35,7 @@ import org.apache.nifi.annotation.lifecycle.OnAdded;
 import org.apache.nifi.annotation.lifecycle.OnDisabled;
 import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.annotation.lifecycle.OnRemoved;
+import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.ValidationContextFactory;
@@ -241,6 +241,19 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         try (final NarCloseable x = NarCloseable.withNarLoader()) {
             final ConfigurationContext configurationContext = new StandardConfigurationContext(serviceNode, this);
             ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnRemoved.class, serviceNode.getControllerServiceImplementation(), configurationContext);
+        }
+        
+        for ( final Map.Entry<PropertyDescriptor, String> entry : serviceNode.getProperties().entrySet() ) {
+            final PropertyDescriptor descriptor = entry.getKey();
+            if (descriptor.getControllerServiceDefinition() != null ) {
+                final String value = entry.getValue() == null ? descriptor.getDefaultValue() : entry.getValue();
+                if ( value != null ) {
+                    final ControllerServiceNode referencedNode = getControllerServiceNode(value);
+                    if ( referencedNode != null ) {
+                        referencedNode.removeReference(serviceNode);
+                    }
+                }
+            }
         }
         
         controllerServices.remove(serviceNode.getIdentifier());
