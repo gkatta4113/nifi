@@ -49,6 +49,12 @@ public interface ReportingTaskNode extends ConfiguredComponent {
     ConfigurationContext getConfigurationContext();
 
     boolean isRunning();
+
+    /**
+     * Returns the number of threads (concurrent tasks) currently being used by this ReportingTask
+     * @return
+     */
+    int getActiveThreadCount();
     
     /**
      * Indicates the {@link ScheduledState} of this <code>ReportingTask</code>. A

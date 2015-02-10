@@ -77,4 +77,9 @@ public abstract class ProcessorNode extends AbstractConfiguredComponent implemen
 
     public abstract void setStyle(Map<String, String> style);
 
+    /**
+     * Returns the number of threads (concurrent tasks) currently being used by this Processor
+     * @return
+     */
+    public abstract int getActiveThreadCount();
 }

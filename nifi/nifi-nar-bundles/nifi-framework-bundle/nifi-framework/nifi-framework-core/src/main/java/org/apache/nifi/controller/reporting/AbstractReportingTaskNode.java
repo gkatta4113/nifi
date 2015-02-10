@@ -91,6 +91,11 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     public boolean isRunning() {
         return processScheduler.isScheduled(this) || processScheduler.getActiveThreadCount(this) > 0;
     }
+    
+    @Override
+    public int getActiveThreadCount() {
+        return processScheduler.getActiveThreadCount(this);
+    }
 
     @Override
     public ConfigurationContext getConfigurationContext() {

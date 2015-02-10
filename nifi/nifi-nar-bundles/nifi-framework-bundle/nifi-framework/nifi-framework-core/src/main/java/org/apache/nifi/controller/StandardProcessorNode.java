@@ -985,6 +985,16 @@ public class StandardProcessorNode extends ProcessorNode implements Connectable 
             readLock.unlock();
         }
     }
+    
+    @Override
+    public int getActiveThreadCount() {
+        readLock.lock();
+        try {
+            return processScheduler.getActiveThreadCount(this);
+        } finally {
+            readLock.unlock();
+        }
+    }
 
     @Override
     public boolean isValid() {
