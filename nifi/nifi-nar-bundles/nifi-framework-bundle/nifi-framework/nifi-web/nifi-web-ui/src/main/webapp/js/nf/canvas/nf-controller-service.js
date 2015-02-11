@@ -16,6 +16,11 @@
  */
 nf.ControllerService = (function () {
 
+    var config = {
+        serviceOnly: 'SERVICE_ONLY',
+        serviceAndReferencingComponents: 'SERVICE_AND_REFERENCING_COMPONENTS'
+    };
+
     /**
      * Handle any expected controller service configuration errors.
      * 
@@ -204,6 +209,11 @@ nf.ControllerService = (function () {
      * @param {array} referencingComponents
      */
     var createReferencingComponents = function (referenceContainer, referencingComponents) {
+        if (nf.Common.isEmpty(referencingComponents)) {
+            referenceContainer.append('<div class="unset">No referencing components.</div>');
+            return;
+        }
+        
         // toggles the visibility of a container
         var toggle = function (twist, container) {
             if (twist.hasClass('expanded')) {
@@ -259,11 +269,7 @@ nf.ControllerService = (function () {
                         var referencingService = controllerServiceData.getItemById(referencingComponent.id);
                         
                         // create the markup for the references
-                        if (!nf.Common.isEmpty(referencingService.referencingComponents)) {
-                            createReferencingComponents(referencingServiceReferencesContainer, referencingService.referencingComponents);
-                        } else {
-                            referencingServiceReferencesContainer.append('<div class="unset">This service has no components referencing it.</div>');
-                        }
+                        createReferencingComponents(referencingServiceReferencesContainer, referencingService.referencingComponents);
                     } else {
                         referencingServiceReferencesContainer.empty();
                     }
@@ -341,6 +347,11 @@ nf.ControllerService = (function () {
         }).fail(nf.Common.handleAjaxError);
     };
     
+    // updates the referencing components with the specified state
+    var updateReferencingComponents = function (controllerService, state) {
+        
+    };
+    
     /**
      * Shows the dialog for disabling a controller service.
      * 
@@ -348,19 +359,36 @@ nf.ControllerService = (function () {
      */
     var showDisableControllerServiceDialog = function (controllerService) {
         // populate the disable controller service dialog
+        $('#disable-controller-service-id').text(controllerService.id);
         $('#disable-controller-service-name').text(controllerService.name);
         
-        var referencingComponentsContainer = $('#disable-controller-service-referencing-components');
-        
         // load the controller referencing components list
-        if (!nf.Common.isEmpty(controllerService.referencingComponents)) {
-            createReferencingComponents(referencingComponentsContainer, controllerService.referencingComponents);
-        } else {
-            referencingComponentsContainer.append('<div class="unset">This service has no components referencing it.</div>');
-        }
+        var referencingComponentsContainer = $('#disable-controller-service-referencing-components');
+        createReferencingComponents(referencingComponentsContainer, controllerService.referencingComponents);
         
         // show the dialog
         $('#disable-controller-service-dialog').modal('show');
+        
+        // update the border if necessary
+        updateReferencingComponentsBorder(referencingComponentsContainer);
+    };
+    
+    /**
+     * Shows the dialog for enabling a controller service.
+     * 
+     * @param {object} controllerService
+     */
+    var showEnableControllerServiceDialog = function (controllerService) {
+        // populate the disable controller service dialog
+        $('#enable-controller-service-id').text(controllerService.id);
+        $('#enable-controller-service-name').text(controllerService.name);
+        
+        // load the controller referencing components list
+        var referencingComponentsContainer = $('#enable-controller-service-referencing-components');
+        createReferencingComponents(referencingComponentsContainer, controllerService.referencingComponents);
+        
+        // show the dialog
+        $('#enable-controller-service-dialog').modal('show');
         
         // update the border if necessary
         updateReferencingComponentsBorder(referencingComponentsContainer);
@@ -443,7 +471,18 @@ nf.ControllerService = (function () {
                     buttonText: 'Disable',
                     handler: {
                         click: function () {
-
+                            var controllerServiceId = $('#disable-controller-service-id').text();
+                            
+                            // get the controller service
+                            var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+                            var controllerServiceData = controllerServiceGrid.getData();
+                            var controllerService = controllerServiceData.getItemById(controllerServiceId);
+                            
+                            // disable all referencing components
+                            updateReferencingComponents(controllerService, false);
+                            
+                            // enable this controller service
+                            setEnabled(controllerService, false);
                         }
                     }
                 }, {
@@ -456,8 +495,68 @@ nf.ControllerService = (function () {
                 }],
                 handler: {
                     close: function() {
+                        // clear the dialog
+                        $('#disable-controller-service-id').text('');
                         $('#disable-controller-service-name').text('');
                         $('#disable-controller-service-referencing-components').css('border-width', '0').empty();
+                    }
+                }
+            }).draggable({
+                containment: 'parent',
+                handle: '.dialog-header'
+            });
+            
+            // initialize the enable scope combo
+            $('#enable-controller-service-scope').combo({
+                options: [{
+                        text: 'Service only',
+                        value: config.serviceOnly,
+                        description: 'Enable only this controller service'
+                    }, {
+                        text: 'Service and referencing components',
+                        value: config.serviceAndReferencingComponents,
+                        description: 'Enable this controller service and enable/start all referencing components'
+                    }]
+            });
+            
+            // initialize the enable service dialog
+            $('#enable-controller-service-dialog').modal({
+                headerText: 'Enable Controller Service',
+                overlayBackground: false,
+                buttons: [{
+                    buttonText: 'Enable',
+                    handler: {
+                        click: function () {
+                            var controllerServiceId = $('#enable-controller-service-id').text();
+                            
+                            // get the controller service
+                            var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+                            var controllerServiceData = controllerServiceGrid.getData();
+                            var controllerService = controllerServiceData.getItemById(controllerServiceId);
+                            
+                            var scope = $('#enable-controller-service-scope').combo('getSelectedOption').value;
+                            if (scope === config.serviceAndReferencingComponents) {
+                                updateReferencingComponents(controllerService, true);
+                            }
+                            
+                            // enable this controller service
+                            setEnabled(controllerService, true);
+                        }
+                    }
+                }, {
+                    buttonText: 'Cancel',
+                    handler: {
+                        click: function () {
+                            $(this).modal('hide');
+                        }
+                    }
+                }],
+                handler: {
+                    close: function() {
+                        // clear the dialog
+                        $('#enable-controller-service-id').text('');
+                        $('#enable-controller-service-name').text('');
+                        $('#enable-controller-service-referencing-components').css('border-width', '0').empty();
                     }
                 }
             }).draggable({
@@ -523,11 +622,7 @@ nf.ControllerService = (function () {
                 var referenceContainer = $('#controller-service-referencing-components');
 
                 // load the controller referencing components list
-                if (!nf.Common.isEmpty(controllerService.referencingComponents)) {
-                    createReferencingComponents(referenceContainer, controllerService.referencingComponents);
-                } else {
-                    referenceContainer.append('<div class="unset">This service has no components referencing it.</div>');
-                }
+                createReferencingComponents(referenceContainer, controllerService.referencingComponents);
 
                 var buttons = [{
                         buttonText: 'Apply',
@@ -659,7 +754,11 @@ nf.ControllerService = (function () {
          * @param {object} controllerService
          */
         enable: function(controllerService) {
-            setEnabled(controllerService, true);
+            if (nf.Common.isEmpty(controllerService.referencingComponents)) {
+                setEnabled(controllerService, true);
+            } else {
+                showEnableControllerServiceDialog(controllerService);
+            }
         },
         
         /**

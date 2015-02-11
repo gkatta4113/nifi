@@ -15,19 +15,25 @@
   limitations under the License.
 --%>
 <%@ page contentType="text/html" pageEncoding="UTF-8" session="false" %>
-<div id="disable-controller-service-dialog">
+<div id="enable-controller-service-dialog">
     <div class="dialog-content">
         <div class="setting">
             <div class="setting-name">Service</div>
             <div class="setting-field">
-                <span id="disable-controller-service-id" class="hidden"></span>
-                <span id="disable-controller-service-name"></span>
+                <span id="enable-controller-service-id" class="hidden"></span>
+                <span id="enable-controller-service-name"></span>
+            </div>
+        </div>
+        <div class="setting">
+            <div class="setting-name">Scope</div>
+            <div class="setting-field">
+                <div id="enable-controller-service-scope"></div>
             </div>
         </div>
         <div class="setting">
             <div class="setting-name">Referencing Components</div>
             <div class="setting-field">
-                <div id="disable-controller-service-referencing-components"></div>
+                <div id="enable-controller-service-referencing-components"></div>
             </div>
         </div>
     </div>

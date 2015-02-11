@@ -198,3 +198,31 @@ div.referencing-component-references {
     overflow: auto;
     white-space: nowrap;
 }
+
+/*
+    Enable dialog
+*/
+
+#enable-controller-service-dialog {
+    z-index: 1301;
+    display: none;
+    width: 500px;
+    height: 450px;
+    line-height: normal;
+}
+
+#enable-controller-service-scope {
+    float: left;
+    width: 225px;
+    height: 18px;
+    line-height: 18px;
+}
+
+#enable-controller-service-referencing-components {
+    border: 0 solid #CCCCCC;
+    padding: 2px;
+    width: 474px;
+    height: 290px;
+    overflow: auto;
+    white-space: nowrap;
+}
