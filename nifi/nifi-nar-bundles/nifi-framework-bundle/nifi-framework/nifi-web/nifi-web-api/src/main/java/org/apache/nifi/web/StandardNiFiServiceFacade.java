@@ -1215,7 +1215,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             @Override
             public Set<ControllerServiceReferencingComponentDTO> execute() {
                 final ControllerServiceReference reference = controllerServiceDAO.updateControllerServiceReferencingComponents(controllerServiceId, state);
-                return dtoFactory.createControllerServiceReferencesDto(reference);
+                return dtoFactory.createControllerServiceReferencingComponentsDto(reference);
             }
         });
     }
@@ -1947,7 +1947,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     @Override
     public Set<ControllerServiceReferencingComponentDTO> getControllerServiceReferencingComponents(String controllerServiceId) {
         final ControllerServiceNode service = controllerServiceDAO.getControllerService(controllerServiceId);
-        return dtoFactory.createControllerServiceReferencesDto(service.getReferences());
+        return dtoFactory.createControllerServiceReferencingComponentsDto(service.getReferences());
     }
 
     @Override

@@ -151,11 +151,11 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
      * 
      * @return 
      */
-    public Set<ControllerServiceReferencingComponentDTO> getReferences() {
+    public Set<ControllerServiceReferencingComponentDTO> getReferencingComponents() {
         return references;
     }
 
-    public void setReferences(Set<ControllerServiceReferencingComponentDTO> references) {
+    public void setReferencingComponents(Set<ControllerServiceReferencingComponentDTO> references) {
         this.references = references;
     }
 

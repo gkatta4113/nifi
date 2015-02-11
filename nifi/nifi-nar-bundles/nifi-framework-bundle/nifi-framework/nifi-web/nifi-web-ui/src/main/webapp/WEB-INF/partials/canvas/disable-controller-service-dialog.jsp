@@ -24,9 +24,9 @@
             </div>
         </div>
         <div class="setting">
-            <div class="setting-name">References</div>
+            <div class="setting-name">Referencing Components</div>
             <div class="setting-field">
-                <div id="disable-controller-service-references"></div>
+                <div id="disable-controller-service-referencing-components"></div>
             </div>
         </div>
     </div>

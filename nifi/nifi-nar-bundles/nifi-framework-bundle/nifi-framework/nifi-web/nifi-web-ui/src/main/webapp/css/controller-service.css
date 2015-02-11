@@ -108,7 +108,7 @@ div.availability-setting {
     Service references
 */
 
-#controller-service-references {
+#controller-service-referencing-components {
     border: 0 solid #CCCCCC;
     height: 280px;
     overflow-y: auto;
@@ -117,30 +117,30 @@ div.availability-setting {
     width: 376px;
 }
 
-div.reference-block {
+div.referencing-component-block {
     margin-bottom: 6px;
 }
 
-span.reference-title {
+span.referencing-component-title {
     margin-left: 5px;
     font-weight: bold
 }
 
-span.reference-count {
+span.referencing-component-count {
     margin-left: 5px;
     color: #aaa;
 }
 
-ul.reference-listing {
+ul.referencing-component-listing {
     margin-left: 20px;
     margin-bottom: 6px;
 }
 
-ul.reference-listing li {
+ul.referencing-component-listing li {
     margin-bottom: 6px;
 }
 
-div.reference-state {
+div.referencing-component-state {
     margin-top: -2px;
 }
 
@@ -149,20 +149,20 @@ span.service.expansion-button {
     margin-top: 2px;
 }
 
-span.reference-active-thread-count {
+span.referencing-component-active-thread-count {
 }
 
-span.reference-name {
+span.referencing-component-name {
     margin-left: 5px;
     margin-right: 5px;
 }
 
-span.reference-type {
+span.referencing-component-type {
     color: #aaa;
     font-style: italic;
 }
 
-div.reference-references {
+div.referencing-component-references {
     margin-left: 20px;
     margin-top: 6px;
     clear: left;
@@ -190,10 +190,11 @@ div.reference-references {
     line-height: normal;
 }
 
-#disable-controller-service-references {
+#disable-controller-service-referencing-components {
     border: 0 solid #CCCCCC;
     padding: 2px;
     width: 474px;
     height: 290px;
     overflow: auto;
+    white-space: nowrap;
 }

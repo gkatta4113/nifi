@@ -891,7 +891,7 @@ public final class DtoFactory {
         }
         
         // create the reference dto's
-        dto.setReferences(createControllerServiceReferencesDto(controllerServiceNode.getReferences()));
+        dto.setReferencingComponents(createControllerServiceReferencingComponentsDto(controllerServiceNode.getReferences()));
 
         // add the validation errors
         final Collection<ValidationResult> validationErrors = controllerServiceNode.getValidationErrors();
@@ -907,8 +907,8 @@ public final class DtoFactory {
         return dto;
     }
     
-    public Set<ControllerServiceReferencingComponentDTO> createControllerServiceReferencesDto(final ControllerServiceReference reference) {
-        final Set<ControllerServiceReferencingComponentDTO> references = new LinkedHashSet<>();
+    public Set<ControllerServiceReferencingComponentDTO> createControllerServiceReferencingComponentsDto(final ControllerServiceReference reference) {
+        final Set<ControllerServiceReferencingComponentDTO> referencingComponents = new LinkedHashSet<>();
         
         // get all references
         for (final ConfiguredComponent component : reference.getReferencingComponents()) {
@@ -936,10 +936,10 @@ public final class DtoFactory {
                 dto.setReferenceType(ReportingTask.class.getSimpleName());
             }
             
-            references.add(dto);
+            referencingComponents.add(dto);
         }
         
-        return references;
+        return referencingComponents;
     }
     
     public RemoteProcessGroupPortDTO createRemoteProcessGroupPortDto(final RemoteGroupPort port) {

@@ -138,12 +138,13 @@ nf.ControllerService = (function () {
         var controllerServiceData = controllerServiceGrid.getData();
         controllerServiceData.updateItem(controllerService.id, controllerService);
 
-        // reload the controller service references
+        // reload the controller service referencing components
         reloadControllerServiceReferences(controllerService);
     };
     
     /**
-     * Reloads components that reference this controller service.
+     * Reloads components that reference this controller service as well as
+     * other services that this controller service references.
      * 
      * @param {object} controllerService
      */
@@ -151,7 +152,7 @@ nf.ControllerService = (function () {
         var reloadOther = false;
 
         // reload all dependent processors if they are currently visible
-        $.each(controllerService.references, function (_, reference) {
+        $.each(controllerService.referencingComponents, function (_, reference) {
             if (reference.referenceType === 'Processor') {
                 if (nf.Canvas.getGroupId() === reference.groupId) {
                     var processor = nf.Processor.get(reference.id);
@@ -179,12 +180,17 @@ nf.ControllerService = (function () {
     };   
     
     /**
-     * Adds a border to the controller service references if necessary.
+     * Adds a border to the controller service referencing components if necessary.
      * 
      * @argument {jQuery} referenceContainer 
      */
-    var updateReferencesBorder = function (referenceContainer) {
-        if (referenceContainer.is(':visible') && referenceContainer.get(0).scrollHeight > referenceContainer.innerHeight()) {
+    var updateReferencingComponentsBorder = function (referenceContainer) {
+        // determine if it is too big
+        var tooBig = referenceContainer.get(0).scrollHeight > referenceContainer.innerHeight() ||
+                referenceContainer.get(0).scrollWidth > referenceContainer.innerWidth();
+        
+        // draw the border if necessary
+        if (referenceContainer.is(':visible') && tooBig) {
             referenceContainer.css('border-width', '1px');
         } else {
             referenceContainer.css('border-width', '0px');
@@ -195,9 +201,9 @@ nf.ControllerService = (function () {
      * Adds the specified reference for this controller service.
      * 
      * @argument {jQuery} referenceContainer 
-     * @param {array} references
+     * @param {array} referencingComponents
      */
-    var createReferences = function (referenceContainer, references) {
+    var createReferencingComponents = function (referenceContainer, referencingComponents) {
         // toggles the visibility of a container
         var toggle = function (twist, container) {
             if (twist.hasClass('expanded')) {
@@ -209,35 +215,35 @@ nf.ControllerService = (function () {
             }
         };
         
-        var processors = $('<ul class="reference-listing clear"></ul>');
-        var services = $('<ul class="reference-listing clear"></ul>');
-        var tasks = $('<ul class="reference-listing clear"></ul>');
-        $.each(references, function (_, reference) {
-            if (reference.referenceType === 'Processor') {
-                var processorLink = $('<span class="reference-name link"></span>').text(reference.name).on('click', function () {
+        var processors = $('<ul class="referencing-component-listing clear"></ul>');
+        var services = $('<ul class="referencing-component-listing clear"></ul>');
+        var tasks = $('<ul class="referencing-component-listing clear"></ul>');
+        $.each(referencingComponents, function (_, referencingComponent) {
+            if (referencingComponent.referenceType === 'Processor') {
+                var processorLink = $('<span class="referencing-component-name link"></span>').text(referencingComponent.name).on('click', function () {
                     // show the component
-                    nf.CanvasUtils.showComponent(reference.groupId, reference.id);
+                    nf.CanvasUtils.showComponent(referencingComponent.groupId, referencingComponent.id);
                     
                     // close the dialog and shell
                     referenceContainer.closest('.dialog').modal('hide');
                     $('#shell-close-button').click();
                 });
                 
-                var activeThreadCount = $('<span class="reference-active-thread-count"></span>');
-                if (nf.Common.isDefinedAndNotNull(reference.activeThreadCount) && reference.activeThreadCount > 0) {
-                    activeThreadCount.text('(' + reference.activeThreadCount + ')');
+                var activeThreadCount = $('<span class="referencing-component-active-thread-count"></span>');
+                if (nf.Common.isDefinedAndNotNull(referencingComponent.activeThreadCount) && referencingComponent.activeThreadCount > 0) {
+                    activeThreadCount.text('(' + referencingComponent.activeThreadCount + ')');
                 }
-                var processorState = $('<div class="reference-state"></div>').addClass(reference.state.toLowerCase());
-                var processorType = $('<span class="reference-type"></span>').text(nf.Common.substringAfterLast(reference.type, '.'));
+                var processorState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.state.toLowerCase());
+                var processorType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
                 var processorItem = $('<li></li>').append(processorState).append(activeThreadCount).append(processorLink).append(processorType);
                 processors.append(processorItem);
-            } else if (reference.referenceType === 'ControllerService') {
-                var serviceLink = $('<span class="reference-name link"></span>').text(reference.name).on('click', function () {
+            } else if (referencingComponent.referenceType === 'ControllerService') {
+                var serviceLink = $('<span class="referencing-component-name link"></span>').text(referencingComponent.name).on('click', function () {
                     var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
                     var controllerServiceData = controllerServiceGrid.getData();
                     
                     // select the selected row
-                    var row = controllerServiceData.getRowById(reference.id);
+                    var row = controllerServiceData.getRowById(referencingComponent.id);
                     controllerServiceGrid.setSelectedRows([row]);
                     
                     // close the dialog and shell
@@ -245,15 +251,19 @@ nf.ControllerService = (function () {
                 });
                 
                 // container for this service's references
-                var referencingServiceReferencesContainer = $('<div class="reference-references hidden"></div>');
+                var referencingServiceReferencesContainer = $('<div class="referencing-component-references hidden"></div>');
                 var serviceTwist = $('<span class="service expansion-button collapsed pointer"></span>').on('click', function() {
                     if (serviceTwist.hasClass('collapsed')) {
                         var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
                         var controllerServiceData = controllerServiceGrid.getData();
-                        var referencingService = controllerServiceData.getItemById(reference.id);
+                        var referencingService = controllerServiceData.getItemById(referencingComponent.id);
                         
                         // create the markup for the references
-                        createReferences(referencingServiceReferencesContainer, referencingService.references);
+                        if (!nf.Common.isEmpty(referencingService.referencingComponents)) {
+                            createReferencingComponents(referencingServiceReferencesContainer, referencingService.referencingComponents);
+                        } else {
+                            referencingServiceReferencesContainer.append('<div class="unset">This service has no components referencing it.</div>');
+                        }
                     } else {
                         referencingServiceReferencesContainer.empty();
                     }
@@ -262,16 +272,16 @@ nf.ControllerService = (function () {
                     toggle(serviceTwist, referencingServiceReferencesContainer);
                     
                     // update borders as necessary
-                    updateReferencesBorder(referenceContainer);
+                    updateReferencingComponentsBorder(referenceContainer);
                 });
                 
-                var serviceState = $('<div class="reference-state"></div>').addClass(reference.enabled === true ? 'enabled' : 'disabled');
-                var serviceType = $('<span class="reference-type"></span>').text(nf.Common.substringAfterLast(reference.type, '.'));
+                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled');
+                var serviceType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
                 var serviceItem = $('<li></li>').append(serviceTwist).append(serviceState).append(serviceLink).append(serviceType).append(referencingServiceReferencesContainer);
                 
                 services.append(serviceItem);
-            } else if (reference.referenceType === 'ReportingTask') {
-                var taskItem = $('<li></li>').text(reference.name).on('click', function () {
+            } else if (referencingComponent.referenceType === 'ReportingTask') {
+                var taskItem = $('<li></li>').text(referencingComponent.name).on('click', function () {
                     
                     // close the dialog and shell
                     $('#controller-service-configuration').modal('hide');
@@ -288,16 +298,16 @@ nf.ControllerService = (function () {
             }
             
             var twist = $('<span class="expansion-button expanded"></span>');
-            var title = $('<span class="reference-title"></span>').text(titleText);
-            var count = $('<span class="reference-count"></span>').text('(' + list.children().length + ')');
+            var title = $('<span class="referencing-component-title"></span>').text(titleText);
+            var count = $('<span class="referencing-component-count"></span>').text('(' + list.children().length + ')');
             
             // create the reference block
-            $('<div class="reference-block pointer unselectable"></div>').on('click', function () {
+            $('<div class="referencing-component-block pointer unselectable"></div>').on('click', function () {
                 // toggle this block
                 toggle(twist, list);
                 
                 // update the border if necessary
-                updateReferencesBorder(referenceContainer);
+                updateReferencingComponentsBorder(referenceContainer);
             }).append(twist).append(title).append(count).appendTo(referenceContainer);
             
             // add the listing
@@ -306,11 +316,8 @@ nf.ControllerService = (function () {
         
         // create blocks for each type of component
         createReferenceBlock('Processors', processors);
-        createReferenceBlock('Controller Services', services);
         createReferenceBlock('Reporting Tasks', tasks);
-        
-        // update the border if necessary
-        updateReferencesBorder(referenceContainer);
+        createReferenceBlock('Controller Services', services);
     };
     
     // sets whether the specified controller service is enabled
@@ -343,11 +350,20 @@ nf.ControllerService = (function () {
         // populate the disable controller service dialog
         $('#disable-controller-service-name').text(controllerService.name);
         
-        var referencesContainer = $('#disable-controller-service-references');
-        createReferences(referencesContainer, controllerService.references);
+        var referencingComponentsContainer = $('#disable-controller-service-referencing-components');
+        
+        // load the controller referencing components list
+        if (!nf.Common.isEmpty(controllerService.referencingComponents)) {
+            createReferencingComponents(referencingComponentsContainer, controllerService.referencingComponents);
+        } else {
+            referencingComponentsContainer.append('<div class="unset">This service has no components referencing it.</div>');
+        }
         
         // show the dialog
         $('#disable-controller-service-dialog').modal('show');
+        
+        // update the border if necessary
+        updateReferencingComponentsBorder(referencingComponentsContainer);
     };
     
     return {
@@ -379,8 +395,8 @@ nf.ControllerService = (function () {
                     $('#controller-service-properties').propertytable('saveRow');
 
                     // show the border around the processor relationships if necessary
-                    var referenceContainer = $('#controller-service-references');
-                    updateReferencesBorder(referenceContainer);
+                    var referenceContainer = $('#controller-service-referencing-components');
+                    updateReferencingComponentsBorder(referenceContainer);
                 }
             });
             
@@ -395,8 +411,8 @@ nf.ControllerService = (function () {
                 overlayBackground: false,
                 handler: {
                     close: function () {
-                        // empty the references list
-                        $('#controller-service-references').css('border-width', '0').empty();
+                        // empty the referencing components list
+                        $('#controller-service-referencing-components').css('border-width', '0').empty();
 
                         // cancel any active edits
                         $('#controller-service-properties').propertytable('cancelEdit');
@@ -441,7 +457,7 @@ nf.ControllerService = (function () {
                 handler: {
                     close: function() {
                         $('#disable-controller-service-name').text('');
-                        $('#disable-controller-service-references').empty();
+                        $('#disable-controller-service-referencing-components').css('border-width', '0').empty();
                     }
                 }
             }).draggable({
@@ -504,13 +520,13 @@ nf.ControllerService = (function () {
                 }
                 
                 // get the reference container
-                var referenceContainer = $('#controller-service-references');
+                var referenceContainer = $('#controller-service-referencing-components');
 
-                // load the controller references list
-                if (!nf.Common.isEmpty(controllerService.references)) {
-                    createReferences(referenceContainer, controllerService.references);
+                // load the controller referencing components list
+                if (!nf.Common.isEmpty(controllerService.referencingComponents)) {
+                    createReferencingComponents(referenceContainer, controllerService.referencingComponents);
                 } else {
-                    $('#controller-service-references').append('<div class="unset">This service has no components referencing it.</div>');
+                    referenceContainer.append('<div class="unset">This service has no components referencing it.</div>');
                 }
 
                 var buttons = [{
@@ -629,7 +645,7 @@ nf.ControllerService = (function () {
                 $('#controller-service-configuration').modal('show');
 
                 // show the border if necessary
-                updateReferencesBorder(referenceContainer);
+                updateReferencingComponentsBorder(referenceContainer);
             }).fail(nf.Common.handleAjaxError);
         }, 
         
@@ -652,7 +668,7 @@ nf.ControllerService = (function () {
          * @param {object} controllerService
          */
         disable: function(controllerService) {
-            if (nf.Common.isEmpty(controllerService.references)) {
+            if (nf.Common.isEmpty(controllerService.referencingComponents)) {
                 setEnabled(controllerService, false);
             } else {
                 showDisableControllerServiceDialog(controllerService);
@@ -664,7 +680,7 @@ nf.ControllerService = (function () {
          * 
          * @param {object} controllerService
          */
-        'delete': function(controllerService) {
+        remove: function(controllerService) {
             // prompt for removal?
                     
             var revision = nf.Client.getRevision();

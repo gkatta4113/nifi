@@ -809,7 +809,7 @@ nf.Settings = (function () {
                 } else if (target.hasClass('disable-controller-service')) {
                     nf.ControllerService.disable(controllerService);
                 } else if (target.hasClass('delete-controller-service')) {
-                    nf.ControllerService.delete(controllerService);
+                    nf.ControllerService.remove(controllerService);
                 }
             } else if (controllerServicesGrid.getColumns()[args.cell].id === 'moreDetails') {
                 if (target.hasClass('view-controller-service')) {
