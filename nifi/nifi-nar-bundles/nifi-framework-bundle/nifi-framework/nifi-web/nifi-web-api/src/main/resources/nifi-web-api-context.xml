@@ -24,6 +24,10 @@
     http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd">
 
+    <bean id="controllerServiceProvider" class="org.apache.nifi.web.spring.ControllerServiceProviderFactoryBean" depends-on="clusterManagerOptimisticLockingManager">
+        <property name="properties" ref="nifiProperties"/>
+    </bean>
+    
     <!-- optimistic locking manager -->
     <bean id="webOptimisticLockingManager" class="org.apache.nifi.web.spring.OptimisticLockingManagerFactoryBean" depends-on="clusterManagerOptimisticLockingManager">
         <property name="properties" ref="nifiProperties"/>
@@ -66,8 +70,8 @@
     <bean id="processorDAO" class="org.apache.nifi.web.dao.impl.StandardProcessorDAO">
         <property name="flowController" ref="flowController"/>
     </bean>
-    <bean id="controllerServiceDAO" class="org.apache.nifi.web.spring.ControllerServiceDAOFactoryBean" depends-on="clusterManager flowController">
-        <property name="properties" ref="nifiProperties"/>
+    <bean id="controllerServiceDAO" class="org.apache.nifi.web.dao.impl.StandardControllerServiceDAO">
+        <property name="serviceProvider" ref="controllerServiceProvider"/>
     </bean>
     <bean id="templateDAO" class="org.apache.nifi.web.dao.impl.StandardTemplateDAO">
         <property name="flowController" ref="flowController"/>
@@ -106,11 +110,12 @@
         <property name="clusterManager" ref="clusterManager"/>
     </bean>
 
-    <bean id="nifiWebContext" class="org.apache.nifi.web.spring.NiFiWebContextFactoryBean" depends-on="clusterManager flowController">
+    <bean id="nifiWebContext" class="org.apache.nifi.web.StandardNiFiWebContext">
         <property name="serviceFacade" ref="serviceFacade"/>
         <property name="properties" ref="nifiProperties"/>
         <property name="clusterManager" ref="clusterManager"/>
         <property name="auditService" ref="auditService"/>
+        <property name="controllerServiceLookup" ref="controllerServiceProvider"/>
     </bean>
 
     <!-- rest endpoints -->

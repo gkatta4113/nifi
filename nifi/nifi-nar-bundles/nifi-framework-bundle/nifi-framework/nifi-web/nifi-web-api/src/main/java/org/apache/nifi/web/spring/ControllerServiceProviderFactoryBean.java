@@ -18,9 +18,9 @@ package org.apache.nifi.web.spring;
 
 import org.apache.nifi.cluster.manager.impl.WebClusterManager;
 import org.apache.nifi.controller.FlowController;
+import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
-import org.apache.nifi.web.dao.impl.StandardControllerServiceDAO;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
@@ -29,24 +29,23 @@ import org.springframework.context.ApplicationContextAware;
 /**
  *
  */
-public class ControllerServiceDAOFactoryBean implements FactoryBean, ApplicationContextAware {
+public class ControllerServiceProviderFactoryBean implements FactoryBean, ApplicationContextAware {
 
     private ApplicationContext context;
-    private StandardControllerServiceDAO controllerServiceDao;
+    private ControllerServiceProvider controllerServiceProvider;
     private NiFiProperties properties;
 
     @Override
     public Object getObject() throws Exception {
-        if (controllerServiceDao == null) {
-            controllerServiceDao = new StandardControllerServiceDAO();
+        if (controllerServiceProvider == null) {
             if (properties.isClusterManager()) {
-                controllerServiceDao.setServiceProvider(context.getBean("clusterManager", WebClusterManager.class));
+                controllerServiceProvider = context.getBean("clusterManager", WebClusterManager.class);
             } else {
-                controllerServiceDao.setServiceProvider(context.getBean("flowController", FlowController.class));
+                controllerServiceProvider = context.getBean("flowController", FlowController.class);
             }
         }
 
-        return controllerServiceDao;
+        return controllerServiceProvider;
     }
 
     @Override
