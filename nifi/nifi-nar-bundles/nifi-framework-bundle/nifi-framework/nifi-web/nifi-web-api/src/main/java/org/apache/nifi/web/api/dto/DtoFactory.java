@@ -126,9 +126,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.web.FlowModification;
-import org.apache.nifi.web.api.dto.ControllerServiceDTO.ControllerServiceReferenceDTO;
 
 /**
  *
@@ -890,38 +890,9 @@ public final class DtoFactory {
             dto.getProperties().put(descriptor.getName(), propertyValue);
         }
         
-        // initialize the references
-        dto.setReferences(new LinkedHashSet<ControllerServiceReferenceDTO>());
-        
-        // get all references
-        for (final ConfiguredComponent component : controllerServiceNode.getReferences().getReferencingComponents()) {
-            final ControllerServiceReferenceDTO reference = new ControllerServiceReferenceDTO();
-            reference.setId(component.getIdentifier());
-            reference.setName(component.getName());
+        // create the reference dto's
+        dto.setReferences(createControllerServiceReferencesDto(controllerServiceNode.getReferences()));
 
-            if (component instanceof ProcessorNode) {
-                final ProcessorNode node = ((ProcessorNode) component);
-                reference.setGroupId(node.getProcessGroup().getIdentifier());
-                reference.setState(node.getScheduledState().name());
-                reference.setActiveThreadCount(node.getActiveThreadCount());
-                reference.setType(node.getProcessor().getClass().getName());
-                reference.setReferenceType(Processor.class.getSimpleName());
-            } else if (component instanceof ControllerServiceNode) {
-                final ControllerServiceNode node = ((ControllerServiceNode) component);
-                reference.setEnabled(!node.isDisabled());
-                reference.setType(node.getControllerServiceImplementation().getClass().getName());
-                reference.setReferenceType(ControllerService.class.getSimpleName());
-            } else if (component instanceof ReportingTask) {
-                final ReportingTaskNode node = ((ReportingTaskNode) component);
-                reference.setState(node.getScheduledState().name());
-                reference.setActiveThreadCount(node.getActiveThreadCount());
-                reference.setType(node.getReportingTask().getClass().getName());
-                reference.setReferenceType(ReportingTask.class.getSimpleName());
-            }
-            
-            dto.getReferences().add(reference);
-        }
-        
         // add the validation errors
         final Collection<ValidationResult> validationErrors = controllerServiceNode.getValidationErrors();
         if (validationErrors != null && !validationErrors.isEmpty()) {
@@ -934,6 +905,41 @@ public final class DtoFactory {
         }
         
         return dto;
+    }
+    
+    public Set<ControllerServiceReferencingComponentDTO> createControllerServiceReferencesDto(final ControllerServiceReference reference) {
+        final Set<ControllerServiceReferencingComponentDTO> references = new LinkedHashSet<>();
+        
+        // get all references
+        for (final ConfiguredComponent component : reference.getReferencingComponents()) {
+            final ControllerServiceReferencingComponentDTO dto = new ControllerServiceReferencingComponentDTO();
+            dto.setId(component.getIdentifier());
+            dto.setName(component.getName());
+
+            if (component instanceof ProcessorNode) {
+                final ProcessorNode node = ((ProcessorNode) component);
+                dto.setGroupId(node.getProcessGroup().getIdentifier());
+                dto.setState(node.getScheduledState().name());
+                dto.setActiveThreadCount(node.getActiveThreadCount());
+                dto.setType(node.getProcessor().getClass().getName());
+                dto.setReferenceType(Processor.class.getSimpleName());
+            } else if (component instanceof ControllerServiceNode) {
+                final ControllerServiceNode node = ((ControllerServiceNode) component);
+                dto.setEnabled(!node.isDisabled());
+                dto.setType(node.getControllerServiceImplementation().getClass().getName());
+                dto.setReferenceType(ControllerService.class.getSimpleName());
+            } else if (component instanceof ReportingTask) {
+                final ReportingTaskNode node = ((ReportingTaskNode) component);
+                dto.setState(node.getScheduledState().name());
+                dto.setActiveThreadCount(node.getActiveThreadCount());
+                dto.setType(node.getReportingTask().getClass().getName());
+                dto.setReferenceType(ReportingTask.class.getSimpleName());
+            }
+            
+            references.add(dto);
+        }
+        
+        return references;
     }
     
     public RemoteProcessGroupPortDTO createRemoteProcessGroupPortDto(final RemoteGroupPort port) {

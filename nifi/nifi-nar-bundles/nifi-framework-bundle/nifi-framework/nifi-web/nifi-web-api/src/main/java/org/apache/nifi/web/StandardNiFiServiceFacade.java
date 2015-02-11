@@ -154,7 +154,9 @@ import org.apache.nifi.web.util.SnippetUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
+import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1208,6 +1210,17 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
+    public ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(final Revision revision, final String controllerServiceId, final String state) {
+        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Set<ControllerServiceReferencingComponentDTO>>() {
+            @Override
+            public Set<ControllerServiceReferencingComponentDTO> execute() {
+                final ControllerServiceReference reference = controllerServiceDAO.updateControllerServiceReferencingComponents(controllerServiceId, state);
+                return dtoFactory.createControllerServiceReferencesDto(reference);
+            }
+        });
+    }
+
+    @Override
     public ConfigurationSnapshot<Void> deleteControllerService(final Revision revision, final String controllerServiceId) {
         return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
             @Override
@@ -1929,6 +1942,12 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     @Override
     public ControllerServiceDTO getControllerService(String controllerServiceId) {
         return dtoFactory.createControllerServiceDto(controllerServiceDAO.getControllerService(controllerServiceId));
+    }
+
+    @Override
+    public Set<ControllerServiceReferencingComponentDTO> getControllerServiceReferencingComponents(String controllerServiceId) {
+        final ControllerServiceNode service = controllerServiceDAO.getControllerService(controllerServiceId);
+        return dtoFactory.createControllerServiceReferencesDto(service.getReferences());
     }
 
     @Override

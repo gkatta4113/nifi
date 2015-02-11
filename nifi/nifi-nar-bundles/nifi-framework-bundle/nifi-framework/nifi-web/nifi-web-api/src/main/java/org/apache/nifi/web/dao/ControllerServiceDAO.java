@@ -19,6 +19,7 @@ package org.apache.nifi.web.dao;
 import java.util.Set;
 
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 
 /**
@@ -65,6 +66,15 @@ public interface ControllerServiceDAO {
      */
     ControllerServiceNode updateControllerService(ControllerServiceDTO controllerServiceDTO);
 
+    /**
+     * Updates the referencing components for the specified controller service.
+     * 
+     * @param controllerServiceId
+     * @param state
+     * @return 
+     */
+    ControllerServiceReference updateControllerServiceReferencingComponents(String controllerServiceId, String state);
+    
     /**
      * Determines whether this controller service can be updated.
      *

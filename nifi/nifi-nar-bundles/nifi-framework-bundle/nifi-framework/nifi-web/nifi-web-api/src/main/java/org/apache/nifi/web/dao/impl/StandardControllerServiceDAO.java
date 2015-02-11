@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
+import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
@@ -133,6 +134,15 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         }
         
         return controllerService;
+    }
+
+    @Override
+    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final String state) {
+        // get the controller service
+        final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
+        
+//        serviceProvider.
+        return controllerService.getReferences();
     }
 
     /**

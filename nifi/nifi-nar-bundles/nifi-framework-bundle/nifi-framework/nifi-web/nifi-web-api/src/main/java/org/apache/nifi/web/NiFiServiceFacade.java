@@ -40,6 +40,7 @@ import org.apache.nifi.web.api.dto.PortDTO;
 import org.apache.nifi.web.api.dto.ProcessGroupDTO;
 import org.apache.nifi.web.api.dto.ProcessorDTO;
 import org.apache.nifi.web.api.dto.ComponentHistoryDTO;
+import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
 import org.apache.nifi.web.api.dto.RevisionDTO;
@@ -966,6 +967,24 @@ public interface NiFiServiceFacade {
      * @return 
      */
     ControllerServiceDTO getControllerService(String controllerServiceId);
+    
+    /**
+     * Gets the references for specified controller service.
+     * 
+     * @param controllerServiceId
+     * @return 
+     */
+    Set<ControllerServiceReferencingComponentDTO> getControllerServiceReferencingComponents(String controllerServiceId);
+    
+    /**
+     * Updates the referencing components for the specified controller service.
+     * 
+     * @param revision
+     * @param controllerServiceId
+     * @param state
+     * @return 
+     */
+    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, String state);
     
     /**
      * Updates the specified label.
