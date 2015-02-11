@@ -16,6 +16,8 @@
  */
 package org.apache.nifi.controller.service;
 
+import java.util.Set;
+
 import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.ControllerService;
 
@@ -27,7 +29,15 @@ public interface ControllerServiceNode extends ConfiguredComponent {
 
     boolean isDisabled();
 
-    void setDisabled(boolean disabled);
+    void enable();
+    void disable();
+    
+    /**
+     * Disables the Controller Service but does not verify that the provided set of referencing
+     * Controller Services should be verified as disabled first
+     * @param ignoredReferences
+     */
+    void disable(Set<ControllerServiceNode> ignoredReferences);
 
     ControllerServiceReference getReferences();
 
@@ -40,6 +50,18 @@ public interface ControllerServiceNode extends ConfiguredComponent {
     
     void verifyCanEnable();
     void verifyCanDisable();
+    
+    /**
+     * Verifies that this Controller Service can be disabled if the provided set of 
+     * services are also disabled. This is introduced because we can have an instance
+     * where A references B, which references C, which references A and we want
+     * to disable service C. In this case, the cycle needs to not cause us to fail, 
+     * so we want to verify that C can be disabled if A and B also are. 
+     * 
+     * @param ignoredReferences
+     */
+    void verifyCanDisable(Set<ControllerServiceNode> ignoredReferences);
+    
     void verifyCanDelete();
     void verifyCanUpdate();
 }

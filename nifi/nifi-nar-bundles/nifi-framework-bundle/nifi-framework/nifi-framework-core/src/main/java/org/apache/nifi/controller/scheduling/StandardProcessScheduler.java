@@ -145,6 +145,8 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         componentLifeCycleThreadPool.shutdown();
     }
 
+    
+    @Override
     public void schedule(final ReportingTaskNode taskNode) {
         final ScheduleState scheduleState = getScheduleState(requireNonNull(taskNode));
         if (scheduleState.isScheduled()) {
@@ -203,6 +205,8 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         componentLifeCycleThreadPool.execute(startReportingTaskRunnable);
     }
 
+    
+    @Override
     public void unschedule(final ReportingTaskNode taskNode) {
         final ScheduleState scheduleState = getScheduleState(requireNonNull(taskNode));
         if (!scheduleState.isScheduled()) {

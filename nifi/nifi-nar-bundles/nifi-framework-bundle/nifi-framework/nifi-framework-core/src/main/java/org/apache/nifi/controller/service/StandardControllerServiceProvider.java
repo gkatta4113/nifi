@@ -37,7 +37,11 @@ import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.annotation.lifecycle.OnRemoved;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ConfigurationContext;
+import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.ControllerService;
+import org.apache.nifi.controller.ProcessScheduler;
+import org.apache.nifi.controller.ProcessorNode;
+import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.ValidationContextFactory;
 import org.apache.nifi.controller.exception.ControllerServiceNotFoundException;
 import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
@@ -56,6 +60,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
 
     private static final Logger logger = LoggerFactory.getLogger(StandardControllerServiceProvider.class);
 
+    private final ProcessScheduler processScheduler;
     private final ConcurrentMap<String, ControllerServiceNode> controllerServices;
     private static final Set<Method> validDisabledMethods;
 
@@ -71,10 +76,11 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         validDisabledMethods = Collections.unmodifiableSet(validMethods);
     }
 
-    public StandardControllerServiceProvider() {
+    public StandardControllerServiceProvider(final ProcessScheduler scheduler) {
         // the following 2 maps must be updated atomically, but we do not lock around them because they are modified
         // only in the createControllerService method, and both are modified before the method returns
         this.controllerServices = new ConcurrentHashMap<>();
+        this.processScheduler = scheduler;
     }
 
     private Class<?>[] getInterfaces(final Class<?> cls) {
@@ -106,8 +112,14 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         final ClassLoader currentContextClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             final ClassLoader cl = ExtensionManager.getClassLoader(type);
-            Thread.currentThread().setContextClassLoader(cl);
-            final Class<?> rawClass = Class.forName(type, false, cl);
+            final Class<?> rawClass;
+            if ( cl == null ) {
+                rawClass = Class.forName(type);
+            } else {
+                Thread.currentThread().setContextClassLoader(cl);
+                rawClass = Class.forName(type, false, cl);
+            }
+            
             final Class<? extends ControllerService> controllerServiceClass = rawClass.asSubclass(ControllerService.class);
 
             final ControllerService originalService = controllerServiceClass.newInstance();
@@ -135,7 +147,12 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
                 }
             };
 
-            final ControllerService proxiedService = (ControllerService) Proxy.newProxyInstance(cl, getInterfaces(controllerServiceClass), invocationHandler);
+            final ControllerService proxiedService;
+            if ( cl == null ) {
+                proxiedService = (ControllerService) Proxy.newProxyInstance(getClass().getClassLoader(), getInterfaces(controllerServiceClass), invocationHandler);
+            } else {
+                proxiedService = (ControllerService) Proxy.newProxyInstance(cl, getInterfaces(controllerServiceClass), invocationHandler);
+            }
             logger.info("Create Controller Service of type {} with identifier {}", type, id);
 
             originalService.initialize(new StandardControllerServiceInitializationContext(id, this));
@@ -174,7 +191,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
             ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnEnabled.class, serviceNode.getControllerServiceImplementation(), configContext);
         }
         
-        serviceNode.setDisabled(false);
+        serviceNode.enable();
     }
     
     @Override
@@ -183,7 +200,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
 
         // We must set the service to disabled before we invoke the OnDisabled methods because the service node
         // can throw Exceptions if we attempt to disable the service while it's known to be in use.
-        serviceNode.setDisabled(true);
+        serviceNode.disable();
         
         try (final NarCloseable x = NarCloseable.withNarLoader()) {
             ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, serviceNode.getControllerServiceImplementation());
@@ -262,5 +279,122 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
     @Override
     public Set<ControllerServiceNode> getAllControllerServices() {
     	return new HashSet<>(controllerServices.values());
+    }
+    
+    @Override
+    public void deactivateReferencingComponents(final ControllerServiceNode serviceNode) {
+        deactivateReferencingComponents(serviceNode, new HashSet<ControllerServiceNode>());
+    }
+    
+    private void deactivateReferencingComponents(final ControllerServiceNode serviceNode, final Set<ControllerServiceNode> visited) {
+        final ControllerServiceReference reference = serviceNode.getReferences();
+        
+        final Set<ConfiguredComponent> components = reference.getActiveReferences();
+        for (final ConfiguredComponent component : components) {
+            if ( component instanceof ControllerServiceNode ) {
+                // If we've already visited this component (there is a loop such that
+                // we are disabling Controller Service A, but B depends on A and A depends on B)
+                // we don't need to disable this component because it will be disabled after we return
+                if ( visited.contains(component) ) {
+                    continue;
+                }
+                
+                visited.add(serviceNode);
+                deactivateReferencingComponents((ControllerServiceNode) component, visited);
+                
+                if (isControllerServiceEnabled(serviceNode.getIdentifier())) {
+                    serviceNode.verifyCanDisable(visited);
+                    serviceNode.disable(visited);
+                }
+            } else if ( component instanceof ReportingTaskNode ) {
+                final ReportingTaskNode taskNode = (ReportingTaskNode) component;
+                if (taskNode.isRunning()) {
+                    taskNode.verifyCanStop();
+                    processScheduler.unschedule(taskNode);
+                }
+            } else if ( component instanceof ProcessorNode ) {
+                final ProcessorNode procNode = (ProcessorNode) component;
+                if ( procNode.isRunning() ) {
+                    procNode.getProcessGroup().stopProcessor(procNode);
+                }
+            }
+        }
+    }
+    
+    
+    @Override
+    public void activateReferencingComponents(final ControllerServiceNode serviceNode) {
+        activateReferencingComponents(serviceNode, new HashSet<ControllerServiceNode>());
+    }
+    
+    
+    /**
+     * Recursively enables this controller service and any controller service that it references.
+     * @param serviceNode
+     */
+    private void activateReferencedComponents(final ControllerServiceNode serviceNode) {
+        for ( final Map.Entry<PropertyDescriptor, String> entry : serviceNode.getProperties().entrySet() ) {
+            final PropertyDescriptor key = entry.getKey();
+            if ( key.getControllerServiceDefinition() == null ) {
+                continue;
+            }
+                
+            final String serviceId = entry.getValue() == null ? key.getDefaultValue() : entry.getValue();
+            if ( serviceId == null ) {
+                continue;
+            }
+            
+            final ControllerServiceNode referencedNode = getControllerServiceNode(serviceId);
+            if ( referencedNode == null ) {
+                throw new IllegalStateException("Cannot activate referenced component of " + serviceNode + " because no service exists with ID " + serviceId);
+            }
+            
+            activateReferencedComponents(referencedNode);
+            
+            if ( referencedNode.isDisabled() ) {
+                enableControllerService(referencedNode);
+            }
+        }
+    }
+    
+    private void activateReferencingComponents(final ControllerServiceNode serviceNode, final Set<ControllerServiceNode> visited) {
+        if ( serviceNode.isDisabled() ) {
+            throw new IllegalStateException("Cannot activate referencing components of " + serviceNode.getControllerServiceImplementation() + " because the Controller Service is disabled");
+        }
+        
+        final ControllerServiceReference ref = serviceNode.getReferences();
+        final Set<ConfiguredComponent> components = ref.getReferencingComponents();
+        
+        // First, activate any other controller services. We do this first so that we can
+        // avoid the situation where Processor X depends on Controller Services Y and Z; and
+        // Controller Service Y depends on Controller Service Z. In this case, if we first attempted
+        // to start Processor X, we would fail because Controller Service Y is disabled. THis way, we
+        // can recursively enable everything.
+        for ( final ConfiguredComponent component : components ) {
+            if (component instanceof ControllerServiceNode) {
+                final ControllerServiceNode componentNode = (ControllerServiceNode) component;
+                activateReferencedComponents(componentNode);
+                
+                if ( componentNode.isDisabled() ) {
+                    enableControllerService(componentNode);
+                }
+                
+                activateReferencingComponents(componentNode);
+            }
+        }
+        
+        for ( final ConfiguredComponent component : components ) {
+            if (component instanceof ProcessorNode) {
+                final ProcessorNode procNode = (ProcessorNode) component;
+                if ( !procNode.isRunning() ) {
+                    procNode.getProcessGroup().startProcessor(procNode);
+                }
+            } else if (component instanceof ReportingTaskNode) {
+                final ReportingTaskNode taskNode = (ReportingTaskNode) component;
+                if ( !taskNode.isRunning() ) {
+                    processScheduler.schedule(taskNode);
+                }
+            }
+        }
     }
 }

@@ -357,7 +357,6 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         this.httpResponseMapper = httpResponseMapper;
         this.dataFlowManagementService = dataFlowManagementService;
         this.properties = properties;
-        this.controllerServiceProvider = new StandardControllerServiceProvider();
         this.bulletinRepository = new VolatileBulletinRepository();
         this.instanceId = UUID.randomUUID().toString();
         this.senderListener = senderListener;
@@ -410,6 +409,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         processScheduler.setSchedulingAgent(SchedulingStrategy.CRON_DRIVEN, new QuartzSchedulingAgent(null, reportingTaskEngine, null, encryptor));
         processScheduler.setMaxThreadCount(SchedulingStrategy.TIMER_DRIVEN, 10);
         processScheduler.setMaxThreadCount(SchedulingStrategy.CRON_DRIVEN, 10);
+        
+        controllerServiceProvider = new StandardControllerServiceProvider(processScheduler);
     }
 
     public void start() throws IOException {
@@ -1356,6 +1357,15 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	return controllerServiceProvider.getAllControllerServices();
     }
     
+    @Override
+    public void activateReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.activateReferencingComponents(serviceNode);
+    }
+    
+    @Override
+    public void deactivateReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.deactivateReferencingComponents(serviceNode);
+    }
     
     private byte[] serialize(final Document doc) throws TransformerException {
     	final ByteArrayOutputStream baos = new ByteArrayOutputStream();
