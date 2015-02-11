@@ -56,8 +56,6 @@ import org.apache.nifi.controller.ProcessorNode;
 import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.repository.ContentNotFoundException;
 import org.apache.nifi.controller.repository.claim.ContentDirection;
-import org.apache.nifi.controller.service.ControllerServiceNode;
-import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.controller.status.ProcessGroupStatus;
 import org.apache.nifi.diagnostics.SystemDiagnostics;
 import org.apache.nifi.flowfile.FlowFilePrioritizer;
@@ -122,7 +120,7 @@ import org.springframework.security.access.AccessDeniedException;
 /**
  *
  */
-public class ControllerFacade implements ControllerServiceProvider {
+public class ControllerFacade {
 
     private static final Logger logger = LoggerFactory.getLogger(ControllerFacade.class);
 
@@ -389,69 +387,6 @@ public class ControllerFacade implements ControllerServiceProvider {
         }
 
         return counter;
-    }
-    
-    
-
-    /**
-     * Return the controller service for the specified identifier.
-     *
-     * @param serviceIdentifier
-     * @return
-     */
-    @Override
-    public ControllerService getControllerService(String serviceIdentifier) {
-        return flowController.getControllerService(serviceIdentifier);
-    }
-
-    @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
-        return flowController.createControllerService(type, id, firstTimeAdded);
-    }
-    
-    @Override
-    public void removeControllerService(ControllerServiceNode serviceNode) {
-        flowController.removeControllerService(serviceNode);
-    }
-
-    @Override
-    public Set<String> getControllerServiceIdentifiers(Class<? extends ControllerService> serviceType) {
-        return flowController.getControllerServiceIdentifiers(serviceType);
-    }
-
-    @Override
-    public ControllerServiceNode getControllerServiceNode(final String id) {
-        return flowController.getControllerServiceNode(id);
-    }
-
-    @Override
-    public boolean isControllerServiceEnabled(final ControllerService service) {
-        return flowController.isControllerServiceEnabled(service);
-    }
-
-    @Override
-    public boolean isControllerServiceEnabled(final String serviceIdentifier) {
-        return flowController.isControllerServiceEnabled(serviceIdentifier);
-    }
-    
-    @Override
-    public String getControllerServiceName(final String serviceIdentifier) {
-    	return flowController.getControllerServiceName(serviceIdentifier);
-    }
-
-    @Override
-    public Set<ControllerServiceNode> getAllControllerServices() {
-    	return flowController.getAllControllerServices();
-    }
-
-    @Override
-    public void enableControllerService(final ControllerServiceNode serviceNode) {
-        flowController.enableControllerService(serviceNode);
-    }
-    
-    @Override
-    public void disableControllerService(ControllerServiceNode serviceNode) {
-        flowController.disableControllerService(serviceNode);
     }
     
     /**

@@ -49,7 +49,6 @@ import org.apache.nifi.web.api.dto.ProcessorConfigDTO;
 import org.apache.nifi.web.api.dto.ProcessorDTO;
 import org.apache.nifi.web.api.dto.RevisionDTO;
 import org.apache.nifi.web.api.entity.ProcessorEntity;
-import org.apache.nifi.web.controller.ControllerFacade;
 import org.apache.nifi.web.util.WebUtils;
 
 import org.apache.commons.lang3.StringUtils;
@@ -60,6 +59,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.sun.jersey.core.util.MultivaluedMapImpl;
+import org.apache.nifi.controller.ControllerServiceLookup;
 import org.apache.nifi.web.util.ClientResponseUtils;
 
 /**
@@ -76,16 +76,12 @@ public class StandardNiFiWebContext implements NiFiWebContext {
     private NiFiProperties properties;
     private NiFiServiceFacade serviceFacade;
     private WebClusterManager clusterManager;
-    private ControllerFacade controllerFacade;
+    private ControllerServiceLookup controllerServiceLookup;
     private AuditService auditService;
 
     @Override
     public ControllerService getControllerService(String serviceIdentifier) {
-        if (properties.isClusterManager()) {
-            return clusterManager.getControllerService(serviceIdentifier);
-        } else {
-            return controllerFacade.getControllerService(serviceIdentifier);
-        }
+        return controllerServiceLookup.getControllerService(serviceIdentifier);
     }
 
     @Override
@@ -325,12 +321,12 @@ public class StandardNiFiWebContext implements NiFiWebContext {
         this.serviceFacade = serviceFacade;
     }
 
-    public void setControllerFacade(ControllerFacade controllerFacade) {
-        this.controllerFacade = controllerFacade;
-    }
-
     public void setAuditService(AuditService auditService) {
         this.auditService = auditService;
+    }
+
+    public void setControllerServiceLookup(ControllerServiceLookup controllerServiceLookup) {
+        this.controllerServiceLookup = controllerServiceLookup;
     }
 
 }

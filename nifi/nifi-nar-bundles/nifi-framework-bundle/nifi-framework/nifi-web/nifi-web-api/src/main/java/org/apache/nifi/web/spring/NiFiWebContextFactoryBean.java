@@ -16,11 +16,13 @@
  */
 package org.apache.nifi.web.spring;
 
+import org.apache.nifi.admin.service.AuditService;
 import org.apache.nifi.cluster.manager.impl.WebClusterManager;
 import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.util.NiFiProperties;
-import org.apache.nifi.web.dao.ControllerServiceDAO;
-import org.apache.nifi.web.dao.impl.StandardControllerServiceDAO;
+import org.apache.nifi.web.NiFiServiceFacade;
+import org.apache.nifi.web.NiFiWebContext;
+import org.apache.nifi.web.StandardNiFiWebContext;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
@@ -29,29 +31,37 @@ import org.springframework.context.ApplicationContextAware;
 /**
  *
  */
-public class ControllerServiceDAOFactoryBean implements FactoryBean, ApplicationContextAware {
+public class NiFiWebContextFactoryBean implements FactoryBean, ApplicationContextAware {
 
     private ApplicationContext context;
-    private StandardControllerServiceDAO controllerServiceDao;
+    private StandardNiFiWebContext webContext;
+    
     private NiFiProperties properties;
+    private NiFiServiceFacade serviceFacade;
+    private WebClusterManager clusterManager;
+    private AuditService auditService;
 
     @Override
     public Object getObject() throws Exception {
-        if (controllerServiceDao == null) {
-            controllerServiceDao = new StandardControllerServiceDAO();
+        if (webContext == null) {
+            webContext = new StandardNiFiWebContext();
             if (properties.isClusterManager()) {
-                controllerServiceDao.setServiceProvider(context.getBean("clusterManager", WebClusterManager.class));
+                webContext.setControllerServiceLookup(context.getBean("clusterManager", WebClusterManager.class));
             } else {
-                controllerServiceDao.setServiceProvider(context.getBean("flowController", FlowController.class));
+                webContext.setControllerServiceLookup(context.getBean("flowController", FlowController.class));
             }
+            webContext.setAuditService(auditService);
+            webContext.setClusterManager(clusterManager);
+            webContext.setProperties(properties);
+            webContext.setServiceFacade(serviceFacade);
         }
 
-        return controllerServiceDao;
+        return webContext;
     }
 
     @Override
     public Class getObjectType() {
-        return ControllerServiceDAO.class;
+        return NiFiWebContext.class;
     }
 
     @Override
@@ -59,12 +69,25 @@ public class ControllerServiceDAOFactoryBean implements FactoryBean, Application
         return true;
     }
 
-    public void setProperties(NiFiProperties properties) {
-        this.properties = properties;
-    }
-
     @Override
     public void setApplicationContext(ApplicationContext context) throws BeansException {
         this.context = context;
     }
+
+    public void setProperties(NiFiProperties properties) {
+        this.properties = properties;
+    }
+
+    public void setServiceFacade(NiFiServiceFacade serviceFacade) {
+        this.serviceFacade = serviceFacade;
+    }
+
+    public void setClusterManager(WebClusterManager clusterManager) {
+        this.clusterManager = clusterManager;
+    }
+
+    public void setAuditService(AuditService auditService) {
+        this.auditService = auditService;
+    }
+
 }

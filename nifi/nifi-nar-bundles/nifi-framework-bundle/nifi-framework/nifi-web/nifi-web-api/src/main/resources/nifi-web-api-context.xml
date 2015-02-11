@@ -106,9 +106,8 @@
         <property name="clusterManager" ref="clusterManager"/>
     </bean>
 
-    <bean id="nifiWebContext" class="org.apache.nifi.web.StandardNiFiWebContext">
+    <bean id="nifiWebContext" class="org.apache.nifi.web.spring.NiFiWebContextFactoryBean" depends-on="clusterManager flowController">
         <property name="serviceFacade" ref="serviceFacade"/>
-        <property name="controllerFacade" ref="controllerFacade"/>
         <property name="properties" ref="nifiProperties"/>
         <property name="clusterManager" ref="clusterManager"/>
         <property name="auditService" ref="auditService"/>
