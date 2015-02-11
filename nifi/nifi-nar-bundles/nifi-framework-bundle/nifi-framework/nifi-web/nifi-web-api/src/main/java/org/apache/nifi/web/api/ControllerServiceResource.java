@@ -54,7 +54,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
 import org.apache.nifi.web.api.entity.ControllerServiceEntity;
-import org.apache.nifi.web.api.entity.ControllerServiceReferencesEntity;
+import org.apache.nifi.web.api.entity.ControllerServiceReferencingComponentsEntity;
 import org.apache.nifi.web.api.entity.ControllerServicesEntity;
 import org.apache.nifi.web.util.Availability;
 import org.codehaus.enunciate.jaxrs.TypeHint;
@@ -366,9 +366,9 @@ public class ControllerServiceResource extends ApplicationResource {
         revision.setClientId(clientId.getClientId());
 
         // create the response entity
-        final ControllerServiceReferencesEntity entity = new ControllerServiceReferencesEntity();
+        final ControllerServiceReferencingComponentsEntity entity = new ControllerServiceReferencingComponentsEntity();
         entity.setRevision(revision);
-        entity.setControllerServiceReferences(controllerServiceReferences);
+        entity.setControllerServiceReferencingComponents(controllerServiceReferences);
 
         return clusterContext(generateOkResponse(entity)).build();
     }
@@ -431,9 +431,9 @@ public class ControllerServiceResource extends ApplicationResource {
         revision.setVersion(response.getVersion());
 
         // create the response entity
-        final ControllerServiceReferencesEntity entity = new ControllerServiceReferencesEntity();
+        final ControllerServiceReferencingComponentsEntity entity = new ControllerServiceReferencingComponentsEntity();
         entity.setRevision(revision);
-        entity.setControllerServiceReferences(response.getConfiguration());
+        entity.setControllerServiceReferencingComponents(response.getConfiguration());
 
         return clusterContext(generateOkResponse(entity)).build();
     }
