@@ -361,7 +361,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
         }
 
         if ( autoResumeState ) {
-	    	if ( dto.getEnabled() == Boolean.TRUE ) {
+	    	if ( Boolean.TRUE.equals(dto.getEnabled()) ) {
 	    		try {
 	    			controller.enableControllerService(node);
 	    		} catch (final Exception e) {
