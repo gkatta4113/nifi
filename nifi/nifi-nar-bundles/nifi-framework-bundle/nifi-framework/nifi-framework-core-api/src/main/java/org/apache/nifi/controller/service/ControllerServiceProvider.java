@@ -74,4 +74,28 @@ public interface ControllerServiceProvider extends ControllerServiceLookup {
      * @return
      */
     Set<ControllerServiceNode> getAllControllerServices();
+    
+    /**
+     * Recursively stops all Processors and Reporting Tasks that are referencing the given Controller Service,
+     * as well as disabling any Controller Service that references this Controller Service (and stops
+     * all Reporting Task or Controller Service that is referencing it, and so on).
+     * @param serviceNode
+     */
+    void deactivateReferencingComponents(ControllerServiceNode serviceNode);
+    
+    /**
+     * <p>
+     * Starts any enabled Processors and Reporting Tasks that are referencing this Controller Service. If other Controller
+     * Services reference this Controller Service, will also enable those services and 'activate' any components referencing
+     * them.
+     * </p>
+     * 
+     * <p>
+     * NOTE: If any component cannot be started, an IllegalStateException will be thrown an no more components will
+     * be activated. This method provides no atomicity.
+     * </p>
+     * 
+     * @param serviceNode
+     */
+    void activateReferencingComponents(ControllerServiceNode serviceNode);
 }

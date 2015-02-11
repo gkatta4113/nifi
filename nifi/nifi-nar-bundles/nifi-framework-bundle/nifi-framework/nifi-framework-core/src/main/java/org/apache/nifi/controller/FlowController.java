@@ -104,7 +104,6 @@ import org.apache.nifi.controller.scheduling.StandardProcessScheduler;
 import org.apache.nifi.controller.scheduling.TimerDrivenSchedulingAgent;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
-import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.controller.service.StandardControllerServiceProvider;
 import org.apache.nifi.controller.status.ConnectionStatus;
 import org.apache.nifi.controller.status.PortStatus;
@@ -376,7 +375,6 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         this.properties = properties;
         sslContext = SslContextFactory.createSslContext(properties, false);
         extensionManager = new ExtensionManager();
-        controllerServiceProvider = new StandardControllerServiceProvider();
 
         timerDrivenEngineRef = new AtomicReference<>(new FlowEngine(maxTimerDrivenThreads.get(), "Timer-Driven Process"));
         eventDrivenEngineRef = new AtomicReference<>(new FlowEngine(maxEventDrivenThreads.get(), "Event-Driven Process"));
@@ -400,6 +398,7 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
 
         processScheduler = new StandardProcessScheduler(this, this, encryptor);
         eventDrivenWorkerQueue = new EventDrivenWorkerQueue(false, false, processScheduler);
+        controllerServiceProvider = new StandardControllerServiceProvider(processScheduler);
 
         final ProcessContextFactory contextFactory = new ProcessContextFactory(contentRepository, flowFileRepository, flowFileEventRepository, counterRepositoryRef.get(), provenanceEventRepository);
         processScheduler.setSchedulingAgent(SchedulingStrategy.EVENT_DRIVEN, new EventDrivenSchedulingAgent(
@@ -2571,82 +2570,10 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         return reportingTasks.values();
     }
 
-    /**
-     * Recursively stops all Processors and Reporting Tasks that are referencing the given Controller Service,
-     * as well as disabling any Controller Service that references this Controller Service (and stops
-     * all Reporting Task or Controller Service that is referencing it, and so on).
-     * @param serviceNode
-     */
-    public void deactiveReferencingComponents(final ControllerServiceNode serviceNode) {
-    	final ControllerServiceReference reference = serviceNode.getReferences();
-    	
-    	final Set<ConfiguredComponent> components = reference.getActiveReferences();
-    	for (final ConfiguredComponent component : components) {
-    		if ( component instanceof ControllerServiceNode ) {
-    			deactiveReferencingComponents((ControllerServiceNode) component);
-    			
-    			if (isControllerServiceEnabled(serviceNode.getIdentifier())) {
-    				disableControllerService(serviceNode);
-    			}
-    		} else if ( component instanceof ReportingTaskNode ) {
-    			final ReportingTaskNode taskNode = (ReportingTaskNode) component;
-    			if (taskNode.isRunning()) {
-    				stopReportingTask((ReportingTaskNode) component);
-    			}
-    		} else if ( component instanceof ProcessorNode ) {
-    			final ProcessorNode procNode = (ProcessorNode) component;
-    			if ( procNode.isRunning() ) {
-    				stopProcessor(procNode.getProcessGroup().getIdentifier(), procNode.getIdentifier());
-    			}
-    		}
-    	}
-    }
     
-    
-    /**
-     * <p>
-     * Starts any enabled Processors and Reporting Tasks that are referencing this Controller Service. If other Controller
-     * Services reference this Controller Service, will also enable those services and 'active' any components referencing
-     * them.
-     * </p>
-     * 
-     * <p>
-     * NOTE: If any component cannot be started, an IllegalStateException will be thrown an no more components will
-     * be activated. This method provides no atomicity.
-     * </p>
-     * 
-     * @param serviceNode
-     */
+    @Override
     public void activateReferencingComponents(final ControllerServiceNode serviceNode) {
-    	final ControllerServiceReference ref = serviceNode.getReferences();
-    	final Set<ConfiguredComponent> components = ref.getReferencingComponents();
-    	
-    	// First, activate any other controller services. We do this first so that we can
-    	// avoid the situation where Processor X depends on Controller Services Y and Z; and
-    	// Controller Service Y depends on Controller Service Z. In this case, if we first attempted
-    	// to start Processor X, we would fail because Controller Service Y is disabled. THis way, we
-    	// can recursively enable everything.
-    	for ( final ConfiguredComponent component : components ) {
-    		if (component instanceof ControllerServiceNode) {
-    			final ControllerServiceNode componentNode = (ControllerServiceNode) component;
-    			enableControllerService(componentNode);
-    			activateReferencingComponents(componentNode);
-    		}
-    	}
-    	
-    	for ( final ConfiguredComponent component : components ) {
-    		if (component instanceof ProcessorNode) {
-    			final ProcessorNode procNode = (ProcessorNode) component;
-    			if ( !procNode.isRunning() ) {
-    				startProcessor(procNode.getProcessGroup().getIdentifier(), procNode.getIdentifier());
-    			}
-    		} else if (component instanceof ReportingTaskNode) {
-    			final ReportingTaskNode taskNode = (ReportingTaskNode) component;
-    			if ( !taskNode.isRunning() ) {
-    				startReportingTask(taskNode);
-    			}
-    		}
-    	}
+        controllerServiceProvider.activateReferencingComponents(serviceNode);
     }
     
     @Override
@@ -2664,6 +2591,12 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         processScheduler.disableReportingTask(reportingTaskNode);
     }
     
+    
+    @Override
+    public void deactivateReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.deactivateReferencingComponents(serviceNode);
+    }
+    
     @Override
     public void enableControllerService(final ControllerServiceNode serviceNode) {
         serviceNode.verifyCanEnable();
@@ -2675,6 +2608,7 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         serviceNode.verifyCanDisable();
         controllerServiceProvider.disableControllerService(serviceNode);
     }
+    
 
     @Override
     public ControllerService getControllerService(final String serviceIdentifier) {

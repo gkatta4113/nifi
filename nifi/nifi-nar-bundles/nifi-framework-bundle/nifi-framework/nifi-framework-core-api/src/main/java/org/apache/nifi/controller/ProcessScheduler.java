@@ -143,4 +143,17 @@ public interface ProcessScheduler {
      * @param procNode
      */
     void yield(ProcessorNode procNode);
+    
+    /**
+     * Stops scheduling the given Reporting Task to run
+     * @param taskNode
+     */
+    void unschedule(ReportingTaskNode taskNode);
+    
+    /**
+     * Begins scheduling the given Reporting Taks to run
+     * @param taskNode
+     */
+    void schedule(ReportingTaskNode taskNode);
+    
 }

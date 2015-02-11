@@ -16,6 +16,7 @@
  */
 package org.apache.nifi.controller.service;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,22 +61,27 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     public boolean isDisabled() {
         return disabled.get();
     }
-
+    
+    
     @Override
-    public void setDisabled(final boolean disabled) {
-        if (!disabled && !isValid()) {
+    public void enable() {
+        if ( !isValid() ) {
             throw new IllegalStateException("Cannot enable Controller Service " + implementation + " because it is not valid");
         }
-
-        if (disabled) {
-            // do not allow a Controller Service to be disabled if it's currently being used.
-            final Set<ConfiguredComponent> runningRefs = getReferences().getActiveReferences();
-            if (!runningRefs.isEmpty()) {
-                throw new IllegalStateException("Cannot disable Controller Service because it is referenced (either directly or indirectly) by " + runningRefs.size() + " different components that are currently running");
-            }
-        }
-
-        this.disabled.set(disabled);
+        
+        this.disabled.set(false);
+    }
+    
+    @Override
+    public void disable() {
+        verifyCanDisable();
+        this.disabled.set(true);
+    }
+    
+    @Override
+    public void disable(final Set<ControllerServiceNode> ignoredReferences) {
+        verifyCanDisable(ignoredReferences);
+        this.disabled.set(true);
     }
 
     @Override
@@ -161,10 +167,17 @@ public class StandardControllerServiceNode extends AbstractConfiguredComponent i
     
     @Override
     public void verifyCanDisable() {
+        verifyCanDisable(Collections.<ControllerServiceNode>emptySet());
+    }
+    
+    @Override
+    public void verifyCanDisable(final Set<ControllerServiceNode> ignoreReferences) {
         final ControllerServiceReference references = getReferences();
-        final int numRunning = references.getActiveReferences().size();
-        if ( numRunning > 0 ) {
-            throw new IllegalStateException(implementation + " cannot be disabled because it is referenced by " + numRunning + " components that are currently running");
+        
+        for ( final ConfiguredComponent activeReference : references.getActiveReferences() ) {
+            if ( !ignoreReferences.contains(activeReference) ) {
+                throw new IllegalStateException(implementation + " cannot be disabled because it is referenced by at least one component that is currently running");
+            }
         }
     }
     
