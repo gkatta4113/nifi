@@ -393,7 +393,7 @@ nf.CanvasUtils = (function () {
          */
         disableImageHref: function (selection) {
             selection.on('click.disableImageHref', function () {
-                if (d3.event.ctrlKey) {
+                if (d3.event.ctrlKey || d3.event.shiftKey) {
                     d3.event.preventDefault();
                 }
             });
@@ -472,6 +472,27 @@ nf.CanvasUtils = (function () {
             .on('mouseleave', function () {
                 tip.style('display', 'none');
             });
+        },
+        
+        /**
+         * Determines if the specified selection is colorable (in a single action).
+         * 
+         * @param {selection} selection     The selection
+         * @returns {boolean}
+         */
+        isColorable: function(selection) {
+            // determine if the current selection is entirely processors or labels
+            var selectedProcessors = selection.filter(function(d) {
+                return nf.CanvasUtils.isProcessor(d3.select(this));
+            });
+            var selectedLabels = selection.filter(function(d) {
+                return nf.CanvasUtils.isLabel(d3.select(this));
+            });
+
+            var allProcessors = selectedProcessors.size() === selection.size();
+            var allLabels = selectedLabels.size() === selection.size();
+            
+            return allProcessors || allLabels;
         },
         
         /**
