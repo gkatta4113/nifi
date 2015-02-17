@@ -348,8 +348,89 @@ nf.ControllerService = (function () {
     };
     
     // updates the referencing components with the specified state
-    var updateReferencingComponents = function (controllerService, state) {
+    var updateReferencingComponents = function (controllerService, activated) {
+        var revision = nf.Client.getRevision();
         
+        // issue the request to update the referencing components
+        var updated = $.ajax({
+            type: 'PUT',
+            url: controllerService.uri + '/references',
+            data: {
+                clientId: revision.clientId,
+                version: revision.version,
+                activated: activated
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            // update the revision
+            nf.Client.setRevision(response.revision);
+            
+            // update the service
+            reloadControllerServiceReferences(controllerService);
+        }).fail(nf.Common.handleAjaxError);
+        
+        // if we are activating, we can stop here
+        if (activated === true) {
+            return updated;
+        }
+
+        // since we are deactivating, we want to keep polling until 
+        // everything has stopped and there are 0 active threads
+        return $.Deferred(function(deferred) {
+            var current = 1;
+            var getTimeout = function () {
+                var val = current;
+                
+                // update the current timeout for the next time
+                current = Math.max(current * 2, 8);
+                
+                return val * 1000;
+            };
+            
+            // polls for the current status of the referencing components
+            var pollReferencingComponent = function() {
+                $.ajax({
+                    type: 'GET',
+                    url: controllerService.uri + '/references',
+                    dataType: 'json'
+                }).done(function (response) {
+                    checkDeactivated(response.controllerServiceReferencingComponents);
+                }).fail(function (xhr, status, error) {
+                    deferred.reject();
+                    nf.Common.handleAjaxError(xhr, status, error);
+                });
+            };
+            
+            // checks the referencing components to see if any are still active
+            var checkDeactivated = function (controllerServiceReferencingComponents) {
+                var stillRunning = false;
+                
+                $.each(controllerServiceReferencingComponents, function(referencingComponent) {
+                    if (referencingComponent.referenceType === 'ControllerService') {
+                        if (referencingComponent.enable === true) {
+                            stillRunning = true;
+                            return false;
+                        }
+                    } else {
+                        if (referencingComponent.state === 'RUNNING' || referencingComponent.activeThreadCount > 0) {
+                            stillRunning = true;
+                            return false;
+                        }
+                    }
+                });
+                
+                if (stillRunning) {
+                    setTimeout(pollReferencingComponent(), getTimeout());
+                } else {
+                    deferred.resolve();
+                }
+            };
+            
+            // see if the references have already stopped
+            updated.done(function(response) {
+                checkDeactivated(response.controllerServiceReferencingComponents);
+            });
+        }).promise();
     };
     
     /**
@@ -478,11 +559,17 @@ nf.ControllerService = (function () {
                             var controllerServiceData = controllerServiceGrid.getData();
                             var controllerService = controllerServiceData.getItemById(controllerServiceId);
                             
-                            // disable all referencing components
-                            updateReferencingComponents(controllerService, false);
+                            // deactivate all referencing components
+                            var deactivated = updateReferencingComponents(controllerService, false);
                             
-                            // enable this controller service
-                            setEnabled(controllerService, false);
+                            // once all referencing components have been deactivated...
+                            deactivated.done(function() {
+                                // disable this service
+                                setEnabled(controllerService, false).done(function() {
+                                    // close the dialog
+                                    $('#disable-controller-service-dialog').modal('hide');
+                                });
+                            });
                         }
                     }
                 }, {
@@ -534,13 +621,20 @@ nf.ControllerService = (function () {
                             var controllerServiceData = controllerServiceGrid.getData();
                             var controllerService = controllerServiceData.getItemById(controllerServiceId);
                             
+                            // enable this controller service
+                            var enabled = setEnabled(controllerService, true);
+                            
+                            // determine if we want to also activate referencing components
                             var scope = $('#enable-controller-service-scope').combo('getSelectedOption').value;
                             if (scope === config.serviceAndReferencingComponents) {
-                                updateReferencingComponents(controllerService, true);
+                                // once the service is enabled, activate all referencing components
+                                enabled.done(function() {
+                                    updateReferencingComponents(controllerService, true);
+                                });
                             }
                             
-                            // enable this controller service
-                            setEnabled(controllerService, true);
+                            // hide the dialog immediately as there's nothing to show
+                            $(this).modal('hide');
                         }
                     }
                 }, {
