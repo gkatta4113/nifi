@@ -137,11 +137,19 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     }
 
     @Override
-    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final String state) {
+    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final boolean activated) {
         // get the controller service
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
         
-//        serviceProvider.
+        // TODO - these actions need to be atomic... can't have partial success... maybe already handled?
+        
+        // perform the desired action
+        if (activated) {
+            serviceProvider.activateReferencingComponents(controllerService);
+        } else {
+            serviceProvider.deactivateReferencingComponents(controllerService);
+        }
+        
         return controllerService.getReferences();
     }
 

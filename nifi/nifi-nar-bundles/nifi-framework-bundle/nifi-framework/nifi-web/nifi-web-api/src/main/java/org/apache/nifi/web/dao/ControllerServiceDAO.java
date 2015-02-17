@@ -70,10 +70,10 @@ public interface ControllerServiceDAO {
      * Updates the referencing components for the specified controller service.
      * 
      * @param controllerServiceId
-     * @param state
+     * @param activated
      * @return 
      */
-    ControllerServiceReference updateControllerServiceReferencingComponents(String controllerServiceId, String state);
+    ControllerServiceReference updateControllerServiceReferencingComponents(String controllerServiceId, boolean activated);
     
     /**
      * Determines whether this controller service can be updated.

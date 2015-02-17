@@ -385,8 +385,8 @@ public class ControllerServiceResource extends ApplicationResource {
      * @param availability Whether the controller service is available on the NCM only (ncm) or on the 
      * nodes only (node). If this instance is not clustered all services should use the node availability.
      * @param id The id of the controller service to retrieve
-     * @param state Possible values include 'START' or 'STOP'. For processors and reporting tasks this will
-     * set the scheduled state accordingly. For controller services this will enable or disable accordingly.
+     * @param activated Whether or not to activate referencing components. For processors and reporting tasks this 
+     * will set the scheduled state accordingly. For controller services this will enable or disable accordingly.
      * @return A controllerServiceEntity.
      */
     @PUT
@@ -400,8 +400,13 @@ public class ControllerServiceResource extends ApplicationResource {
             @FormParam(VERSION) LongParameter version,
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
             @PathParam("availability") String availability, @PathParam("id") String id,
-            @FormParam("state") String state) {
+            @FormParam("activated") Boolean activated) {
 
+        // ensure the activate flag has been specified
+        if (activated == null) {
+            throw new IllegalArgumentException("Must specified whether or not to activate the controller service references.");
+        }
+        
         final Availability avail = parseAvailability(availability);
         
         // replicate if cluster manager
@@ -423,7 +428,7 @@ public class ControllerServiceResource extends ApplicationResource {
         
         // get the controller service
         final ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> response = 
-                serviceFacade.updateControllerServiceReferencingComponents(new Revision(clientVersion, clientId.getClientId()), id, state);
+                serviceFacade.updateControllerServiceReferencingComponents(new Revision(clientVersion, clientId.getClientId()), id, activated);
 
         // create the revision
         final RevisionDTO revision = new RevisionDTO();

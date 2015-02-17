@@ -981,10 +981,10 @@ public interface NiFiServiceFacade {
      * 
      * @param revision
      * @param controllerServiceId
-     * @param state
+     * @param activated
      * @return 
      */
-    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, String state);
+    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, boolean activated);
     
     /**
      * Updates the specified label.
