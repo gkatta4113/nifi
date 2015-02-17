@@ -30,9 +30,13 @@ import org.apache.nifi.action.component.details.ExtensionDetails;
 import org.apache.nifi.action.details.ActionDetails;
 import org.apache.nifi.action.details.ConfigureDetails;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.controller.ConfiguredComponent;
+import org.apache.nifi.controller.ProcessorNode;
+import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.web.security.user.NiFiUserUtils;
 import org.apache.nifi.user.NiFiUser;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -212,6 +216,76 @@ public class ControllerServiceAuditor extends NiFiAuditor {
         return updatedControllerService;
     }
 
+    /**
+     * Audits the update of a component referencing a controller service.
+     *
+     * @param proceedingJoinPoint
+     * @return
+     * @throws Throwable
+     */
+    @Around("within(org.apache.nifi.web.dao.ControllerServiceDAO+) && "
+            + "execution(org.apache.nifi.controller.service.ControllerServiceReference updateControllerServiceReferencingComponents(java.lang.String, boolean))")
+    public Object updateControllerServiceReferenceAdvice(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+        // update the controller service references
+        final ControllerServiceReference controllerServiceReference = (ControllerServiceReference) proceedingJoinPoint.proceed();
+        
+        // get the current user
+        final NiFiUser user = NiFiUserUtils.getNiFiUser();
+        
+        if (user != null) {
+            final Collection<Action> actions = new ArrayList<>();
+            
+            // consider each component updates
+            for (final ConfiguredComponent component : controllerServiceReference.getReferencingComponents()) {
+                if (component instanceof ProcessorNode) {
+                    final ProcessorNode processor = ((ProcessorNode) component);
+
+                    // create the processor details
+                    ExtensionDetails processorDetails = new ExtensionDetails();
+                    processorDetails.setType(processor.getProcessor().getClass().getSimpleName());
+
+                    // create a processor action
+                    Action processorAction = new Action();
+                    processorAction.setUserDn(user.getDn());
+                    processorAction.setUserName(user.getUserName());
+                    processorAction.setTimestamp(new Date());
+                    processorAction.setSourceId(processor.getIdentifier());
+                    processorAction.setSourceName(processor.getName());
+                    processorAction.setSourceType(Component.Processor);
+                    processorAction.setComponentDetails(processorDetails);
+                    processorAction.setOperation(ScheduledState.RUNNING.equals(processor.getScheduledState()) ? Operation.Start : Operation.Stop);
+                    actions.add(processorAction);
+                } else if (component instanceof ControllerServiceNode) {
+                    final ControllerServiceNode controllerService = ((ControllerServiceNode) component);
+                    
+                    // create the processor details
+                    ExtensionDetails serviceDetails = new ExtensionDetails();
+                    serviceDetails.setType(controllerService.getControllerServiceImplementation().getClass().getSimpleName());
+                    
+                    // create a controller service action
+                    Action serviceAction = new Action();
+                    serviceAction.setUserDn(user.getDn());
+                    serviceAction.setUserName(user.getUserName());
+                    serviceAction.setTimestamp(new Date());
+                    serviceAction.setSourceId(controllerService.getIdentifier());
+                    serviceAction.setSourceName(controllerService.getName());
+                    serviceAction.setSourceType(Component.ControllerService);
+                    serviceAction.setComponentDetails(serviceDetails);
+                    serviceAction.setOperation(controllerService.isDisabled() ? Operation.Disable : Operation.Enable);
+                    actions.add(serviceAction);
+                }
+            }
+            
+            // ensure there are actions to record
+            if (!actions.isEmpty()) {
+                // save the actions
+                saveActions(actions, logger);
+            }
+        }
+        
+        return controllerServiceReference;
+    }
+    
     /**
      * Audits the removal of a controller service via deleteControllerService().
      *
