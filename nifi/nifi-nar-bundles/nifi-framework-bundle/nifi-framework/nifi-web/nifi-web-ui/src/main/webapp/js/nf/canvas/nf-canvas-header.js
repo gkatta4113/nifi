@@ -213,6 +213,9 @@ nf.CanvasHeader = (function () {
                         $('#fill-color').minicolors('value', '');
                     }
                 }
+            }).draggable({
+                containment: 'parent',
+                handle: '.dialog-header'
             });
 
             // initialize the fill color picker
