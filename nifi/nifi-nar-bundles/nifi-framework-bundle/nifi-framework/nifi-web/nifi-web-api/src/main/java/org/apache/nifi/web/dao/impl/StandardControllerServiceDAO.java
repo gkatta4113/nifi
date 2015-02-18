@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
+import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
@@ -133,6 +134,23 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         }
         
         return controllerService;
+    }
+
+    @Override
+    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final boolean activated) {
+        // get the controller service
+        final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
+        
+        // TODO - these actions need to be atomic... can't have partial success... maybe already handled?
+        
+        // perform the desired action
+        if (activated) {
+            serviceProvider.activateReferencingComponents(controllerService);
+        } else {
+            serviceProvider.deactivateReferencingComponents(controllerService);
+        }
+        
+        return controllerService.getReferences();
     }
 
     /**

@@ -15,31 +15,25 @@
   limitations under the License.
 --%>
 <%@ page contentType="text/html" pageEncoding="UTF-8" session="false" %>
-<div id="fill-color-dialog">
+<div id="enable-controller-service-dialog">
     <div class="dialog-content">
         <div class="setting">
-            <div class="setting-name">Color</div>
+            <div class="setting-name">Service</div>
             <div class="setting-field">
-                <input type="text" id="fill-color" value="#FFFFFF"/>
+                <span id="enable-controller-service-id" class="hidden"></span>
+                <span id="enable-controller-service-name"></span>
             </div>
-            <div class="setting-name" style="margin-top: 10px;">Value</div>
+        </div>
+        <div class="setting">
+            <div class="setting-name">Scope</div>
             <div class="setting-field">
-                <input type="text" id="fill-color-value" value="#FFFFFF"/>
+                <div id="enable-controller-service-scope"></div>
             </div>
-            <div class="setting-name" style="margin-top: 10px;">Preview</div>
+        </div>
+        <div class="setting">
+            <div class="setting-name">Referencing Components</div>
             <div class="setting-field">
-                <div id="fill-color-processor-preview">
-                    <div id="fill-color-processor-preview-name">Processor</div>
-                    <div id="fill-color-processor-preview-icon"></div>
-                    <div class="clear"></div>
-                    <div id="fill-color-processor-preview-stats">
-                        <div id="fill-color-processor-preview-stats-label"></div>
-                        <div class="clear"></div>
-                    </div>
-                </div>
-                <div id="fill-color-label-preview">
-                    <div id="fill-color-label-preview-value">Label</div>
-                </div>
+                <div id="enable-controller-service-referencing-components"></div>
             </div>
         </div>
     </div>

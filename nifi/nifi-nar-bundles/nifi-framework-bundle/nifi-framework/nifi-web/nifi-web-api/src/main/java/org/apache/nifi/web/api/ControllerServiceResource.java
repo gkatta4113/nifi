@@ -52,7 +52,9 @@ import org.apache.nifi.web.api.request.ClientIdParameter;
 import org.apache.nifi.web.api.request.LongParameter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
+import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
 import org.apache.nifi.web.api.entity.ControllerServiceEntity;
+import org.apache.nifi.web.api.entity.ControllerServiceReferencingComponentsEntity;
 import org.apache.nifi.web.api.entity.ControllerServicesEntity;
 import org.apache.nifi.web.util.Availability;
 import org.codehaus.enunciate.jaxrs.TypeHint;
@@ -325,6 +327,118 @@ public class ControllerServiceResource extends ApplicationResource {
         final ControllerServiceEntity entity = new ControllerServiceEntity();
         entity.setRevision(revision);
         entity.setControllerService(populateRemainingControllerServiceContent(availability, controllerService));
+
+        return clusterContext(generateOkResponse(entity)).build();
+    }
+    
+    /**
+     * Retrieves the references of the specified controller service.
+     *
+     * @param clientId Optional client id. If the client id is not specified, a
+     * new one will be generated. This value (whether specified or generated) is
+     * included in the response.
+     * @param availability Whether the controller service is available on the NCM only (ncm) or on the 
+     * nodes only (node). If this instance is not clustered all services should use the node availability.
+     * @param id The id of the controller service to retrieve
+     * @return A controllerServiceEntity.
+     */
+    @GET
+    @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+    @Path("{availability}/{id}/references")
+    @PreAuthorize("hasAnyRole('ROLE_MONITOR', 'ROLE_DFM', 'ROLE_ADMIN')")
+    @TypeHint(ControllerServiceEntity.class)
+    public Response getControllerServiceReferences(
+            @QueryParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
+            @PathParam("availability") String availability, @PathParam("id") String id) {
+
+        final Availability avail = parseAvailability(availability);
+        
+        // replicate if cluster manager
+        if (properties.isClusterManager() && Availability.NODE.equals(avail)) {
+            return clusterManager.applyRequest(HttpMethod.GET, getAbsolutePath(), getRequestParameters(true), getHeaders()).getResponse();
+        }
+
+        // get the controller service
+        final Set<ControllerServiceReferencingComponentDTO> controllerServiceReferences = serviceFacade.getControllerServiceReferencingComponents(id);
+
+        // create the revision
+        final RevisionDTO revision = new RevisionDTO();
+        revision.setClientId(clientId.getClientId());
+
+        // create the response entity
+        final ControllerServiceReferencingComponentsEntity entity = new ControllerServiceReferencingComponentsEntity();
+        entity.setRevision(revision);
+        entity.setControllerServiceReferencingComponents(controllerServiceReferences);
+
+        return clusterContext(generateOkResponse(entity)).build();
+    }
+    
+    /**
+     * Updates the references of the specified controller service.
+     *
+     * @param httpServletRequest
+     * @param version The revision is used to verify the client is working with
+     * the latest version of the flow.
+     * @param clientId Optional client id. If the client id is not specified, a
+     * new one will be generated. This value (whether specified or generated) is
+     * included in the response.
+     * @param availability Whether the controller service is available on the NCM only (ncm) or on the 
+     * nodes only (node). If this instance is not clustered all services should use the node availability.
+     * @param id The id of the controller service to retrieve
+     * @param activated Whether or not to activate referencing components. For processors and reporting tasks this 
+     * will set the scheduled state accordingly. For controller services this will enable or disable accordingly.
+     * @return A controllerServiceEntity.
+     */
+    @PUT
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+    @Path("{availability}/{id}/references")
+    @PreAuthorize("hasAnyRole('ROLE_MONITOR', 'ROLE_DFM', 'ROLE_ADMIN')")
+    @TypeHint(ControllerServiceEntity.class)
+    public Response updateControllerServiceReferences(
+            @Context HttpServletRequest httpServletRequest,
+            @FormParam(VERSION) LongParameter version,
+            @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
+            @PathParam("availability") String availability, @PathParam("id") String id,
+            @FormParam("activated") Boolean activated) {
+
+        // ensure the activate flag has been specified
+        if (activated == null) {
+            throw new IllegalArgumentException("Must specified whether or not to activate the controller service references.");
+        }
+        
+        final Availability avail = parseAvailability(availability);
+        
+        // replicate if cluster manager
+        if (properties.isClusterManager() && Availability.NODE.equals(avail)) {
+            return clusterManager.applyRequest(HttpMethod.PUT, getAbsolutePath(), getRequestParameters(true), getHeaders()).getResponse();
+        }
+
+        // handle expects request (usually from the cluster manager)
+        final String expects = httpServletRequest.getHeader(WebClusterManager.NCM_EXPECTS_HTTP_HEADER);
+        if (expects != null) {
+            return generateContinueResponse().build();
+        }
+        
+        // determine the specified version
+        Long clientVersion = null;
+        if (version != null) {
+            clientVersion = version.getLong();
+        }
+        
+        // get the controller service
+        final ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> response = 
+                serviceFacade.updateControllerServiceReferencingComponents(new Revision(clientVersion, clientId.getClientId()), id, activated);
+
+        // create the revision
+        final RevisionDTO revision = new RevisionDTO();
+        revision.setClientId(clientId.getClientId());
+        revision.setVersion(response.getVersion());
+
+        // create the response entity
+        final ControllerServiceReferencingComponentsEntity entity = new ControllerServiceReferencingComponentsEntity();
+        entity.setRevision(revision);
+        entity.setControllerServiceReferencingComponents(response.getConfiguration());
 
         return clusterContext(generateOkResponse(entity)).build();
     }

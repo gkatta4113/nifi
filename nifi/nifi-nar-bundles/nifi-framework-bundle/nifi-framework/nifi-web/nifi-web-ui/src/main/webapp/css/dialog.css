@@ -73,7 +73,11 @@
     z-index: 1301;
     display: none;
     width: 195px;
-    height: 345px;
+    height: 400px;
+}
+
+#fill-color-value {
+    width: 165px;
 }
 
 #fill-color-processor-preview {
