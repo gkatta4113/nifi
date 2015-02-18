@@ -239,11 +239,11 @@ nf.ControllerService = (function () {
                     $('#shell-close-button').click();
                 });
                 
-                var activeThreadCount = $('<span class="referencing-component-active-thread-count"></span>');
+                var activeThreadCount = $('<span class="referencing-component-active-thread-count"></span>').addClass(referencingComponent.id + '-active-threads');
                 if (nf.Common.isDefinedAndNotNull(referencingComponent.activeThreadCount) && referencingComponent.activeThreadCount > 0) {
                     activeThreadCount.text('(' + referencingComponent.activeThreadCount + ')');
                 }
-                var processorState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.state.toLowerCase());
+                var processorState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.state.toLowerCase()).addClass(referencingComponent.id + '-state');
                 var processorType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
                 var processorItem = $('<li></li>').append(processorState).append(activeThreadCount).append(processorLink).append(processorType);
                 processors.append(processorItem);
@@ -281,9 +281,10 @@ nf.ControllerService = (function () {
                     updateReferencingComponentsBorder(referenceContainer);
                 });
                 
-                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled');
+                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled').addClass(referencingComponent.id + '-active-threads');
+                var serviceId = $('<span class="referencing-service-id hidden"></span>').text(referencingComponent.id);
                 var serviceType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
-                var serviceItem = $('<li></li>').append(serviceTwist).append(serviceState).append(serviceLink).append(serviceType).append(referencingServiceReferencesContainer);
+                var serviceItem = $('<li></li>').append(serviceTwist).append(serviceState).append(serviceId).append(serviceLink).append(serviceType).append(referencingServiceReferencesContainer);
                 
                 services.append(serviceItem);
             } else if (referencingComponent.referenceType === 'ReportingTask') {
@@ -373,7 +374,39 @@ nf.ControllerService = (function () {
         if (activated === true) {
             return updated;
         }
+        
+        // identify all services... this service
+        var services = d3.set();
+        services.add(controllerService.id);
+        
+        // and all referencing services
+        $('span.referencing-service-id').each(function() {
+            services.add($(this).text());
+        });
 
+        // get the controller service grid
+        var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+        var controllerServiceData = controllerServiceGrid.getData();
+        
+        // start polling for each controller service
+        var polling = [];
+        services.forEach(function(controllerServiceId) {
+            var controllerService = controllerServiceData.getItemById(controllerServiceId);
+            polling.push(pollControllerServiceStatus(controllerService));
+        });
+        
+        // wait unil the polling of each service finished
+        return $.Deferred(function(deferred) {
+            $.when.apply(window, polling).done(function () {
+                deferred.resolve();
+            }).fail(function() {
+                deferred.reject();
+            });
+        }).promise();
+    };
+    
+    // polls for the status of the specified controller service
+    var pollControllerServiceStatus = function (controllerService) {
         // since we are deactivating, we want to keep polling until 
         // everything has stopped and there are 0 active threads
         return $.Deferred(function(deferred) {
@@ -388,7 +421,7 @@ nf.ControllerService = (function () {
             };
             
             // polls for the current status of the referencing components
-            var pollReferencingComponent = function() {
+            var pollReferencingComponents = function() {
                 $.ajax({
                     type: 'GET',
                     url: controllerService.uri + '/references',
@@ -408,28 +441,33 @@ nf.ControllerService = (function () {
                 $.each(controllerServiceReferencingComponents, function(referencingComponent) {
                     if (referencingComponent.referenceType === 'ControllerService') {
                         if (referencingComponent.enable === true) {
+                            // update the current values for this component
+                            $(referencingComponent.id + '-state').removeClass('enabled disabled').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled');
+                            
+                            // mark that something is still running
                             stillRunning = true;
-                            return false;
                         }
                     } else {
                         if (referencingComponent.state === 'RUNNING' || referencingComponent.activeThreadCount > 0) {
+                            // update the current values for this component
+                            $(referencingComponent.id + '-active-threads').text(referencingComponent.activeThreadCount);
+                            $(referencingComponent.id + '-state').removeClass('disabled stopped running').addClass(referencingComponent.state.toLowerCase());
+                            
+                            // mark that something is still running
                             stillRunning = true;
-                            return false;
                         }
                     }
                 });
                 
                 if (stillRunning) {
-                    setTimeout(pollReferencingComponent(), getTimeout());
+                    setTimeout(pollReferencingComponents(), getTimeout());
                 } else {
                     deferred.resolve();
                 }
             };
             
-            // see if the references have already stopped
-            updated.done(function(response) {
-                checkDeactivated(response.controllerServiceReferencingComponents);
-            });
+            // poll for the status of the referencing components
+            pollReferencingComponents();
         }).promise();
     };
     
