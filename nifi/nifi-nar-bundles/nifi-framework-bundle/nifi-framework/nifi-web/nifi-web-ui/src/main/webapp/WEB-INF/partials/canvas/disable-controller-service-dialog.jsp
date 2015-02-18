@@ -25,6 +25,13 @@
             </div>
         </div>
         <div class="setting">
+            <div class="setting-name">Scope</div>
+            <div class="setting-field">
+                Service and referencing components
+                <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Referencing components must disabled/stopped in order to disable this service."/>
+            </div>
+        </div>
+        <div class="setting">
             <div class="setting-name">Referencing Components</div>
             <div class="setting-field">
                 <div id="disable-controller-service-referencing-components"></div>
