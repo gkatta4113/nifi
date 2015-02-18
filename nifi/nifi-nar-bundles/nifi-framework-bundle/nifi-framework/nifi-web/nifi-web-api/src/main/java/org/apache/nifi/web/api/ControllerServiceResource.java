@@ -385,8 +385,10 @@ public class ControllerServiceResource extends ApplicationResource {
      * @param availability Whether the controller service is available on the NCM only (ncm) or on the 
      * nodes only (node). If this instance is not clustered all services should use the node availability.
      * @param id The id of the controller service to retrieve
-     * @param activated Whether or not to activate referencing components. For processors and reporting tasks this 
-     * will set the scheduled state accordingly. For controller services this will enable or disable accordingly.
+     * @param state Sets the state of referencing scheduled components (Processors and Reporting Tasks). 
+     * Cannot be set in conjunction with enabled.
+     * @param enabled Sets the state of referencing controller services. Cannot be set in conjunction 
+     * with state
      * @return A controllerServiceEntity.
      */
     @PUT
@@ -400,11 +402,16 @@ public class ControllerServiceResource extends ApplicationResource {
             @FormParam(VERSION) LongParameter version,
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
             @PathParam("availability") String availability, @PathParam("id") String id,
-            @FormParam("activated") Boolean activated) {
+            @FormParam("state") String state, @FormParam("enabled") Boolean enabled) {
 
-        // ensure the activate flag has been specified
-        if (activated == null) {
-            throw new IllegalArgumentException("Must specified whether or not to activate the controller service references.");
+        // ensure an action has been specified
+        if (state == null && enabled == null) {
+            throw new IllegalArgumentException("Must specify whether updating the state of Processors and Reporting Tasks or Controller Services.");
+        }
+        
+        // ensure both actions are not specified at the same time
+        if (state != null && enabled != null) {
+            throw new IllegalArgumentException("Cannot specify the state of Processors and Reporting Tasks and Controller Services in the same request");
         }
         
         final Availability avail = parseAvailability(availability);
@@ -428,7 +435,7 @@ public class ControllerServiceResource extends ApplicationResource {
         
         // get the controller service
         final ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> response = 
-                serviceFacade.updateControllerServiceReferencingComponents(new Revision(clientVersion, clientId.getClientId()), id, activated);
+                serviceFacade.updateControllerServiceReferencingComponents(new Revision(clientVersion, clientId.getClientId()), id, enabled, state);
 
         // create the revision
         final RevisionDTO revision = new RevisionDTO();

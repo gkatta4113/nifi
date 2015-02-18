@@ -981,10 +981,11 @@ public interface NiFiServiceFacade {
      * 
      * @param revision
      * @param controllerServiceId
-     * @param activated
-     * @return 
+     * @param enabled
+     * @param state the value of state 
+     * @return the org.apache.nifi.web.ConfigurationSnapshot<java.util.Set<org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO>> 
      */
-    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, boolean activated);
+    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, Boolean enabled, String state);
     
     /**
      * Updates the specified label.
