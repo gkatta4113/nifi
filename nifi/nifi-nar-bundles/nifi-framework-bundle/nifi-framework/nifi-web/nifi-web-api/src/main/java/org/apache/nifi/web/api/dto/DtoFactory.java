@@ -839,6 +839,11 @@ public final class DtoFactory {
         return dto;
     }
 
+    public ReportingTaskDTO createReportingTaskDto(final ReportingTaskNode reportingTaskNode) {
+        final ReportingTaskDTO dto = new ReportingTaskDTO();
+        return dto;
+    }
+    
     public ControllerServiceDTO createControllerServiceDto(final ControllerServiceNode controllerServiceNode) {
         if (controllerServiceNode == null) {
             return null;
