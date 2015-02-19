@@ -49,6 +49,7 @@ import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.controller.service.StandardConfigurationContext;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.engine.FlowEngine;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.logging.ProcessorLog;
 import org.apache.nifi.nar.NarCloseable;
 import org.apache.nifi.processor.SchedulingContext;
@@ -181,16 +182,11 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                         }
                         
                         break;
-                    } catch (final InvocationTargetException ite) {
-                        LOG.error("Failed to invoke the On-Scheduled Lifecycle methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
-                                new Object[]{reportingTask, ite.getTargetException(), administrativeYieldDuration});
-                        LOG.error("", ite.getTargetException());
-
-                        try {
-                            Thread.sleep(administrativeYieldMillis);
-                        } catch (final InterruptedException ie) {
-                        }
                     } catch (final Exception e) {
+                        final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+                        final ComponentLog componentLog = new SimpleProcessLogger(reportingTask.getIdentifier(), reportingTask);
+                        componentLog.error("Failed to invoke @OnEnabled method due to {}", cause);
+                        
                         LOG.error("Failed to invoke the On-Scheduled Lifecycle methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
                                 new Object[]{reportingTask, e.toString(), administrativeYieldDuration}, e);
                         try {
@@ -232,7 +228,10 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                     }
                 } catch (final Exception e) {
                     final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
-                    LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
+                    final ComponentLog componentLog = new SimpleProcessLogger(reportingTask.getIdentifier(), reportingTask);
+                    componentLog.error("Failed to invoke @OnUnscheduled method due to {}", cause);
+
+                    LOG.error("Failed to invoke the @OnUnscheduled methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
                             reportingTask, cause.toString(), administrativeYieldDuration);
                     LOG.error("", cause);
                     
@@ -624,8 +623,10 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                                 return;
                             }
                         } catch (final Exception e) {
-                            // TODO: Generate a bulletin just like in startProcessor
                             final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+                            
+                            final ComponentLog componentLog = new SimpleProcessLogger(service.getIdentifier(), service);
+                            componentLog.error("Failed to invoke @OnEnabled method due to {}", cause);
                             LOG.error("Failed to invoke @OnEnabled method of {} due to {}", service.getControllerServiceImplementation(), cause.toString());
                             if ( LOG.isDebugEnabled() ) {
                                 LOG.error("", cause);
@@ -637,8 +638,10 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                         }
                     }
                 } catch (final Throwable t) {
-                    // TODO: Generate a bulletin just like in startProcessor
                     final Throwable cause = (t instanceof InvocationTargetException) ? t.getCause() : t;
+                    final ComponentLog componentLog = new SimpleProcessLogger(service.getIdentifier(), service);
+                    componentLog.error("Failed to invoke @OnEnabled method due to {}", cause);
+                    
                     LOG.error("Failed to invoke @OnEnabled method on {} due to {}", service.getControllerServiceImplementation(), cause.toString());
                     if ( LOG.isDebugEnabled() ) {
                         LOG.error("", cause);
@@ -673,8 +676,10 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                             service.setState(ControllerServiceState.DISABLED);
                             return;
                         } catch (final Exception e) {
-                            // TODO: Generate a bulletin just like in startProcessor
                             final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+                            final ComponentLog componentLog = new SimpleProcessLogger(service.getIdentifier(), service);
+                            componentLog.error("Failed to invoke @OnDisabled method due to {}", cause);
+                            
                             LOG.error("Failed to invoke @OnDisabled method of {} due to {}", service.getControllerServiceImplementation(), cause.toString());
                             if ( LOG.isDebugEnabled() ) {
                                 LOG.error("", cause);
