@@ -230,18 +230,12 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                     try (final NarCloseable x = NarCloseable.withNarLoader()) {
                         ReflectionUtils.invokeMethodsWithAnnotation(OnUnscheduled.class, org.apache.nifi.processor.annotation.OnUnscheduled.class, reportingTask, configurationContext);
                     }
-                } catch (final InvocationTargetException ite) {
-                    LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
-                            new Object[]{reportingTask, ite.getTargetException(), administrativeYieldDuration});
-                    LOG.error("", ite.getTargetException());
-
-                    try {
-                        Thread.sleep(administrativeYieldMillis);
-                    } catch (final InterruptedException ie) {
-                    }
                 } catch (final Exception e) {
+                    final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
                     LOG.error("Failed to invoke the @OnConfigured methods of {} due to {}; administratively yielding this ReportingTask and will attempt to schedule it again after {}",
-                            new Object[]{reportingTask, e.toString(), administrativeYieldDuration}, e);
+                            reportingTask, cause.toString(), administrativeYieldDuration);
+                    LOG.error("", cause);
+                    
                     try {
                         Thread.sleep(administrativeYieldMillis);
                     } catch (final InterruptedException ie) {
@@ -544,11 +538,6 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         }
         
         procNode.setScheduledState(ScheduledState.STOPPED);
-        
-        try (final NarCloseable x = NarCloseable.withNarLoader()) {
-            final ProcessorLog processorLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
-            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnEnabled.class, procNode.getProcessor(), processorLog);
-        }
     }
 
     @Override
@@ -558,11 +547,6 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         }
         
         procNode.setScheduledState(ScheduledState.DISABLED);
-        
-        try (final NarCloseable x = NarCloseable.withNarLoader()) {
-            final ProcessorLog processorLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
-            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, procNode.getProcessor(), processorLog);
-        }
     }
 
     public synchronized void enableReportingTask(final ReportingTaskNode taskNode) {
@@ -571,10 +555,6 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         }
 
         taskNode.setScheduledState(ScheduledState.STOPPED);
-        
-        try (final NarCloseable x = NarCloseable.withNarLoader()) {
-            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnEnabled.class, taskNode.getReportingTask());
-        }
     }
     
     public synchronized void disableReportingTask(final ReportingTaskNode taskNode) {
@@ -583,10 +563,6 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         }
 
         taskNode.setScheduledState(ScheduledState.DISABLED);
-        
-        try (final NarCloseable x = NarCloseable.withNarLoader()) {
-            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, taskNode.getReportingTask());
-        }
     }
 
     @Override
