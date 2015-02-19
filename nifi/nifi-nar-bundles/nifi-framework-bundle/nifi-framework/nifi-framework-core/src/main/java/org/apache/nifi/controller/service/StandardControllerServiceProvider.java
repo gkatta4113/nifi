@@ -44,8 +44,10 @@ import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.ValidationContextFactory;
 import org.apache.nifi.controller.exception.ControllerServiceNotFoundException;
 import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.nar.ExtensionManager;
 import org.apache.nifi.nar.NarCloseable;
+import org.apache.nifi.processor.SimpleProcessLogger;
 import org.apache.nifi.processor.StandardValidationContextFactory;
 import org.apache.nifi.util.ObjectHolder;
 import org.apache.nifi.util.ReflectionUtils;
@@ -156,7 +158,8 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
             }
             logger.info("Create Controller Service of type {} with identifier {}", type, id);
 
-            originalService.initialize(new StandardControllerServiceInitializationContext(id, this));
+            final ComponentLog serviceLogger = new SimpleProcessLogger(id, originalService);
+            originalService.initialize(new StandardControllerServiceInitializationContext(id, serviceLogger, this));
 
             final ValidationContextFactory validationContextFactory = new StandardValidationContextFactory(this);
 

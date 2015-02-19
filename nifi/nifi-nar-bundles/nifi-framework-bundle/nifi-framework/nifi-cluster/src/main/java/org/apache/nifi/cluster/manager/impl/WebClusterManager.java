@@ -154,10 +154,12 @@ import org.apache.nifi.events.BulletinFactory;
 import org.apache.nifi.events.VolatileBulletinRepository;
 import org.apache.nifi.framework.security.util.SslContextFactory;
 import org.apache.nifi.io.socket.multicast.DiscoverableService;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.logging.NiFiLog;
 import org.apache.nifi.nar.ExtensionManager;
 import org.apache.nifi.nar.NarCloseable;
 import org.apache.nifi.nar.NarThreadContextClassLoader;
+import org.apache.nifi.processor.SimpleProcessLogger;
 import org.apache.nifi.processor.StandardValidationContextFactory;
 import org.apache.nifi.remote.RemoteResourceManager;
 import org.apache.nifi.remote.RemoteSiteListener;
@@ -940,7 +942,9 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
 
                 final ReportingTask reportingTask = reportingTaskNode.getReportingTask();
 
-                final ReportingInitializationContext config = new StandardReportingInitializationContext(taskId, taskName, schedulingStrategy, taskSchedulingPeriod, this);
+                final ComponentLog componentLog = new SimpleProcessLogger(taskId, reportingTask);
+                final ReportingInitializationContext config = new StandardReportingInitializationContext(taskId, taskName, 
+                        schedulingStrategy, taskSchedulingPeriod, componentLog, this);
                 reportingTask.initialize(config);
 
                 final Map<PropertyDescriptor, String> resolvedProps;
