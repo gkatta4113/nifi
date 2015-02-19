@@ -97,7 +97,6 @@ import org.apache.nifi.scheduling.SchedulingStrategy;
 import org.apache.nifi.user.NiFiUser;
 import org.apache.nifi.user.NiFiUserGroup;
 import org.apache.nifi.util.FormatUtils;
-import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.web.Revision;
 import org.apache.nifi.web.api.dto.PropertyDescriptorDTO.AllowableValueDTO;
 import org.apache.nifi.web.api.dto.action.ActionDTO;
@@ -853,7 +852,7 @@ public final class DtoFactory {
         dto.setId(controllerServiceNode.getIdentifier());
         dto.setName(controllerServiceNode.getName());
         dto.setType(controllerServiceNode.getControllerServiceImplementation().getClass().getName());
-        dto.setEnabled(!controllerServiceNode.isDisabled());
+        dto.setState(controllerServiceNode.getState().name());
         dto.setComments(controllerServiceNode.getComments());
         
         // sort a copy of the properties
@@ -930,7 +929,7 @@ public final class DtoFactory {
                 dto.setReferenceType(Processor.class.getSimpleName());
             } else if (component instanceof ControllerServiceNode) {
                 final ControllerServiceNode node = ((ControllerServiceNode) component);
-                dto.setEnabled(!node.isDisabled());
+                dto.setState(node.getState().name());
                 dto.setType(node.getControllerServiceImplementation().getClass().getName());
                 dto.setReferenceType(ControllerService.class.getSimpleName());
             } else if (component instanceof ReportingTask) {
@@ -2386,8 +2385,6 @@ public final class DtoFactory {
     }
 
     /* setters */
-    public void setProperties(NiFiProperties properties) {
-    }
 
     public void setControllerServiceLookup(ControllerServiceLookup lookup) {
         this.controllerServiceLookup = lookup;

@@ -35,8 +35,7 @@
 
     <!-- dto factory -->
     <bean id="dtoFactory" class="org.apache.nifi.web.api.dto.DtoFactory">
-        <property name="properties" ref="nifiProperties"/>
-        <property name="controllerServiceLookup" ref="flowController" />
+        <property name="controllerServiceLookup" ref="controllerServiceProvider" />
     </bean>
 
     <!-- snippet utils -->
@@ -72,6 +71,9 @@
     </bean>
     <bean id="controllerServiceDAO" class="org.apache.nifi.web.dao.impl.StandardControllerServiceDAO">
         <property name="serviceProvider" ref="controllerServiceProvider"/>
+    </bean>
+    <bean id="reportingTaskDAO" class="org.apache.nifi.web.dao.impl.StandardReportingTaskDAO">
+        <property name="flowController" ref="flowController"/>
     </bean>
     <bean id="templateDAO" class="org.apache.nifi.web.dao.impl.StandardTemplateDAO">
         <property name="flowController" ref="flowController"/>
@@ -133,6 +135,11 @@
         <property name="clusterManager" ref="clusterManager"/>
     </bean>
     <bean id="controllerServiceResource" class="org.apache.nifi.web.api.ControllerServiceResource" scope="singleton">
+        <property name="serviceFacade" ref="serviceFacade"/>
+        <property name="properties" ref="nifiProperties"/>
+        <property name="clusterManager" ref="clusterManager"/>
+    </bean>
+    <bean id="reportingTaskResource" class="org.apache.nifi.web.api.ReportingTaskResource" scope="singleton">
         <property name="serviceFacade" ref="serviceFacade"/>
         <property name="properties" ref="nifiProperties"/>
         <property name="clusterManager" ref="clusterManager"/>
@@ -308,6 +315,11 @@
         <property name="relationshipAuditor" ref="relationshipAuditor"/>
     </bean>
     <bean id="controllerServiceAuditor" class="org.apache.nifi.audit.ControllerServiceAuditor">
+        <property name="serviceFacade" ref="serviceFacade"/>
+        <property name="auditService" ref="auditService"/>
+        <property name="processGroupDAO" ref="processGroupDAO"/>
+    </bean>
+    <bean id="reportingTaskAuditor" class="org.apache.nifi.audit.ReportingTaskAuditor">
         <property name="serviceFacade" ref="serviceFacade"/>
         <property name="auditService" ref="auditService"/>
         <property name="processGroupDAO" ref="processGroupDAO"/>

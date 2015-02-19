@@ -65,9 +65,7 @@ nf.ControllerService = (function () {
             return true;
         }
         
-        if ($('#controller-service-enabled').hasClass('checkbox-checked') && details['enabled'] === false) {
-            return true;
-        } else if ($('#controller-service-enabled').hasClass('checkbox-unchecked') && details['enabled'] === true) {
+        if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
             return true;
         }
         
@@ -92,11 +90,9 @@ nf.ControllerService = (function () {
             controllerServiceDto['properties'] = properties;
         }
         
-        // mark the controller service disabled if appropriate
-        if ($('#controller-service-enabled').hasClass('checkbox-unchecked')) {
-            controllerServiceDto['enabled'] = false;
-        } else if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
-            controllerServiceDto['enabled'] = true;
+        // mark the controller service enabled if appropriate
+        if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
+            controllerServiceDto['state'] = 'ENABLED';
         }
 
         // create the controller service entity
@@ -281,7 +277,7 @@ nf.ControllerService = (function () {
                     updateReferencingComponentsBorder(referenceContainer);
                 });
                 
-                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled').addClass(referencingComponent.id + '-active-threads');
+                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.state === 'ENABLED' ? 'enabled' : 'disabled').addClass(referencingComponent.id + '-active-threads');
                 var serviceId = $('<span class="referencing-service-id hidden"></span>').text(referencingComponent.id);
                 var serviceType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
                 var serviceItem = $('<li></li>').append(serviceTwist).append(serviceState).append(serviceId).append(serviceLink).append(serviceType).append(referencingServiceReferencesContainer);
@@ -336,7 +332,7 @@ nf.ControllerService = (function () {
             data: {
                 clientId: revision.clientId,
                 version: revision.version,
-                enabled: enabled
+                state: enabled === true ? 'ENABLED' : 'DISABLED'
             },
             dataType: 'json'
         }).done(function (response) {
@@ -442,7 +438,7 @@ nf.ControllerService = (function () {
                     if (referencingComponent.referenceType === 'ControllerService') {
                         if (referencingComponent.enable === true) {
                             // update the current values for this component
-                            $(referencingComponent.id + '-state').removeClass('enabled disabled').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled');
+                            $(referencingComponent.id + '-state').removeClass('enabled disabled').addClass(referencingComponent.state === 'ENABLED' ? 'enabled' : 'disabled');
                             
                             // mark that something is still running
                             stillRunning = true;
@@ -566,7 +562,7 @@ nf.ControllerService = (function () {
 
                         // clear the tables
                         $('#controller-service-properties').propertytable('clear');
-
+                        
                         // removed the cached controller service details
                         $('#controller-service-configuration').removeData('controllerServiceDetails');
                     }
@@ -728,17 +724,11 @@ nf.ControllerService = (function () {
                 // record the controller service details
                 $('#controller-service-configuration').data('controllerServiceDetails', controllerService);
 
-                // determine if the enabled checkbox is checked or not
-                var controllerServiceEnableStyle = 'checkbox-checked';
-                if (controllerService['enabled'] === false) {
-                    controllerServiceEnableStyle = 'checkbox-unchecked';
-                }
-
                 // populate the controller service settings
                 $('#controller-service-id').text(controllerService['id']);
                 $('#controller-service-type').text(nf.Common.substringAfterLast(controllerService['type'], '.'));
                 $('#controller-service-name').val(controllerService['name']);
-                $('#controller-service-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(controllerServiceEnableStyle);
+                $('#controller-service-enabled').removeClass('checkbox-checked checkbox-unchecked').addClass('checkbox-unchecked');
                 $('#controller-service-comments').val(controllerService['comments']);
 
                 // select the availability when appropriate

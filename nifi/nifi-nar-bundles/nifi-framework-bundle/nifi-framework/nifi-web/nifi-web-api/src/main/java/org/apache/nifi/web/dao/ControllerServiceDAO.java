@@ -17,9 +17,11 @@
 package org.apache.nifi.web.dao;
 
 import java.util.Set;
+import org.apache.nifi.controller.ScheduledState;
 
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceReference;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 
 /**
@@ -70,11 +72,11 @@ public interface ControllerServiceDAO {
      * Updates the referencing components for the specified controller service.
      * 
      * @param controllerServiceId
-     * @param enabled
-     * @param state the value of state 
+     * @param scheduledState
+     * @param controllerServiceState the value of state 
      * @return the org.apache.nifi.controller.service.ControllerServiceReference 
      */
-    ControllerServiceReference updateControllerServiceReferencingComponents(String controllerServiceId, Boolean enabled, String state);
+    ControllerServiceReference updateControllerServiceReferencingComponents(String controllerServiceId, ScheduledState scheduledState, ControllerServiceState controllerServiceState);
     
     /**
      * Determines whether this controller service can be updated.

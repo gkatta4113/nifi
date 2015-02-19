@@ -26,6 +26,7 @@ import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.controller.service.ControllerServiceReference;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
@@ -122,15 +123,13 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         configureControllerService(controllerService, controllerServiceDTO);
 
         // enable or disable as appropriate
-        if (isNotNull(controllerServiceDTO.getEnabled())) {
-            final boolean proposedDisabled = !controllerServiceDTO.getEnabled();
-            
-            if (proposedDisabled != controllerService.isDisabled()) {
-                if (proposedDisabled) {
-                    serviceProvider.disableControllerService(controllerService);
-                } else {
-                    serviceProvider.enableControllerService(controllerService);
-                }
+        if (isNotNull(controllerServiceDTO.getState())) {
+            final ControllerServiceState controllerServiceState = ControllerServiceState.valueOf(controllerServiceDTO.getState());
+
+            if (ControllerServiceState.ENABLED.equals(controllerServiceState)) {
+                serviceProvider.enableControllerService(controllerService);
+            } else if (ControllerServiceState.DISABLED.equals(controllerServiceState)) {
+                serviceProvider.disableControllerService(controllerService);
             }
         }
         
@@ -138,36 +137,22 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     }
 
     @Override
-    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final Boolean enabled, String state) {
+    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final ScheduledState scheduledState, final ControllerServiceState controllerServiceState) {
         // get the controller service
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
         
-        // TODO - these actions need to be atomic... can't have partial success... maybe already handled?
-        
-        if (enabled != null) {
-            if (enabled) {
+        // this request is either acting upon referncing services or schedulable components
+        if (controllerServiceState != null) {
+            if (ControllerServiceState.ENABLED.equals(controllerServiceState)) {
                 serviceProvider.enableReferencingServices(controllerService);
             } else {
                 serviceProvider.disableReferencingServices(controllerService);
             }
-        } else if (state != null) {
-            try {
-                final ScheduledState scheduledState = ScheduledState.valueOf(state);
-                
-                switch (scheduledState) {
-                    case RUNNING:
-                        serviceProvider.scheduleReferencingComponents(controllerService);
-                        break;
-                    case STOPPED:
-                        serviceProvider.unscheduleReferencingComponents(controllerService);
-                        break;
-                    default:
-                        throw new IllegalArgumentException(String.format(
-                                "The specified state (%s) is not valid. Valid options are 'RUNNING' and 'STOPPED'.", state));
-                }
-            } catch (IllegalArgumentException iae) {
-                throw new IllegalArgumentException(String.format(
-                        "The specified state (%s) is not valid. Valid options are 'RUNNING' and 'STOPPED'.", state));
+        } else if (scheduledState != null) {
+            if (ScheduledState.RUNNING.equals(scheduledState)) {
+                serviceProvider.scheduleReferencingComponents(controllerService);
+            } else {
+                serviceProvider.unscheduleReferencingComponents(controllerService);
             }
         }
         
@@ -205,11 +190,24 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
      * @param controllerServiceDTO 
      */
     private void verifyUpdate(final ControllerServiceNode controllerService, final ControllerServiceDTO controllerServiceDTO) {
-        if (isNotNull(controllerServiceDTO.getEnabled())) {
-            if (controllerServiceDTO.getEnabled()) {
-                controllerService.verifyCanEnable();
-            } else {
-                controllerService.verifyCanDisable();
+        // validate the new controller service state if appropriate
+        if (isNotNull(controllerServiceDTO.getState())) {
+            try {
+                // attempt to parse the service state
+                final ControllerServiceState controllerServiceState = ControllerServiceState.valueOf(controllerServiceDTO.getState());
+                
+                // ensure the state is valid
+                if (ControllerServiceState.ENABLING.equals(controllerServiceState) || ControllerServiceState.DISABLING.equals(controllerServiceState)) {
+                    throw new IllegalArgumentException();
+                }
+                
+                if (ControllerServiceState.ENABLED.equals(controllerServiceState)) {
+                    controllerService.verifyCanEnable();
+                } else if (ControllerServiceState.DISABLED.equals(controllerServiceState)) {
+                    controllerService.verifyCanDisable();
+                }
+            } catch (IllegalArgumentException iae) {
+                throw new IllegalArgumentException("Controller Service state: Value must be one of [ENABLED, DISABLED]");
             }
         }
         

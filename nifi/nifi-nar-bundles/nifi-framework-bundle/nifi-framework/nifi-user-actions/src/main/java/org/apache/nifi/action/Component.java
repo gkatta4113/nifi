@@ -28,5 +28,6 @@ public enum Component {
     RemoteProcessGroup,
 	Funnel,
     Connection,
-    ControllerService;
+    ControllerService,
+    ReportingTask;
 }
