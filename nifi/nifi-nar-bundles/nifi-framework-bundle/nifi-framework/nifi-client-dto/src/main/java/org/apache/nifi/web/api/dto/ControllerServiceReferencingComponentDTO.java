@@ -31,7 +31,6 @@ public class ControllerServiceReferencingComponentDTO {
     private String name;
     private String type;
     private String state;
-    private Boolean enabled;
 
     private String referenceType;
     private Integer activeThreadCount;
@@ -102,20 +101,6 @@ public class ControllerServiceReferencingComponentDTO {
 
     public void setState(String state) {
         this.state = state;
-    }
-
-    /**
-     * The enabled state of the controller service referencing a controller service.
-     * If this component is a processor, this field is blank.
-     * 
-     * @return 
-     */
-    public Boolean getEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(Boolean enabled) {
-        this.enabled = enabled;
     }
 
     /**

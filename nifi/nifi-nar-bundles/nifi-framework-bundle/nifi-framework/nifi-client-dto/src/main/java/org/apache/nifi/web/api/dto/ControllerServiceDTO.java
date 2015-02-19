@@ -31,14 +31,14 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
     private String type;
     private String comments;
     private String availability;
-    private Boolean enabled;
+    private String state;
     
     private Map<String, String> properties;
     private Map<String, PropertyDescriptorDTO> descriptors;
  
     private String annotationData;
     
-    private Set<ControllerServiceReferencingComponentDTO> references;
+    private Set<ControllerServiceReferencingComponentDTO> referencingComponents;
     
     private Collection<String> validationErrors;
 
@@ -82,7 +82,7 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
 	}
 
 	/**
-     * Where this service is available. Possible values are CLUSTER_MANAGER_ONLY, NODE_ONLY, BOTH.
+     * Where this service is available. Possible values are NCM, NODE.
      * 
      * @return 
      */
@@ -95,16 +95,15 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
     }
 
     /**
-     * Whether the controller service is enabled.
-     * 
+     * The state of this controller service. Possible values are ENABLED, ENABLING, DISABLED, DISABLING.
      * @return 
      */
-    public Boolean getEnabled() {
-        return enabled;
+    public String getState() {
+        return state;
     }
 
-    public void setEnabled(Boolean enabled) {
-        this.enabled = enabled;
+    public void setState(String state) {
+        this.state = state;
     }
 
     /**
@@ -152,11 +151,11 @@ public class ControllerServiceDTO extends NiFiComponentDTO {
      * @return 
      */
     public Set<ControllerServiceReferencingComponentDTO> getReferencingComponents() {
-        return references;
+        return referencingComponents;
     }
 
-    public void setReferencingComponents(Set<ControllerServiceReferencingComponentDTO> references) {
-        this.references = references;
+    public void setReferencingComponents(Set<ControllerServiceReferencingComponentDTO> referencingComponents) {
+        this.referencingComponents = referencingComponents;
     }
 
     /**
