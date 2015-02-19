@@ -405,13 +405,17 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
     }
     
     private void enableReferencingServices(final ControllerServiceNode serviceNode, final List<ControllerServiceNode> recursiveReferences) {
-        serviceNode.verifyCanEnable(new HashSet<>(recursiveReferences));
+        if ( serviceNode.getState() != ControllerServiceState.ENABLED && serviceNode.getState() != ControllerServiceState.ENABLING ) {
+            serviceNode.verifyCanEnable(new HashSet<>(recursiveReferences));
+        }
         
+        final Set<ControllerServiceNode> ifEnabled = new HashSet<>();
         final List<ControllerServiceNode> toEnable = findRecursiveReferences(serviceNode, ControllerServiceNode.class);
         for ( final ControllerServiceNode nodeToEnable : toEnable ) {
             final ControllerServiceState state = nodeToEnable.getState();
             if ( state != ControllerServiceState.ENABLED && state != ControllerServiceState.ENABLING ) {
-                nodeToEnable.verifyCanEnable();
+                nodeToEnable.verifyCanEnable(ifEnabled);
+                ifEnabled.add(nodeToEnable);
             }
         }
         

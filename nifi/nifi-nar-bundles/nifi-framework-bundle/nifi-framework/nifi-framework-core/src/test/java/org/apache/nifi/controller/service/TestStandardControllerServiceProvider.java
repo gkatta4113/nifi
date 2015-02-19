@@ -40,9 +40,34 @@ import org.mockito.stubbing.Answer;
 
 public class TestStandardControllerServiceProvider {
 
+    private ProcessScheduler createScheduler() {
+        final ProcessScheduler scheduler = Mockito.mock(ProcessScheduler.class);
+        Mockito.doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(final InvocationOnMock invocation) throws Throwable {
+                final ControllerServiceNode node = (ControllerServiceNode) invocation.getArguments()[0];
+                node.verifyCanEnable();
+                node.setState(ControllerServiceState.ENABLED);
+                return null;
+            }
+        }).when(scheduler).enableControllerService(Mockito.any(ControllerServiceNode.class));
+        
+        Mockito.doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(final InvocationOnMock invocation) throws Throwable {
+                final ControllerServiceNode node = (ControllerServiceNode) invocation.getArguments()[0];
+                node.verifyCanDisable();
+                node.setState(ControllerServiceState.DISABLED);
+                return null;
+            }
+        }).when(scheduler).disableControllerService(Mockito.any(ControllerServiceNode.class));
+        
+        return scheduler;
+    }
+    
     @Test
     public void testDisableControllerService() {
-        final ProcessScheduler scheduler = Mockito.mock(ProcessScheduler.class);
+        final ProcessScheduler scheduler = createScheduler();
         final StandardControllerServiceProvider provider = new StandardControllerServiceProvider(scheduler);
         
         final ControllerServiceNode serviceNode = provider.createControllerService(ServiceB.class.getName(), "B", false);
@@ -52,7 +77,7 @@ public class TestStandardControllerServiceProvider {
     
     @Test
     public void testEnableDisableWithReference() {
-        final ProcessScheduler scheduler = Mockito.mock(ProcessScheduler.class);
+        final ProcessScheduler scheduler = createScheduler();
         final StandardControllerServiceProvider provider = new StandardControllerServiceProvider(scheduler);
         
         final ControllerServiceNode serviceNodeB = provider.createControllerService(ServiceB.class.getName(), "B", false);
@@ -82,7 +107,7 @@ public class TestStandardControllerServiceProvider {
     
     @Test
     public void testEnableReferencingServicesGraph() {
-        final ProcessScheduler scheduler = Mockito.mock(ProcessScheduler.class);
+        final ProcessScheduler scheduler = createScheduler();
         final StandardControllerServiceProvider provider = new StandardControllerServiceProvider(scheduler);
         
         // build a graph of controller services with dependencies as such:
@@ -111,15 +136,15 @@ public class TestStandardControllerServiceProvider {
         provider.enableControllerService(serviceNode4);
         provider.enableReferencingServices(serviceNode4);
         
-        assertEquals(ControllerServiceState.DISABLED, serviceNode3.getState());
-        assertEquals(ControllerServiceState.DISABLED, serviceNode2.getState());
-        assertEquals(ControllerServiceState.DISABLED, serviceNode1.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode3.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode2.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode1.getState());
     }
     
     
     @Test
     public void testStartStopReferencingComponents() {
-        final ProcessScheduler scheduler = Mockito.mock(ProcessScheduler.class);
+        final ProcessScheduler scheduler = createScheduler();
         final StandardControllerServiceProvider provider = new StandardControllerServiceProvider(scheduler);
         
         // build a graph of reporting tasks and controller services with dependencies as such:
@@ -184,9 +209,9 @@ public class TestStandardControllerServiceProvider {
         provider.enableReferencingServices(serviceNode4);
         provider.scheduleReferencingComponents(serviceNode4);
         
-        assertEquals(ControllerServiceState.DISABLED, serviceNode3.getState());
-        assertEquals(ControllerServiceState.DISABLED, serviceNode2.getState());
-        assertEquals(ControllerServiceState.DISABLED, serviceNode1.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode3.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode2.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode1.getState());
         assertTrue(procNodeA.isRunning());
         assertTrue(procNodeB.isRunning());
         
@@ -194,9 +219,9 @@ public class TestStandardControllerServiceProvider {
         provider.unscheduleReferencingComponents(serviceNode4);
         assertFalse(procNodeA.isRunning());
         assertFalse(procNodeB.isRunning());
-        assertEquals(ControllerServiceState.DISABLED, serviceNode3.getState());
-        assertEquals(ControllerServiceState.DISABLED, serviceNode2.getState());
-        assertEquals(ControllerServiceState.DISABLED, serviceNode1.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode3.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode2.getState());
+        assertEquals(ControllerServiceState.ENABLED, serviceNode1.getState());
         
         provider.disableReferencingServices(serviceNode4);
         assertEquals(ControllerServiceState.DISABLED, serviceNode3.getState());
