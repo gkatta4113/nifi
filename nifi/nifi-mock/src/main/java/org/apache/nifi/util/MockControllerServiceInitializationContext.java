@@ -26,6 +26,10 @@ public class MockControllerServiceInitializationContext extends MockControllerSe
     private final String identifier;
     private final ComponentLog logger;
 
+    public MockControllerServiceInitializationContext(final ControllerService controllerService, final String identifier) {
+        this(controllerService, identifier, new MockProcessorLog(identifier, controllerService));
+    }
+    
     public MockControllerServiceInitializationContext(final ControllerService controllerService, final String identifier, final ComponentLog logger) {
         this.identifier = identifier;
         this.logger = logger;
