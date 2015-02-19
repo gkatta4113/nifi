@@ -153,11 +153,14 @@ import org.apache.nifi.web.util.SnippetUtils;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
+import org.apache.nifi.web.api.dto.ReportingTaskDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
+import org.apache.nifi.web.dao.ReportingTaskDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -187,6 +190,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     private PortDAO outputPortDAO;
     private ConnectionDAO connectionDAO;
     private ControllerServiceDAO controllerServiceDAO;
+    private ReportingTaskDAO reportingTaskDAO;
     private TemplateDAO templateDAO;
 
     // administrative services
@@ -323,7 +327,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     @Override
     public void verifyUpdateControllerService(ControllerServiceDTO controllerServiceDTO) {
-        // if group does not exist, then the update request is likely creating it
+        // if service does not exist, then the update request is likely creating it
         // so we don't verify since it will fail
         if (controllerServiceDAO.hasControllerService(controllerServiceDTO.getId())) {
             controllerServiceDAO.verifyUpdate(controllerServiceDTO);
@@ -333,6 +337,20 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     @Override
     public void verifyDeleteControllerService(String controllerServiceId) {
         controllerServiceDAO.verifyDelete(controllerServiceId);
+    }
+
+    @Override
+    public void verifyUpdateReportingTask(ReportingTaskDTO reportingTaskDTO) {
+        // if tasks does not exist, then the update request is likely creating it
+        // so we don't verify since it will fail
+        if (reportingTaskDAO.hasReportingTask(reportingTaskDTO.getId())) {
+            reportingTaskDAO.verifyUpdate(reportingTaskDTO);
+        }
+    }
+
+    @Override
+    public void verifyDeleteReportingTask(String reportingTaskId) {
+        reportingTaskDAO.verifyDelete(reportingTaskId);
     }
 
     // -----------------------------------------
@@ -1210,11 +1228,11 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(final Revision revision, final String controllerServiceId, final boolean activated) {
+    public ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(final Revision revision, final String controllerServiceId, final Boolean enabled, final String state) {
         return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Set<ControllerServiceReferencingComponentDTO>>() {
             @Override
             public Set<ControllerServiceReferencingComponentDTO> execute() {
-                final ControllerServiceReference reference = controllerServiceDAO.updateControllerServiceReferencingComponents(controllerServiceId, activated);
+                final ControllerServiceReference reference = controllerServiceDAO.updateControllerServiceReferencingComponents(controllerServiceId, enabled, state);
                 return dtoFactory.createControllerServiceReferencingComponentsDto(reference);
             }
         });
@@ -1231,6 +1249,75 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
                 // save the update
                 if (properties.isClusterManager()) {
                     clusterManager.saveControllerServices();
+                } else {
+                    controllerFacade.save();
+                }
+                
+                return null;
+            }
+        });
+    }
+
+    @Override
+    public ConfigurationSnapshot<ReportingTaskDTO> createReportingTask(final Revision revision, final ReportingTaskDTO reportingTaskDTO) {
+        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ReportingTaskDTO>() {
+            @Override
+            public ReportingTaskDTO execute() {
+                // ensure id is set
+                if (StringUtils.isBlank(reportingTaskDTO.getId())) {
+                    reportingTaskDTO.setId(UUID.randomUUID().toString());
+                }
+
+                // create the reporting
+                final ReportingTaskNode reportingTask = reportingTaskDAO.createReportingTask(reportingTaskDTO);
+
+                // save the update
+                if (properties.isClusterManager()) {
+                    clusterManager.saveReportingTasks();
+                } else {
+                    controllerFacade.save();
+                }
+                
+                return dtoFactory.createReportingTaskDto(reportingTask);
+            }
+        });
+    }
+
+    @Override
+    public ConfigurationSnapshot<ReportingTaskDTO> updateReportingTask(final Revision revision, final ReportingTaskDTO reportingTaskDTO) {
+        // if reporting task does not exist, then create new reporting task
+        if (reportingTaskDAO.hasReportingTask(reportingTaskDTO.getId()) == false) {
+            return createReportingTask(revision, reportingTaskDTO);
+        }
+        
+        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ReportingTaskDTO>() {
+            @Override
+            public ReportingTaskDTO execute() {
+                final ReportingTaskNode reportingTask = reportingTaskDAO.updateReportingTask(reportingTaskDTO);
+
+                // save the update
+                if (properties.isClusterManager()) {
+                    clusterManager.saveReportingTasks();
+                } else {
+                    controllerFacade.save();
+                }
+
+                return dtoFactory.createReportingTaskDto(reportingTask);
+            }
+        });
+    }
+
+    @Override
+    public ConfigurationSnapshot<Void> deleteReportingTask(final Revision revision, final String reportingTaskId) {
+        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
+            @Override
+            public Void execute() {
+                // delete the label
+                reportingTaskDAO.deleteReportingTask(reportingTaskId);
+
+                // save the update
+                if (properties.isClusterManager()) {
+                    clusterManager.saveReportingTasks();
                 } else {
                     controllerFacade.save();
                 }
@@ -1948,6 +2035,20 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     public Set<ControllerServiceReferencingComponentDTO> getControllerServiceReferencingComponents(String controllerServiceId) {
         final ControllerServiceNode service = controllerServiceDAO.getControllerService(controllerServiceId);
         return dtoFactory.createControllerServiceReferencingComponentsDto(service.getReferences());
+    }
+
+    @Override
+    public Set<ReportingTaskDTO> getReportingTasks() {
+        final Set<ReportingTaskDTO> reportingTaskDtos = new LinkedHashSet<>();
+        for (ReportingTaskNode reportingTask : reportingTaskDAO.getReportingTasks()) {
+            reportingTaskDtos.add(dtoFactory.createReportingTaskDto(reportingTask));
+        }
+        return reportingTaskDtos;
+    }
+
+    @Override
+    public ReportingTaskDTO getReportingTask(String reportingTaskId) {
+        return dtoFactory.createReportingTaskDto(reportingTaskDAO.getReportingTask(reportingTaskId));
     }
 
     @Override
@@ -2736,6 +2837,10 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     public void setControllerServiceDAO(ControllerServiceDAO controllerServiceDAO) {
         this.controllerServiceDAO = controllerServiceDAO;
+    }
+
+    public void setReportingTaskDAO(ReportingTaskDAO reportingTaskDAO) {
+        this.reportingTaskDAO = reportingTaskDAO;
     }
 
     public void setTemplateDAO(TemplateDAO templateDAO) {

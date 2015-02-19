@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.nifi.controller.ScheduledState;
 
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
@@ -137,17 +138,36 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
     }
 
     @Override
-    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final boolean activated) {
+    public ControllerServiceReference updateControllerServiceReferencingComponents(final String controllerServiceId, final Boolean enabled, String state) {
         // get the controller service
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
         
         // TODO - these actions need to be atomic... can't have partial success... maybe already handled?
         
-        // perform the desired action
-        if (activated) {
-            serviceProvider.activateReferencingComponents(controllerService);
-        } else {
-            serviceProvider.deactivateReferencingComponents(controllerService);
+        if (enabled != null) {
+            if (enabled) {
+                
+            } else {
+                
+            }
+        } else if (state != null) {
+            try {
+                final ScheduledState scheduledState = ScheduledState.valueOf(state);
+                
+                switch (scheduledState) {
+                    case RUNNING:
+                        
+                        break;
+                    case STOPPED:
+                        
+                        break;
+                    default: 
+                        
+                }
+            } catch (IllegalArgumentException iae) {
+                throw new IllegalArgumentException(String.format(
+                        "The specified state (%s) is not valid. Valid options are 'RUNNING' and 'STOPPED'.", state));
+            }
         }
         
         return controllerService.getReferences();

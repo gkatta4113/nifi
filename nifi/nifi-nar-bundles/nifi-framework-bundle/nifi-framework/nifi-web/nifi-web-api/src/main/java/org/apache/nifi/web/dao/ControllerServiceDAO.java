@@ -70,10 +70,11 @@ public interface ControllerServiceDAO {
      * Updates the referencing components for the specified controller service.
      * 
      * @param controllerServiceId
-     * @param activated
-     * @return 
+     * @param enabled
+     * @param state the value of state 
+     * @return the org.apache.nifi.controller.service.ControllerServiceReference 
      */
-    ControllerServiceReference updateControllerServiceReferencingComponents(String controllerServiceId, boolean activated);
+    ControllerServiceReference updateControllerServiceReferencingComponents(String controllerServiceId, Boolean enabled, String state);
     
     /**
      * Determines whether this controller service can be updated.

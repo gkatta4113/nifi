@@ -43,6 +43,7 @@ import org.apache.nifi.web.api.dto.ComponentHistoryDTO;
 import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
+import org.apache.nifi.web.api.dto.ReportingTaskDTO;
 import org.apache.nifi.web.api.dto.RevisionDTO;
 import org.apache.nifi.web.api.dto.SnippetDTO;
 import org.apache.nifi.web.api.dto.SystemDiagnosticsDTO;
@@ -981,10 +982,11 @@ public interface NiFiServiceFacade {
      * 
      * @param revision
      * @param controllerServiceId
-     * @param activated
-     * @return 
+     * @param enabled
+     * @param state the value of state 
+     * @return the org.apache.nifi.web.ConfigurationSnapshot<java.util.Set<org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO>> 
      */
-    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, boolean activated);
+    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, Boolean enabled, String state);
     
     /**
      * Updates the specified label.
@@ -1017,6 +1019,66 @@ public interface NiFiServiceFacade {
      * @param controllerServiceId
      */
     void verifyDeleteControllerService(String controllerServiceId);
+    
+    // ----------------------------------------
+    // Reporting Task methods
+    // ----------------------------------------
+    
+    /**
+     * Creates a reporting task.
+     *
+     * @param revision Revision to compare with current base revision
+     * @param reportingTaskDTO The reporting task DTO
+     * @return The reporting task DTO
+     */
+    ConfigurationSnapshot<ReportingTaskDTO> createReportingTask(Revision revision, ReportingTaskDTO reportingTaskDTO);
+    
+    /**
+     * Gets all reporting tasks.
+     * 
+     * @return 
+     */
+    Set<ReportingTaskDTO> getReportingTasks();
+    
+    /**
+     * Gets the specified reporting task.
+     * 
+     * @param reportingTaskId
+     * @return 
+     */
+    ReportingTaskDTO getReportingTask(String reportingTaskId);
+    
+    /**
+     * Updates the specified reporting task.
+     *
+     * @param revision Revision to compare with current base revision
+     * @param reportingTaskDTO The reporting task DTO
+     * @return The reporting task DTO
+     */
+    ConfigurationSnapshot<ReportingTaskDTO> updateReportingTask(Revision revision, ReportingTaskDTO reportingTaskDTO);
+
+    /**
+     * Deletes the specified reporting task.
+     *
+     * @param revision Revision to compare with current base revision
+     * @param reportingTaskId The reporting task id
+     * @return 
+     */
+    ConfigurationSnapshot<Void> deleteReportingTask(Revision revision, String reportingTaskId);
+    
+    /**
+     * Verifies the specified reporting task can be updated.
+     *
+     * @param reportingTaskDTO
+     */
+    void verifyUpdateReportingTask(ReportingTaskDTO reportingTaskDTO);
+
+    /**
+     * Verifies the specified reporting task can be removed.
+     *
+     * @param reportingTaskId
+     */
+    void verifyDeleteReportingTask(String reportingTaskId);
     
     // ----------------------------------------
     // History methods

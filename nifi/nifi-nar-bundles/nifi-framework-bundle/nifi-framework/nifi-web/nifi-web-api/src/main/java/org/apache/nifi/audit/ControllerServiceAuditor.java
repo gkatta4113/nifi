@@ -273,6 +273,8 @@ public class ControllerServiceAuditor extends NiFiAuditor {
                     serviceAction.setComponentDetails(serviceDetails);
                     serviceAction.setOperation(controllerService.isDisabled() ? Operation.Disable : Operation.Enable);
                     actions.add(serviceAction);
+                    
+                    // need to consider components referencing this controller service (transitive)
                 }
             }
             
