@@ -1357,15 +1357,37 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	return controllerServiceProvider.getAllControllerServices();
     }
     
+    
     @Override
-    public void activateReferencingComponents(final ControllerServiceNode serviceNode) {
-        controllerServiceProvider.activateReferencingComponents(serviceNode);
+    public void disableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.disableReferencingServices(serviceNode);
     }
     
     @Override
-    public void deactivateReferencingComponents(final ControllerServiceNode serviceNode) {
-        controllerServiceProvider.deactivateReferencingComponents(serviceNode);
+    public void enableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.enableReferencingServices(serviceNode);
     }
+    
+    @Override
+    public void scheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.scheduleReferencingComponents(serviceNode);
+    }
+    
+    @Override
+    public void unscheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.unscheduleReferencingComponents(serviceNode);
+    }
+    
+    @Override
+    public void verifyCanEnableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanEnableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void verifyCanScheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanScheduleReferencingComponents(serviceNode);
+    }
+    
     
     private byte[] serialize(final Document doc) throws TransformerException {
     	final ByteArrayOutputStream baos = new ByteArrayOutputStream();

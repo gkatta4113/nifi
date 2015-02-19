@@ -96,4 +96,9 @@ public class MockValidationContext implements ValidationContext, ControllerServi
     	final ControllerServiceConfiguration configuration = context.getConfiguration(serviceIdentifier);
     	return configuration == null ? null : serviceIdentifier;
     }
+    
+    @Override
+    public boolean isValidationRequired(final ControllerService service) {
+        return true;
+    }
 }

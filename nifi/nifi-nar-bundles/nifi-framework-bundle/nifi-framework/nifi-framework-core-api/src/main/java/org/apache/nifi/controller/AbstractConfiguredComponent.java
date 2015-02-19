@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -260,12 +261,17 @@ public abstract class AbstractConfiguredComponent implements ConfigurableCompone
         return true;
     }
 
+    
     @Override
     public Collection<ValidationResult> getValidationErrors() {
+        return getValidationErrors(Collections.<String>emptySet());
+    }
+    
+    public Collection<ValidationResult> getValidationErrors(final Set<String> serviceIdentifiersNotToValidate) {
         final List<ValidationResult> results = new ArrayList<>();
         lock.lock();
         try {
-            final ValidationContext validationContext = validationContextFactory.newValidationContext(getProperties(), getAnnotationData());
+            final ValidationContext validationContext = validationContextFactory.newValidationContext(serviceIdentifiersNotToValidate, getProperties(), getAnnotationData());
 
             final Collection<ValidationResult> validationResults;
             try (final NarCloseable narCloseable = NarCloseable.withNarLoader()) {

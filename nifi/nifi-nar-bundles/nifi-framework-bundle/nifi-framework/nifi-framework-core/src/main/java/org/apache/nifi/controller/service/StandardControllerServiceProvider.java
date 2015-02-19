@@ -32,8 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.nifi.annotation.lifecycle.OnAdded;
-import org.apache.nifi.annotation.lifecycle.OnDisabled;
-import org.apache.nifi.annotation.lifecycle.OnEnabled;
 import org.apache.nifi.annotation.lifecycle.OnRemoved;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ConfigurationContext;
@@ -42,6 +40,7 @@ import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.controller.ProcessScheduler;
 import org.apache.nifi.controller.ProcessorNode;
 import org.apache.nifi.controller.ReportingTaskNode;
+import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.ValidationContextFactory;
 import org.apache.nifi.controller.exception.ControllerServiceNotFoundException;
 import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
@@ -128,7 +127,9 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
                 @Override
                 public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
                     final ControllerServiceNode node = serviceNodeHolder.get();
-                    if (node.isDisabled() && !validDisabledMethods.contains(method)) {
+                    final ControllerServiceState state = node.getState();
+                    final boolean disabled = (state != ControllerServiceState.ENABLED); // only allow method call if service state is ENABLED.
+                    if (disabled && !validDisabledMethods.contains(method)) {
                         // Use nar class loader here because we are implicitly calling toString() on the original implementation.
                         try (final NarCloseable narCloseable = NarCloseable.withNarLoader()) {
                             throw new IllegalStateException("Cannot invoke method " + method + " on Controller Service " + originalService + " because the Controller Service is disabled");
@@ -182,29 +183,108 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         }
     }
     
+    
+    
+    @Override
+    public void disableReferencingServices(final ControllerServiceNode serviceNode) {
+        // Get a list of all Controller Services that need to be disabled, in the order that they need to be
+        // disabled.
+        final List<ControllerServiceNode> toDisable = findRecursiveReferences(serviceNode, ControllerServiceNode.class);
+        final Set<ControllerServiceNode> serviceSet = new HashSet<>(toDisable);
+        
+        for ( final ControllerServiceNode nodeToDisable : toDisable ) {
+            final ControllerServiceState state = nodeToDisable.getState();
+            
+            if ( state != ControllerServiceState.DISABLED && state != ControllerServiceState.DISABLING ) {
+                nodeToDisable.verifyCanDisable(serviceSet);
+            }
+        }
+        
+        Collections.reverse(toDisable);
+        for ( final ControllerServiceNode nodeToDisable : toDisable ) {
+            final ControllerServiceState state = nodeToDisable.getState();
+            
+            if ( state != ControllerServiceState.DISABLED && state != ControllerServiceState.DISABLING ) {
+                disableControllerService(nodeToDisable);
+            }
+        }
+    }
+    
+    
+    @Override
+    public void scheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        // find all of the schedulable components (processors, reporting tasks) that refer to this Controller Service,
+        // or a service that references this controller service, etc.
+        final List<ProcessorNode> processors = findRecursiveReferences(serviceNode, ProcessorNode.class);
+        final List<ReportingTaskNode> reportingTasks = findRecursiveReferences(serviceNode, ReportingTaskNode.class);
+        
+        // verify that  we can start all components (that are not disabled) before doing anything
+        for ( final ProcessorNode node : processors ) {
+            if ( node.getScheduledState() != ScheduledState.DISABLED ) {
+                node.verifyCanStart();
+            }
+        }
+        for ( final ReportingTaskNode node : reportingTasks ) {
+            if ( node.getScheduledState() != ScheduledState.DISABLED ) {
+                node.verifyCanStart();
+            }
+        }
+        
+        // start all of the components that are not disabled
+        for ( final ProcessorNode node : processors ) {
+            if ( node.getScheduledState() != ScheduledState.DISABLED ) {
+                node.getProcessGroup().startProcessor(node);
+            }
+        }
+        for ( final ReportingTaskNode node : reportingTasks ) {
+            if ( node.getScheduledState() != ScheduledState.DISABLED ) {
+                processScheduler.schedule(node);
+            }
+        }
+    }
+    
+    @Override
+    public void unscheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        // find all of the schedulable components (processors, reporting tasks) that refer to this Controller Service,
+        // or a service that references this controller service, etc.
+        final List<ProcessorNode> processors = findRecursiveReferences(serviceNode, ProcessorNode.class);
+        final List<ReportingTaskNode> reportingTasks = findRecursiveReferences(serviceNode, ReportingTaskNode.class);
+        
+        // verify that  we can stop all components (that are running) before doing anything
+        for ( final ProcessorNode node : processors ) {
+            if ( node.getScheduledState() == ScheduledState.RUNNING ) {
+                node.verifyCanStop();
+            }
+        }
+        for ( final ReportingTaskNode node : reportingTasks ) {
+            if ( node.getScheduledState() == ScheduledState.RUNNING ) {
+                node.verifyCanStop();
+            }
+        }
+        
+        // stop all of the components that are running
+        for ( final ProcessorNode node : processors ) {
+            if ( node.getScheduledState() == ScheduledState.RUNNING ) {
+                node.getProcessGroup().stopProcessor(node);
+            }
+        }
+        for ( final ReportingTaskNode node : reportingTasks ) {
+            if ( node.getScheduledState() == ScheduledState.RUNNING ) {
+                processScheduler.unschedule(node);
+            }
+        }
+    }
+    
     @Override
     public void enableControllerService(final ControllerServiceNode serviceNode) {
         serviceNode.verifyCanEnable();
-        
-        try (final NarCloseable x = NarCloseable.withNarLoader()) {
-            final ConfigurationContext configContext = new StandardConfigurationContext(serviceNode, this);
-            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnEnabled.class, serviceNode.getControllerServiceImplementation(), configContext);
-        }
-        
-        serviceNode.enable();
+        processScheduler.enableControllerService(serviceNode);
     }
     
     @Override
     public void disableControllerService(final ControllerServiceNode serviceNode) {
         serviceNode.verifyCanDisable();
-
-        // We must set the service to disabled before we invoke the OnDisabled methods because the service node
-        // can throw Exceptions if we attempt to disable the service while it's known to be in use.
-        serviceNode.disable();
-        
-        try (final NarCloseable x = NarCloseable.withNarLoader()) {
-            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, serviceNode.getControllerServiceImplementation());
-        }
+        processScheduler.disableControllerService(serviceNode);
     }
 
     @Override
@@ -221,7 +301,7 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
     @Override
     public boolean isControllerServiceEnabled(final String serviceIdentifier) {
         final ControllerServiceNode node = controllerServices.get(serviceIdentifier);
-        return (node == null) ? false : !node.isDisabled();
+        return (node == null) ? false : (ControllerServiceState.ENABLED == node.getState());
     }
 
     @Override
@@ -281,120 +361,94 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
     	return new HashSet<>(controllerServices.values());
     }
     
-    @Override
-    public void deactivateReferencingComponents(final ControllerServiceNode serviceNode) {
-        deactivateReferencingComponents(serviceNode, new HashSet<ControllerServiceNode>());
-    }
-    
-    private void deactivateReferencingComponents(final ControllerServiceNode serviceNode, final Set<ControllerServiceNode> visited) {
-        final ControllerServiceReference reference = serviceNode.getReferences();
-        
-        final Set<ConfiguredComponent> components = reference.getActiveReferences();
-        for (final ConfiguredComponent component : components) {
-            if ( component instanceof ControllerServiceNode ) {
-                // If we've already visited this component (there is a loop such that
-                // we are disabling Controller Service A, but B depends on A and A depends on B)
-                // we don't need to disable this component because it will be disabled after we return
-                if ( visited.contains(component) ) {
-                    continue;
-                }
-                
-                visited.add(serviceNode);
-                deactivateReferencingComponents((ControllerServiceNode) component, visited);
-                
-                if (isControllerServiceEnabled(serviceNode.getIdentifier())) {
-                    serviceNode.verifyCanDisable(visited);
-                    serviceNode.disable(visited);
-                }
-            } else if ( component instanceof ReportingTaskNode ) {
-                final ReportingTaskNode taskNode = (ReportingTaskNode) component;
-                if (taskNode.isRunning()) {
-                    taskNode.verifyCanStop();
-                    processScheduler.unschedule(taskNode);
-                }
-            } else if ( component instanceof ProcessorNode ) {
-                final ProcessorNode procNode = (ProcessorNode) component;
-                if ( procNode.isRunning() ) {
-                    procNode.getProcessGroup().stopProcessor(procNode);
-                }
-            }
-        }
-    }
-    
-    
-    @Override
-    public void activateReferencingComponents(final ControllerServiceNode serviceNode) {
-        activateReferencingComponents(serviceNode, new HashSet<ControllerServiceNode>());
-    }
-    
     
     /**
-     * Recursively enables this controller service and any controller service that it references.
-     * @param serviceNode
+     * Returns a List of all components that reference the given referencedNode (either directly or indirectly through
+     * another service) that are also of the given componentType. The list that is returned is in the order in which they will
+     * need to be 'activated' (enabled/started).
+     * @param referencedNode
+     * @param componentType
+     * @return
      */
-    private void activateReferencedComponents(final ControllerServiceNode serviceNode) {
-        for ( final Map.Entry<PropertyDescriptor, String> entry : serviceNode.getProperties().entrySet() ) {
-            final PropertyDescriptor key = entry.getKey();
-            if ( key.getControllerServiceDefinition() == null ) {
-                continue;
+    private <T> List<T> findRecursiveReferences(final ControllerServiceNode referencedNode, final Class<T> componentType) {
+        final List<T> references = new ArrayList<>();
+        
+        for ( final ConfiguredComponent referencingComponent : referencedNode.getReferences().getReferencingComponents() ) {
+            if ( componentType.isAssignableFrom(referencingComponent.getClass()) ) {
+                references.add(componentType.cast(referencingComponent));
             }
+            
+            if ( referencingComponent instanceof ControllerServiceNode ) {
+                final ControllerServiceNode referencingNode = (ControllerServiceNode) referencingComponent;
                 
-            final String serviceId = entry.getValue() == null ? key.getDefaultValue() : entry.getValue();
-            if ( serviceId == null ) {
-                continue;
+                // find components recursively that depend on referencingNode.
+                final List<T> recursive = findRecursiveReferences(referencingNode, componentType);
+                
+                // For anything that depends on referencing node, we want to add it to the list, but we know
+                // that it must come after the referencing node, so we first remove any existing occurrence.
+                references.removeAll(recursive);
+                references.addAll(recursive);
             }
-            
-            final ControllerServiceNode referencedNode = getControllerServiceNode(serviceId);
-            if ( referencedNode == null ) {
-                throw new IllegalStateException("Cannot activate referenced component of " + serviceNode + " because no service exists with ID " + serviceId);
+        }
+        
+        return references;
+    }
+    
+    
+    @Override
+    public void enableReferencingServices(final ControllerServiceNode serviceNode) {
+        final List<ControllerServiceNode> recursiveReferences = findRecursiveReferences(serviceNode, ControllerServiceNode.class);
+        enableReferencingServices(serviceNode, recursiveReferences);
+    }
+    
+    private void enableReferencingServices(final ControllerServiceNode serviceNode, final List<ControllerServiceNode> recursiveReferences) {
+        serviceNode.verifyCanEnable(new HashSet<>(recursiveReferences));
+        
+        final List<ControllerServiceNode> toEnable = findRecursiveReferences(serviceNode, ControllerServiceNode.class);
+        for ( final ControllerServiceNode nodeToEnable : toEnable ) {
+            final ControllerServiceState state = nodeToEnable.getState();
+            if ( state != ControllerServiceState.ENABLED && state != ControllerServiceState.ENABLING ) {
+                nodeToEnable.verifyCanEnable();
             }
-            
-            activateReferencedComponents(referencedNode);
-            
-            if ( referencedNode.isDisabled() ) {
-                enableControllerService(referencedNode);
+        }
+        
+        for ( final ControllerServiceNode nodeToEnable : toEnable ) {
+            final ControllerServiceState state = nodeToEnable.getState();
+            if ( state != ControllerServiceState.ENABLED && state != ControllerServiceState.ENABLING ) {
+                enableControllerService(nodeToEnable);
             }
         }
     }
     
-    private void activateReferencingComponents(final ControllerServiceNode serviceNode, final Set<ControllerServiceNode> visited) {
-        if ( serviceNode.isDisabled() ) {
-            throw new IllegalStateException("Cannot activate referencing components of " + serviceNode.getControllerServiceImplementation() + " because the Controller Service is disabled");
+    @Override
+    public void verifyCanEnableReferencingServices(final ControllerServiceNode serviceNode) {
+        final List<ControllerServiceNode> referencingServices = findRecursiveReferences(serviceNode, ControllerServiceNode.class);
+        final Set<ControllerServiceNode> referencingServiceSet = new HashSet<>(referencingServices);
+        
+        for ( final ControllerServiceNode referencingService : referencingServices ) {
+            referencingService.verifyCanEnable(referencingServiceSet);
         }
+    }
+    
+    @Override
+    public void verifyCanScheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        final List<ControllerServiceNode> referencingServices = findRecursiveReferences(serviceNode, ControllerServiceNode.class);
+        final List<ReportingTaskNode> referencingReportingTasks = findRecursiveReferences(serviceNode, ReportingTaskNode.class);
+        final List<ProcessorNode> referencingProcessors = findRecursiveReferences(serviceNode, ProcessorNode.class);
         
-        final ControllerServiceReference ref = serviceNode.getReferences();
-        final Set<ConfiguredComponent> components = ref.getReferencingComponents();
+        final Set<ControllerServiceNode> referencingServiceSet = new HashSet<>(referencingServices);
         
-        // First, activate any other controller services. We do this first so that we can
-        // avoid the situation where Processor X depends on Controller Services Y and Z; and
-        // Controller Service Y depends on Controller Service Z. In this case, if we first attempted
-        // to start Processor X, we would fail because Controller Service Y is disabled. THis way, we
-        // can recursively enable everything.
-        for ( final ConfiguredComponent component : components ) {
-            if (component instanceof ControllerServiceNode) {
-                final ControllerServiceNode componentNode = (ControllerServiceNode) component;
-                activateReferencedComponents(componentNode);
-                
-                if ( componentNode.isDisabled() ) {
-                    enableControllerService(componentNode);
-                }
-                
-                activateReferencingComponents(componentNode);
+        for ( final ReportingTaskNode taskNode : referencingReportingTasks ) {
+            if ( taskNode.getScheduledState() != ScheduledState.DISABLED ) {
+                taskNode.verifyCanStart(referencingServiceSet);
             }
         }
         
-        for ( final ConfiguredComponent component : components ) {
-            if (component instanceof ProcessorNode) {
-                final ProcessorNode procNode = (ProcessorNode) component;
-                if ( !procNode.isRunning() ) {
-                    procNode.getProcessGroup().startProcessor(procNode);
-                }
-            } else if (component instanceof ReportingTaskNode) {
-                final ReportingTaskNode taskNode = (ReportingTaskNode) component;
-                if ( !taskNode.isRunning() ) {
-                    processScheduler.schedule(taskNode);
-                }
+        for ( final ProcessorNode procNode : referencingProcessors ) {
+            if ( procNode.getScheduledState() != ScheduledState.DISABLED ) {
+                procNode.verifyCanStart(referencingServiceSet);
             }
         }
     }
+    
 }

@@ -2570,12 +2570,6 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         return reportingTasks.values();
     }
 
-    
-    @Override
-    public void activateReferencingComponents(final ControllerServiceNode serviceNode) {
-        controllerServiceProvider.activateReferencingComponents(serviceNode);
-    }
-    
     @Override
     public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
         return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
@@ -2591,10 +2585,24 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         processScheduler.disableReportingTask(reportingTaskNode);
     }
     
+    @Override
+    public void disableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.disableReferencingServices(serviceNode);
+    }
     
     @Override
-    public void deactivateReferencingComponents(final ControllerServiceNode serviceNode) {
-        controllerServiceProvider.deactivateReferencingComponents(serviceNode);
+    public void enableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.enableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void scheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.scheduleReferencingComponents(serviceNode);
+    }
+    
+    @Override
+    public void unscheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.unscheduleReferencingComponents(serviceNode);
     }
     
     @Override
@@ -2609,6 +2617,15 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         controllerServiceProvider.disableControllerService(serviceNode);
     }
     
+    @Override
+    public void verifyCanEnableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanEnableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void verifyCanScheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanScheduleReferencingComponents(serviceNode);
+    }
 
     @Override
     public ControllerService getControllerService(final String serviceIdentifier) {

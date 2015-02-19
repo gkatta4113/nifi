@@ -146,9 +146,9 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         
         if (enabled != null) {
             if (enabled) {
-                
+                serviceProvider.enableReferencingServices(controllerService);
             } else {
-                
+                serviceProvider.disableReferencingServices(controllerService);
             }
         } else if (state != null) {
             try {
@@ -156,13 +156,14 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
                 
                 switch (scheduledState) {
                     case RUNNING:
-                        
+                        serviceProvider.scheduleReferencingComponents(controllerService);
                         break;
                     case STOPPED:
-                        
+                        serviceProvider.unscheduleReferencingComponents(controllerService);
                         break;
-                    default: 
-                        
+                    default:
+                        throw new IllegalArgumentException(String.format(
+                                "The specified state (%s) is not valid. Valid options are 'RUNNING' and 'STOPPED'.", state));
                 }
             } catch (IllegalArgumentException iae) {
                 throw new IllegalArgumentException(String.format(

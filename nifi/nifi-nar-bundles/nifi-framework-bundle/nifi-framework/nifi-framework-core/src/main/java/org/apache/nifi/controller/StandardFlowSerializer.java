@@ -41,6 +41,7 @@ import org.apache.nifi.connectable.Position;
 import org.apache.nifi.connectable.Size;
 import org.apache.nifi.controller.label.Label;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.flowfile.FlowFilePrioritizer;
 import org.apache.nifi.groups.ProcessGroup;
@@ -412,7 +413,10 @@ public class StandardFlowSerializer implements FlowSerializer {
     	addTextElement(serviceElement, "name", serviceNode.getName());
     	addTextElement(serviceElement, "comment", serviceNode.getComments());
     	addTextElement(serviceElement, "class", serviceNode.getControllerServiceImplementation().getClass().getCanonicalName());
-        addTextElement(serviceElement, "enabled", String.valueOf(!serviceNode.isDisabled()));
+    	
+    	final ControllerServiceState state = serviceNode.getState();
+    	final boolean enabled = (state == ControllerServiceState.ENABLED || state == ControllerServiceState.ENABLING);
+        addTextElement(serviceElement, "enabled", String.valueOf(enabled));
         
         addConfiguration(serviceElement, serviceNode.getProperties(), serviceNode.getAnnotationData(), encryptor);
         

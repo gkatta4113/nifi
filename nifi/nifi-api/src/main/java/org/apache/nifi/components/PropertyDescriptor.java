@@ -142,6 +142,14 @@ public final class PropertyDescriptor implements Comparable<PropertyDescriptor> 
             final Set<String> validIdentifiers = context.getControllerServiceLookup().getControllerServiceIdentifiers(controllerServiceDefinition);
             if (validIdentifiers != null && validIdentifiers.contains(input)) {
                 final ControllerService controllerService = context.getControllerServiceLookup().getControllerService(input);
+                if ( !context.isValidationRequired(controllerService) ) {
+                    return new ValidationResult.Builder()
+                        .input(input)
+                        .subject(getName())
+                        .valid(true)
+                        .build();
+                }
+                
                 if (!context.getControllerServiceLookup().isControllerServiceEnabled(controllerService)) {
                     return new ValidationResult.Builder()
                             .input(context.getControllerServiceLookup().getControllerServiceName(controllerService.getIdentifier()))

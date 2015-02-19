@@ -45,6 +45,8 @@ import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.annotation.OnConfigured;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
+import org.apache.nifi.controller.service.ControllerServiceState;
+import org.apache.nifi.controller.service.StandardConfigurationContext;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.engine.FlowEngine;
 import org.apache.nifi.logging.ProcessorLog;
@@ -212,7 +214,8 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         if (!scheduleState.isScheduled()) {
             return;
         }
-
+        
+        taskNode.verifyCanStop();
         final SchedulingAgent agent = getSchedulingAgent(taskNode.getSchedulingStrategy());
         final ReportingTask reportingTask = taskNode.getReportingTask();
         scheduleState.setScheduled(false);
@@ -313,11 +316,12 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                                 return;
                             }
                         } catch (final Exception e) {
+                            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
                             final ProcessorLog procLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
 
                             procLog.error("{} failed to invoke @OnScheduled method due to {}; processor will not be scheduled to run for {}",
-                                    new Object[]{procNode.getProcessor(), e.getCause(), administrativeYieldDuration}, e.getCause());
-                            LOG.error("Failed to invoke @OnScheduled method due to {}", e.getCause().toString(), e.getCause());
+                                    new Object[]{procNode.getProcessor(), cause.getCause(), administrativeYieldDuration}, cause.getCause());
+                            LOG.error("Failed to invoke @OnScheduled method due to {}", cause.getCause().toString(), cause.getCause());
 
                             ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnUnscheduled.class, procNode.getProcessor(), processContext);
                             ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnStopped.class, procNode.getProcessor(), processContext);
@@ -609,5 +613,110 @@ public final class StandardProcessScheduler implements ProcessScheduler {
             }
         }
         return scheduleState;
+    }
+
+    @Override
+    public void enableControllerService(final ControllerServiceNode service) {
+        service.verifyCanEnable();
+        service.setState(ControllerServiceState.ENABLING);
+        final ScheduleState scheduleState = getScheduleState(service);
+        
+        final Runnable enableRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try (final NarCloseable x = NarCloseable.withNarLoader()) {
+                    long lastStopTime = scheduleState.getLastStopTime();
+                    final ConfigurationContext configContext = new StandardConfigurationContext(service, controllerServiceProvider);
+                    
+                    while (true) {
+                        try {
+                            synchronized (scheduleState) {
+                                // if no longer enabled, then we're finished. This can happen, for example,
+                                // if the @OnEnabled method throws an Exception and the user disables the service
+                                // while we're administratively yielded.
+                                // 
+                                // we also check if the schedule state's last stop time is equal to what it was before.
+                                // if not, then means that the service has been disabled and enabled again, so we should just
+                                // bail; another thread will be responsible for invoking the @OnEnabled methods.
+                                if (!scheduleState.isScheduled() || scheduleState.getLastStopTime() != lastStopTime) {
+                                    return;
+                                }
+
+                                ReflectionUtils.invokeMethodsWithAnnotation(OnEnabled.class, service.getControllerServiceImplementation(), configContext);
+                                heartbeater.heartbeat();
+                                service.setState(ControllerServiceState.ENABLED);
+                                return;
+                            }
+                        } catch (final Exception e) {
+                            // TODO: Generate a bulletin just like in startProcessor
+                            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+                            LOG.error("Failed to invoke @OnEnabled method of {} due to {}", service.getControllerServiceImplementation(), cause.toString());
+                            if ( LOG.isDebugEnabled() ) {
+                                LOG.error("", cause);
+                            }
+
+                            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, service.getControllerServiceImplementation(), configContext);
+                            Thread.sleep(administrativeYieldMillis);
+                            continue;
+                        }
+                    }
+                } catch (final Throwable t) {
+                    // TODO: Generate a bulletin just like in startProcessor
+                    final Throwable cause = (t instanceof InvocationTargetException) ? t.getCause() : t;
+                    LOG.error("Failed to invoke @OnEnabled method on {} due to {}", service.getControllerServiceImplementation(), cause.toString());
+                    if ( LOG.isDebugEnabled() ) {
+                        LOG.error("", cause);
+                    }
+                }
+            }
+        };
+        
+        scheduleState.setScheduled(true);
+        componentLifeCycleThreadPool.execute(enableRunnable);
+    }
+
+    @Override
+    public void disableControllerService(final ControllerServiceNode service) {
+        service.verifyCanDisable();
+        
+        final ScheduleState state = getScheduleState(requireNonNull(service));
+        final Runnable disableRunnable = new Runnable() {
+            @Override
+            public void run() {
+                synchronized (state) {
+                    state.setScheduled(false);
+                }
+
+                try (final NarCloseable x = NarCloseable.withNarLoader()) {
+                    final ConfigurationContext configContext = new StandardConfigurationContext(service, controllerServiceProvider);
+                    
+                    while(true) {
+                        try {
+                            ReflectionUtils.invokeMethodsWithAnnotation(OnDisabled.class, service.getControllerServiceImplementation(), configContext);
+                            heartbeater.heartbeat();
+                            service.setState(ControllerServiceState.DISABLED);
+                            return;
+                        } catch (final Exception e) {
+                            // TODO: Generate a bulletin just like in startProcessor
+                            final Throwable cause = (e instanceof InvocationTargetException) ? e.getCause() : e;
+                            LOG.error("Failed to invoke @OnDisabled method of {} due to {}", service.getControllerServiceImplementation(), cause.toString());
+                            if ( LOG.isDebugEnabled() ) {
+                                LOG.error("", cause);
+                            }
+        
+                            ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnDisabled.class, service.getControllerServiceImplementation(), configContext);
+                            try {
+                                Thread.sleep(administrativeYieldMillis);
+                            } catch (final InterruptedException ie) {}
+                            
+                            continue;
+                        }
+                    }
+                }
+            }
+        };
+
+        service.setState(ControllerServiceState.DISABLING);
+        componentLifeCycleThreadPool.execute(disableRunnable);        
     }
 }

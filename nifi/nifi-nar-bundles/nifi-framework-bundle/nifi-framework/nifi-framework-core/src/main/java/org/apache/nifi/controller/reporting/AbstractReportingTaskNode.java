@@ -16,9 +16,13 @@
  */
 package org.apache.nifi.controller.reporting;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.controller.AbstractConfiguredComponent;
 import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.controller.ControllerServiceLookup;
@@ -28,6 +32,7 @@ import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.ValidationContextFactory;
 import org.apache.nifi.controller.annotation.OnConfigured;
 import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
+import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.controller.service.StandardConfigurationContext;
 import org.apache.nifi.nar.NarCloseable;
@@ -210,6 +215,34 @@ public abstract class AbstractReportingTaskNode extends AbstractConfiguredCompon
     public void verifyCanUpdate() {
         if ( isRunning() ) {
             throw new IllegalStateException("Cannot update " + reportingTask + " because it is currently running");
+        }
+    }
+    
+    @Override
+    public void verifyCanStart(final Set<ControllerServiceNode> ignoredReferences) {
+        switch (getScheduledState()) {
+            case DISABLED:
+                throw new IllegalStateException(this + " cannot be started because it is disabled");
+            case RUNNING:
+                throw new IllegalStateException(this + " cannot be started because it is already running");
+            case STOPPED:
+                break;
+        }
+        final int activeThreadCount = getActiveThreadCount();
+        if ( activeThreadCount > 0 ) {
+            throw new IllegalStateException(this + " cannot be started because it has " + activeThreadCount + " active threads already");
+        }
+        
+        final Set<String> ids = new HashSet<>();
+        for ( final ControllerServiceNode node : ignoredReferences ) {
+            ids.add(node.getIdentifier());
+        }
+        
+        final Collection<ValidationResult> validationResults = getValidationErrors(ids);
+        for ( final ValidationResult result : validationResults ) {
+            if ( !result.isValid() ) {
+                throw new IllegalStateException(this + " cannot be started because it is not valid: " + result);
+            }
         }
     }
 }

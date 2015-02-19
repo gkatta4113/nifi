@@ -75,27 +75,47 @@ public interface ControllerServiceProvider extends ControllerServiceLookup {
      */
     Set<ControllerServiceNode> getAllControllerServices();
     
-    /**
-     * Recursively stops all Processors and Reporting Tasks that are referencing the given Controller Service,
-     * as well as disabling any Controller Service that references this Controller Service (and stops
-     * all Reporting Task or Controller Service that is referencing it, and so on).
-     * @param serviceNode
-     */
-    void deactivateReferencingComponents(ControllerServiceNode serviceNode);
     
     /**
-     * <p>
-     * Starts any enabled Processors and Reporting Tasks that are referencing this Controller Service. If other Controller
-     * Services reference this Controller Service, will also enable those services and 'activate' any components referencing
-     * them.
-     * </p>
-     * 
-     * <p>
-     * NOTE: If any component cannot be started, an IllegalStateException will be thrown an no more components will
-     * be activated. This method provides no atomicity.
-     * </p>
-     * 
+     * Recursively unschedules all schedulable components (Processors and Reporting Tasks) that reference the given
+     * Controller Service. For any Controller services that reference this one, its schedulable referencing components will also
+     * be unscheduled.
      * @param serviceNode
      */
-    void activateReferencingComponents(ControllerServiceNode serviceNode);
+    void unscheduleReferencingComponents(ControllerServiceNode serviceNode);
+    
+    /**
+     * Disables any Controller Service that references the provided Controller Service. This action is performed recursively
+     * so that if service A references B and B references C, disabling references for C will first disable A, then B.
+     * @param serviceNode
+     */
+    void disableReferencingServices(ControllerServiceNode serviceNode);
+    
+    /**
+     * Verifies that all Controller Services referencing the provided ControllerService can be enabled.
+     * @param serviceNode
+     */
+    void verifyCanEnableReferencingServices(ControllerServiceNode serviceNode);
+    
+    /**
+     * Verifies that all enabled Processors referencing the ControllerService (or a service that depends on 
+     * the provided service) can be scheduled to run.
+     * @param serviceNode
+     */
+    void verifyCanScheduleReferencingComponents(ControllerServiceNode serviceNode);
+    
+    /**
+     * Enables all Controller Services that are referencing the given service. If Service A references Service B and Service
+     * B references serviceNode, Service A and B will both be enabled.
+     * @param serviceNode
+     */
+    void enableReferencingServices(ControllerServiceNode serviceNode);
+    
+    /**
+     * Schedules any schedulable component (Processor, ReportingTask) that is referencing the given Controller Service
+     * to run. This is performed recursively, so if a Processor is referencing Service A, which is referencing serviceNode,
+     * then the Processor will also be started.
+     * @param serviceNode
+     */
+    void scheduleReferencingComponents(ControllerServiceNode serviceNode);
 }
