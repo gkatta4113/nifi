@@ -54,6 +54,7 @@ import org.apache.nifi.controller.exception.ProcessorInstantiationException;
 import org.apache.nifi.controller.label.Label;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
 import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.events.BulletinFactory;
 import org.apache.nifi.fingerprint.FingerprintException;
@@ -361,7 +362,9 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
         }
 
         if ( autoResumeState ) {
-	    	if ( Boolean.TRUE.equals(dto.getEnabled()) ) {
+            final ControllerServiceState state = ControllerServiceState.valueOf(dto.getState());
+            final boolean enable = (state == ControllerServiceState.ENABLED || state == ControllerServiceState.ENABLING);
+	    	if (enable) {
 	    		try {
 	    			controller.enableControllerService(node);
 	    		} catch (final Exception e) {
@@ -380,10 +383,16 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     private void updateControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
     	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
     	
-    	final boolean enabled = controller.isControllerServiceEnabled(dto.getId());
-    	if (dto.getEnabled() && !enabled) {
+    	final ControllerServiceState state = ControllerServiceState.valueOf(dto.getState());
+        final boolean dtoEnabled = (state == ControllerServiceState.ENABLED || state == ControllerServiceState.ENABLING);
+        
+        final ControllerServiceNode serviceNode = controller.getControllerServiceNode(dto.getId());
+        final ControllerServiceState serviceState = serviceNode.getState();
+        final boolean serviceEnabled = (serviceState == ControllerServiceState.ENABLED || state == ControllerServiceState.ENABLING);
+        
+    	if (dtoEnabled && !serviceEnabled) {
     		controller.enableControllerService(controller.getControllerServiceNode(dto.getId()));
-    	} else if (dto.getEnabled() == Boolean.FALSE && enabled) {
+    	} else if (!dtoEnabled && serviceEnabled) {
     		controller.disableControllerService(controller.getControllerServiceNode(dto.getId()));
     	}
     }

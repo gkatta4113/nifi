@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.nifi.connectable.Size;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.groups.RemoteProcessGroupPortDescriptor;
 import org.apache.nifi.remote.StandardRemoteProcessGroupPortDescriptor;
@@ -86,7 +87,9 @@ public class FlowFromDOMFactory {
     	dto.setName(getString(element, "name"));
     	dto.setComments(getString(element, "comment"));
     	dto.setType(getString(element, "class"));
-    	dto.setEnabled(getBoolean(element, "enabled"));
+
+    	final boolean enabled = getBoolean(element, "enabled");
+    	dto.setState(enabled ? ControllerServiceState.ENABLED.name() : ControllerServiceState.DISABLED.name());
     	
         dto.setProperties(getProperties(element, encryptor));
         dto.setAnnotationData(getString(element, "annotationData"));
