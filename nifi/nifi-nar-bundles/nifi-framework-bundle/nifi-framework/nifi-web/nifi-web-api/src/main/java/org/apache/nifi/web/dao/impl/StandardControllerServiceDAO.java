@@ -182,6 +182,25 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         final ControllerServiceNode controllerService = locateControllerService(controllerServiceDTO.getId());
         verifyUpdate(controllerService, controllerServiceDTO);
     }
+
+    @Override
+    public void verifyUpdateReferencingComponents(String controllerServiceId, ScheduledState scheduledState, ControllerServiceState controllerServiceState) {
+        final ControllerServiceNode controllerService = locateControllerService(controllerServiceId);
+        
+        if (controllerServiceState != null) {
+            if (ControllerServiceState.ENABLED.equals(controllerServiceState)) {
+//                serviceProvider.enableReferencingServices(controllerService);
+            } else {
+//                serviceProvider.disableReferencingServices(controllerService);
+            }
+        } else if (scheduledState != null) {
+            if (ScheduledState.RUNNING.equals(scheduledState)) {
+//                serviceProvider.scheduleReferencingComponents(controllerService);
+            } else {
+//                serviceProvider.unscheduleReferencingComponents(controllerService);
+            }
+        }
+    }
     
     /**
      * Verifies the controller service can be updated.

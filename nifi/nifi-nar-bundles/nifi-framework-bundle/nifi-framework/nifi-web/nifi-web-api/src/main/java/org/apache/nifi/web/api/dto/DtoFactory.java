@@ -912,6 +912,10 @@ public final class DtoFactory {
     }
     
     public Set<ControllerServiceReferencingComponentDTO> createControllerServiceReferencingComponentsDto(final ControllerServiceReference reference) {
+        return createControllerServiceReferencingComponentsDto(reference, new HashSet<ControllerServiceNode>());
+    }
+    
+    private Set<ControllerServiceReferencingComponentDTO> createControllerServiceReferencingComponentsDto(final ControllerServiceReference reference, final Set<ControllerServiceNode> visited) {
         final Set<ControllerServiceReferencingComponentDTO> referencingComponents = new LinkedHashSet<>();
         
         // get all references
@@ -932,6 +936,12 @@ public final class DtoFactory {
                 dto.setState(node.getState().name());
                 dto.setType(node.getControllerServiceImplementation().getClass().getName());
                 dto.setReferenceType(ControllerService.class.getSimpleName());
+                dto.setReferenceCycle(visited.contains(node));
+                
+                // if we haven't encountered this service before include it's referencing components
+                if (!dto.getReferenceCycle()) {
+                    dto.setReferencingComponents(createControllerServiceReferencingComponentsDto(node.getReferences(), visited));
+                }
             } else if (component instanceof ReportingTask) {
                 final ReportingTaskNode node = ((ReportingTaskNode) component);
                 dto.setState(node.getScheduledState().name());

@@ -154,8 +154,10 @@ import org.apache.nifi.web.util.SnippetUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.controller.ReportingTaskNode;
+import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceReference;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
 import org.apache.nifi.web.api.dto.ReportingTaskDTO;
@@ -332,6 +334,11 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         if (controllerServiceDAO.hasControllerService(controllerServiceDTO.getId())) {
             controllerServiceDAO.verifyUpdate(controllerServiceDTO);
         }
+    }
+
+    @Override
+    public void verifyUpdateControllerServiceReferencingComponents(String controllerServiceId, ScheduledState scheduledState, ControllerServiceState controllerServiceState) {
+        controllerServiceDAO.verifyUpdateReferencingComponents(controllerServiceId, scheduledState, controllerServiceState);
     }
 
     @Override

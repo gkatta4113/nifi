@@ -102,6 +102,7 @@
         <property name="funnelDAO" ref="funnelDAO"/>
         <property name="connectionDAO" ref="connectionDAO"/>
         <property name="controllerServiceDAO" ref="controllerServiceDAO"/>
+        <property name="reportingTaskDAO" ref="reportingTaskDAO"/>
         <property name="templateDAO" ref="templateDAO"/>
         <property name="snippetDAO" ref="snippetDAO"/>
         <property name="auditService" ref="auditService"/>

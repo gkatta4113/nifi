@@ -34,7 +34,9 @@ public class ControllerServiceReferencingComponentDTO {
 
     private String referenceType;
     private Integer activeThreadCount;
-    private Set<ControllerServiceReferencingComponentDTO> references;
+    
+    private Boolean referenceCycle;
+    private Set<ControllerServiceReferencingComponentDTO> referencingComponents;
 
     /**
      * Group id for this component referencing a controller service. If this
@@ -134,12 +136,26 @@ public class ControllerServiceReferencingComponentDTO {
      * 
      * @return 
      */
-    public Set<ControllerServiceReferencingComponentDTO> getReferences() {
-        return references;
+    public Set<ControllerServiceReferencingComponentDTO> getReferencingComponents() {
+        return referencingComponents;
     }
 
-    public void setReferences(Set<ControllerServiceReferencingComponentDTO> references) {
-        this.references = references;
+    public void setReferencingComponents(Set<ControllerServiceReferencingComponentDTO> referencingComponents) {
+        this.referencingComponents = referencingComponents;
+    }
+
+    /**
+     * If this referencing component represents a ControllerService, this indicates
+     * whether it has already been represented in this hierarchy.
+     * 
+     * @return 
+     */
+    public Boolean getReferenceCycle() {
+        return referenceCycle;
+    }
+
+    public void setReferenceCycle(Boolean referenceCycle) {
+        this.referenceCycle = referenceCycle;
     }
 
 }

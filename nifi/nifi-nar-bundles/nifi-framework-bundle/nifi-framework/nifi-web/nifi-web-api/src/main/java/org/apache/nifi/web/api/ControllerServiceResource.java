@@ -403,16 +403,13 @@ public class ControllerServiceResource extends ApplicationResource {
             @FormParam(VERSION) LongParameter version,
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
             @PathParam("availability") String availability, @PathParam("id") String id,
-            @FormParam("state") String state) {
+            @FormParam("state") @DefaultValue(StringUtils.EMPTY) String state) {
 
         // parse the state to determine the desired action
-        ScheduledState scheduledState = null;
-        try {
-            scheduledState = ScheduledState.valueOf(state);
-        } catch (final IllegalArgumentException iae) {
-            // ignore
-        }
         
+        // need to consider controller service state first as it shares a state with
+        // scheduled state (disabled) which is applicable for referencing services
+        // but not referencing schedulable components
         ControllerServiceState controllerServiceState = null;
         try {
             controllerServiceState = ControllerServiceState.valueOf(state);
@@ -420,16 +417,18 @@ public class ControllerServiceResource extends ApplicationResource {
             // ignore
         }
         
-        // ensure an action has been specified
-        if (scheduledState == null && controllerServiceState == null) {
-            throw new IllegalArgumentException("Must specify whether updating the state a valid state. To update referencing Processors "
-                    + "and Reporting Tasks the state should be RUNNING or STOPPED. To update the referencing Controller Services the "
-                    + "state should be ENABLED or DISABLED.");
+        ScheduledState scheduledState = null;
+        try {
+            scheduledState = ScheduledState.valueOf(state);
+        } catch (final IllegalArgumentException iae) {
+            // ignore
         }
         
-        // ensure the scheduled state is not disabled
-        if (scheduledState != null && ScheduledState.DISABLED.equals(scheduledState)) {
-            throw new IllegalArgumentException("Cannot disable referencing components.");
+        // ensure an action has been specified
+        if (scheduledState == null && controllerServiceState == null) {
+            throw new IllegalArgumentException("Must specify the updated state. To update referencing Processors "
+                    + "and Reporting Tasks the state should be RUNNING or STOPPED. To update the referencing Controller Services the "
+                    + "state should be ENABLED or DISABLED.");
         }
         
         // ensure the controller service state is not ENABLING or DISABLING
@@ -448,7 +447,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // handle expects request (usually from the cluster manager)
         final String expects = httpServletRequest.getHeader(WebClusterManager.NCM_EXPECTS_HTTP_HEADER);
         if (expects != null) {
-//            serviceFacade.verifyUpdateControllerServiceReferences(true);
+            serviceFacade.verifyUpdateControllerServiceReferencingComponents(id, scheduledState, controllerServiceState);
             return generateContinueResponse().build();
         }
         

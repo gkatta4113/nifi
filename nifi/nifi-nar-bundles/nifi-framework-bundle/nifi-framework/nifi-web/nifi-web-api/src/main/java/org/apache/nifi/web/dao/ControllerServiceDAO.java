@@ -86,6 +86,15 @@ public interface ControllerServiceDAO {
     void verifyUpdate(ControllerServiceDTO controllerServiceDTO);
     
     /**
+     * Determines whether the referencing component of the specified controller service can be updated.
+     * 
+     * @param controllerServiceId
+     * @param scheduledState
+     * @param controllerServiceState 
+     */
+    void verifyUpdateReferencingComponents(String controllerServiceId, ScheduledState scheduledState, ControllerServiceState controllerServiceState);
+    
+    /**
      * Determines whether this controller service can be removed.
      *
      * @param controllerServiceId
