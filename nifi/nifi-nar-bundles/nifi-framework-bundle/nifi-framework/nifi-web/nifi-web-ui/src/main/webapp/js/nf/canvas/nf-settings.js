@@ -416,7 +416,7 @@ nf.Settings = (function () {
             // select the new controller service
             var row = controllerServicesData.getRowById(controllerService.id);
             controllerServicesGrid.setSelectedRows([row]);
-        });
+        }).fail(nf.Common.handleAjaxError);
         
         // hide the dialog
         $('#new-controller-service-dialog').modal('hide');
@@ -1072,7 +1072,7 @@ nf.Settings = (function () {
             // select the new reporting task
             var row = reportingTaskData.getRowById(reportingTask.id);
             reportingTaskGrid.setSelectedRows([row]);
-        });
+        }).fail(nf.Common.handleAjaxError);
         
         // hide the dialog
         $('#new-reporting-task-dialog').modal('hide');

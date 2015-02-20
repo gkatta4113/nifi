@@ -294,6 +294,37 @@ public class HistoryResource extends ApplicationResource {
         return generateOkResponse(entity).build();
     }
     
+    /**
+     * Gets the actions for the specified reporting task.
+     *
+     * @param clientId Optional client id. If the client id is not specified, a
+     * new one will be generated. This value (whether specified or generated) is
+     * included in the response.
+     * @param reportingTaskId The id of the reporting task.
+     * @return An componentHistoryEntity.
+     */
+    @GET
+    @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+    @PreAuthorize("hasAnyRole('ROLE_MONITOR', 'ROLE_DFM', 'ROLE_ADMIN')")
+    @Path("/reporting-tasks/{reportingTaskId}")
+    @TypeHint(ComponentHistoryEntity.class)
+    public Response getReportingTaskHistory(
+            @QueryParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
+            @PathParam("reportingTaskId") final String reportingTaskId) {
+
+        // create the revision
+        final RevisionDTO revision = new RevisionDTO();
+        revision.setClientId(clientId.getClientId());
+
+        // create the response entity
+        final ComponentHistoryEntity entity = new ComponentHistoryEntity();
+        entity.setRevision(revision);
+        entity.setComponentHistory(serviceFacade.getComponentHistory(reportingTaskId));
+
+        // generate the response
+        return generateOkResponse(entity).build();
+    }
+    
     /* setters */
     public void setServiceFacade(NiFiServiceFacade serviceFacade) {
         this.serviceFacade = serviceFacade;

@@ -24,7 +24,7 @@
                     <div class="setting">
                         <div class="setting-name">Name</div>
                         <div class="setting-field">
-                            <input type="text" id="controller-service-name" name="controller-service-name"/>
+                            <input type="text" id="controller-service-name" name="controller-service-name" class="setting-input"/>
                             <div class="controller-service-enabled-container">
                                 <div id="controller-service-enabled" class="nf-checkbox checkbox-unchecked"></div>
                                 <span> Enabled</span>
