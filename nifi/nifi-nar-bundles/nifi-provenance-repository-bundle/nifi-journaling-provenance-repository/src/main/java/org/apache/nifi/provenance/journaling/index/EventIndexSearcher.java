@@ -19,9 +19,11 @@ package org.apache.nifi.provenance.journaling.index;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.nifi.provenance.journaling.JournaledStorageLocation;
+import org.apache.nifi.provenance.journaling.LazyInitializedProvenanceEvent;
 import org.apache.nifi.provenance.search.Query;
 
 public interface EventIndexSearcher extends Closeable {
@@ -82,4 +84,22 @@ public interface EventIndexSearcher extends Closeable {
      * @throws IOException
      */
     long getNumberOfEvents() throws IOException;
+    
+    /**
+     * Evaluates the given query against the index, returning an iterator of lazily initialized provenance events
+     * 
+     * @param query
+     * @throws IOException
+     */
+    Iterator<LazyInitializedProvenanceEvent> select(String query) throws IOException;
+    
+    /**
+     * Evaluates the given query against the index, returning an iterator of locations from which the matching
+     * records can be retrieved
+     * 
+     * @param query
+     * @return
+     * @throws IOException
+     */
+    Iterator<JournaledStorageLocation> selectLocations(String query) throws IOException;
 }

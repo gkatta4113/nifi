@@ -20,7 +20,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -38,25 +40,38 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.nifi.pql.LuceneTranslator;
+import org.apache.nifi.pql.ProvenanceQuery;
+import org.apache.nifi.provenance.ProvenanceEventRepository;
 import org.apache.nifi.provenance.SearchableFields;
 import org.apache.nifi.provenance.journaling.JournaledStorageLocation;
+import org.apache.nifi.provenance.journaling.LazyInitializedProvenanceEvent;
+import org.apache.nifi.provenance.journaling.exception.EventNotFoundException;
 import org.apache.nifi.provenance.search.Query;
+import org.apache.nifi.util.ObjectHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LuceneIndexSearcher implements EventIndexSearcher {
+    private static final Logger logger = LoggerFactory.getLogger(LuceneIndexSearcher.class);
+    
+    private final ProvenanceEventRepository repo;
     private final DirectoryReader reader;
     private final IndexSearcher searcher;
     private final FSDirectory fsDirectory;
     
     private final String description;
     
-    public LuceneIndexSearcher(final File indexDirectory) throws IOException {
+    public LuceneIndexSearcher(final ProvenanceEventRepository repo, final File indexDirectory) throws IOException {
+        this.repo = repo;
         this.fsDirectory = FSDirectory.open(indexDirectory);
         this.reader = DirectoryReader.open(fsDirectory);
         this.searcher = new IndexSearcher(reader);
         this.description = "LuceneIndexSearcher[indexDirectory=" + indexDirectory + "]";
     }
     
-    public LuceneIndexSearcher(final DirectoryReader reader, final File indexDirectory) {
+    public LuceneIndexSearcher(final ProvenanceEventRepository repo, final DirectoryReader reader, final File indexDirectory) {
+        this.repo = repo;
         this.reader = reader;
         this.searcher = new IndexSearcher(reader);
         this.fsDirectory = null;
@@ -80,16 +95,7 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
             throw suppressed;
         }
     }
-    
-    private JournaledStorageLocation createLocation(final Document document) {
-        final String containerName = document.get(IndexedFieldNames.CONTAINER_NAME);
-        final String sectionName = document.get(IndexedFieldNames.SECTION_NAME);
-        final long journalId = document.getField(IndexedFieldNames.JOURNAL_ID).numericValue().longValue();
-        final int blockIndex = document.getField(IndexedFieldNames.BLOCK_INDEX).numericValue().intValue();
-        final long eventId = document.getField(IndexedFieldNames.EVENT_ID).numericValue().longValue();
-        
-        return new JournaledStorageLocation(containerName, sectionName, journalId, blockIndex, eventId);
-    }
+
     
     private List<JournaledStorageLocation> getOrderedLocations(final TopDocs topDocs) throws IOException {
         final ScoreDoc[] scoreDocs = topDocs.scoreDocs;
@@ -103,7 +109,7 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
     private void populateLocations(final TopDocs topDocs, final Collection<JournaledStorageLocation> locations) throws IOException {
         for ( final ScoreDoc scoreDoc : topDocs.scoreDocs ) {
             final Document document = reader.document(scoreDoc.doc);
-            locations.add(createLocation(document));
+            locations.add(QueryUtils.createLocation(document));
         }
     }
     
@@ -187,5 +193,101 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
     @Override
     public long getNumberOfEvents() {
         return reader.numDocs();
+    }
+    
+    
+    private <T> Iterator<T> select(final String query, final DocumentTransformer<T> transformer) throws IOException {
+        final org.apache.lucene.search.Query luceneQuery = LuceneTranslator.toLuceneQuery(ProvenanceQuery.compile(query).getWhereClause());
+        final int batchSize = 1000;
+        
+        final ObjectHolder<TopDocs> topDocsHolder = new ObjectHolder<>(null);
+        return new Iterator<T>() {
+            int fetched = 0;
+            int scoreDocIndex = 0;
+            
+            @Override
+            public boolean hasNext() {
+                if ( topDocsHolder.get() == null ) {
+                    try {
+                        topDocsHolder.set(searcher.search(luceneQuery, batchSize));
+                    } catch (final IOException ioe) {
+                        throw new EventNotFoundException("Unable to obtain next record from " + LuceneIndexSearcher.this, ioe);
+                    }
+                }
+                
+                final boolean hasNext = fetched < topDocsHolder.get().totalHits;
+                if ( !hasNext ) {
+                    try {
+                        LuceneIndexSearcher.this.close();
+                    } catch (final IOException ioe) {
+                        logger.warn("Failed to close {} due to {}", this, ioe.toString());
+                        if ( logger.isDebugEnabled() ) {
+                            logger.warn("", ioe);
+                        }
+                    }
+                }
+                return hasNext;
+            }
+
+            @Override
+            public T next() {
+                if ( !hasNext() ) {
+                    throw new NoSuchElementException();
+                }
+                
+                TopDocs topDocs = topDocsHolder.get();
+                ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+                if ( scoreDocIndex >= scoreDocs.length ) {
+                    try {
+                        topDocs = searcher.searchAfter(scoreDocs[scoreDocs.length - 1], luceneQuery, batchSize);
+                        topDocsHolder.set(topDocs);
+                        scoreDocs = topDocs.scoreDocs;
+                        scoreDocIndex = 0;
+                    } catch (final IOException ioe) {
+                        throw new EventNotFoundException("Unable to obtain next record from " + LuceneIndexSearcher.this, ioe);
+                    }
+                }
+                
+                final ScoreDoc scoreDoc = scoreDocs[scoreDocIndex++];
+                final Document document;
+                try {
+                    document = searcher.doc(scoreDoc.doc);
+                } catch (final IOException ioe) {
+                    throw new EventNotFoundException("Unable to obtain next record from " + LuceneIndexSearcher.this, ioe);
+                }
+                fetched++;
+                
+                return transformer.transform(document);
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
+    @Override
+    public Iterator<LazyInitializedProvenanceEvent> select(final String query) throws IOException {
+        return select(query, new DocumentTransformer<LazyInitializedProvenanceEvent>() {
+            @Override
+            public LazyInitializedProvenanceEvent transform(final Document document) {
+                return new LazyInitializedProvenanceEvent(repo, QueryUtils.createLocation(document), document);
+            }
+        });
+    }
+
+    @Override
+    public Iterator<JournaledStorageLocation> selectLocations(final String query) throws IOException {
+        return select(query, new DocumentTransformer<JournaledStorageLocation>() {
+            @Override
+            public JournaledStorageLocation transform(final Document document) {
+                return QueryUtils.createLocation(document);
+            }
+        });
+    }
+    
+    private static interface DocumentTransformer<T> {
+        T transform(Document document);
     }
 }

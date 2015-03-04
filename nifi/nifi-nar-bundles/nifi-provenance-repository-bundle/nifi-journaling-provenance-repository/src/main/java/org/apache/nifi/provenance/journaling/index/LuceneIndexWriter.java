@@ -50,6 +50,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 import org.apache.nifi.flowfile.attributes.CoreAttributes;
+import org.apache.nifi.provenance.ProvenanceEventRepository;
 import org.apache.nifi.provenance.ProvenanceEventType;
 import org.apache.nifi.provenance.SearchableFields;
 import org.apache.nifi.provenance.journaling.JournaledProvenanceEvent;
@@ -60,22 +61,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LuceneIndexWriter implements EventIndexWriter {
+    private static final Store STORE_FIELDS = Store.YES;
     private static final Logger logger = LoggerFactory.getLogger(LuceneIndexWriter.class);
     
-    @SuppressWarnings("unused")
-    private final JournalingRepositoryConfig config;
     private final Set<SearchableField> nonAttributeSearchableFields;
     private final Set<SearchableField> attributeSearchableFields;
     private final File indexDir;
     
+    private final ProvenanceEventRepository repo;
     private final Directory directory;
     private final Analyzer analyzer;
     private final IndexWriter indexWriter;
     private final AtomicLong indexMaxId = new AtomicLong(-1L);
     
-    public LuceneIndexWriter(final File indexDir, final JournalingRepositoryConfig config) throws IOException {
+    public LuceneIndexWriter(final ProvenanceEventRepository repo, final File indexDir, final JournalingRepositoryConfig config) throws IOException {
+        this.repo = repo;
         this.indexDir = indexDir;
-        this.config = config;
         
         attributeSearchableFields = Collections.unmodifiableSet(new HashSet<>(config.getSearchableAttributes()));
         nonAttributeSearchableFields = Collections.unmodifiableSet(new HashSet<>(config.getSearchableFields()));
@@ -96,7 +97,7 @@ public class LuceneIndexWriter implements EventIndexWriter {
         logger.trace("Creating index searcher for {}", indexWriter);
         
         final DirectoryReader reader = DirectoryReader.open(indexWriter, false);
-        return new LuceneIndexSearcher(reader, indexDir);
+        return new LuceneIndexSearcher(repo, reader, indexDir);
     }
 
     @Override
@@ -143,30 +144,30 @@ public class LuceneIndexWriter implements EventIndexWriter {
             final Map<String, String> attributes = event.getAttributes();
 
             final Document doc = new Document();
-            addField(doc, SearchableFields.FlowFileUUID, event.getFlowFileUuid(), Store.NO);
-            addField(doc, SearchableFields.Filename, attributes.get(CoreAttributes.FILENAME.key()), Store.NO);
-            addField(doc, SearchableFields.ComponentID, event.getComponentId(), Store.NO);
-            addField(doc, SearchableFields.AlternateIdentifierURI, event.getAlternateIdentifierUri(), Store.NO);
-            addField(doc, SearchableFields.EventType, event.getEventType().name(), Store.NO);
-            addField(doc, SearchableFields.Relationship, event.getRelationship(), Store.NO);
-            addField(doc, SearchableFields.Details, event.getDetails(), Store.NO);
-            addField(doc, SearchableFields.ContentClaimSection, event.getContentClaimSection(), Store.NO);
-            addField(doc, SearchableFields.ContentClaimContainer, event.getContentClaimContainer(), Store.NO);
-            addField(doc, SearchableFields.ContentClaimIdentifier, event.getContentClaimIdentifier(), Store.NO);
-            addField(doc, SearchableFields.SourceQueueIdentifier, event.getSourceQueueIdentifier(), Store.NO);
+            addField(doc, SearchableFields.FlowFileUUID, event.getFlowFileUuid(), STORE_FIELDS);
+            addField(doc, SearchableFields.Filename, attributes.get(CoreAttributes.FILENAME.key()), STORE_FIELDS);
+            addField(doc, SearchableFields.ComponentID, event.getComponentId(), STORE_FIELDS);
+            addField(doc, SearchableFields.AlternateIdentifierURI, event.getAlternateIdentifierUri(), STORE_FIELDS);
+            addField(doc, SearchableFields.EventType, event.getEventType().name(), STORE_FIELDS);
+            addField(doc, SearchableFields.Relationship, event.getRelationship(), STORE_FIELDS);
+            addField(doc, SearchableFields.Details, event.getDetails(), STORE_FIELDS);
+            addField(doc, SearchableFields.ContentClaimSection, event.getContentClaimSection(), STORE_FIELDS);
+            addField(doc, SearchableFields.ContentClaimContainer, event.getContentClaimContainer(), STORE_FIELDS);
+            addField(doc, SearchableFields.ContentClaimIdentifier, event.getContentClaimIdentifier(), STORE_FIELDS);
+            addField(doc, SearchableFields.SourceQueueIdentifier, event.getSourceQueueIdentifier(), STORE_FIELDS);
 
             if (nonAttributeSearchableFields.contains(SearchableFields.TransitURI)) {
-                addField(doc, SearchableFields.TransitURI, event.getTransitUri(), Store.NO);
+                addField(doc, SearchableFields.TransitURI, event.getTransitUri(), STORE_FIELDS);
             }
 
             for (final SearchableField searchableField : attributeSearchableFields) {
-                addField(doc, searchableField, attributes.get(searchableField.getSearchableFieldName()), Store.NO);
+                addField(doc, searchableField, attributes.get(searchableField.getSearchableFieldName()), STORE_FIELDS);
             }
 
             // Index the fields that we always index (unless there's nothing else to index at all)
-            doc.add(new LongField(SearchableFields.LineageStartDate.getSearchableFieldName(), event.getLineageStartDate(), Store.NO));
-            doc.add(new LongField(SearchableFields.EventTime.getSearchableFieldName(), event.getEventTime(), Store.NO));
-            doc.add(new LongField(SearchableFields.FileSize.getSearchableFieldName(), event.getFileSize(), Store.NO));
+            doc.add(new LongField(SearchableFields.LineageStartDate.getSearchableFieldName(), event.getLineageStartDate(), STORE_FIELDS));
+            doc.add(new LongField(SearchableFields.EventTime.getSearchableFieldName(), event.getEventTime(), STORE_FIELDS));
+            doc.add(new LongField(SearchableFields.FileSize.getSearchableFieldName(), event.getFileSize(), STORE_FIELDS));
 
             final JournaledStorageLocation location = event.getStorageLocation();
             doc.add(new StringField(IndexedFieldNames.CONTAINER_NAME, location.getContainerName(), Store.YES));
@@ -176,20 +177,20 @@ public class LuceneIndexWriter implements EventIndexWriter {
             doc.add(new LongField(IndexedFieldNames.EVENT_ID, location.getEventId(), Store.YES));
 
             for (final String lineageIdentifier : event.getLineageIdentifiers()) {
-                addField(doc, SearchableFields.LineageIdentifier, lineageIdentifier, Store.NO);
+                addField(doc, SearchableFields.LineageIdentifier, lineageIdentifier, STORE_FIELDS);
             }
 
             // If it's event is a FORK, or JOIN, add the FlowFileUUID for all child/parent UUIDs.
             if (event.getEventType() == ProvenanceEventType.FORK || event.getEventType() == ProvenanceEventType.CLONE || event.getEventType() == ProvenanceEventType.REPLAY) {
                 for (final String uuid : event.getChildUuids()) {
                     if (!uuid.equals(event.getFlowFileUuid())) {
-                        addField(doc, SearchableFields.FlowFileUUID, uuid, Store.NO);
+                        addField(doc, SearchableFields.FlowFileUUID, uuid, STORE_FIELDS);
                     }
                 }
             } else if (event.getEventType() == ProvenanceEventType.JOIN) {
                 for (final String uuid : event.getParentUuids()) {
                     if (!uuid.equals(event.getFlowFileUuid())) {
-                        addField(doc, SearchableFields.FlowFileUUID, uuid, Store.NO);
+                        addField(doc, SearchableFields.FlowFileUUID, uuid, STORE_FIELDS);
                     }
                 }
             } else if (event.getEventType() == ProvenanceEventType.RECEIVE && event.getSourceSystemFlowFileIdentifier() != null) {
@@ -205,7 +206,7 @@ public class LuceneIndexWriter implements EventIndexWriter {
                 }
 
                 if (sourceFlowFileUUID != null) {
-                    addField(doc, SearchableFields.FlowFileUUID, sourceFlowFileUUID, Store.NO);
+                    addField(doc, SearchableFields.FlowFileUUID, sourceFlowFileUUID, STORE_FIELDS);
                 }
             }
 

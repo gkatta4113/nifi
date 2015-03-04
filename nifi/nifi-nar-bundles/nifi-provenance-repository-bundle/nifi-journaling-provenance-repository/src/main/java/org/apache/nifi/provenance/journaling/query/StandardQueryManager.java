@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,8 @@ import org.apache.nifi.provenance.journaling.toc.StandardTocReader;
 import org.apache.nifi.provenance.journaling.toc.TocReader;
 import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
 import org.apache.nifi.provenance.lineage.LineageComputationType;
+import org.apache.nifi.provenance.query.ProvenanceQueryResult;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QuerySubmission;
 import org.slf4j.Logger;
@@ -66,6 +69,7 @@ public class StandardQueryManager implements QueryManager {
     private final JournalingRepositoryConfig config;
     private final ConcurrentMap<String, AsyncQuerySubmission> querySubmissionMap = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, AsyncLineageSubmission> lineageSubmissionMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ProvenanceQuerySubmission> provenanceQuerySubmissionMap = new ConcurrentHashMap<>();
     
     public StandardQueryManager(final IndexManager indexManager, final ExecutorService executor, final JournalingRepositoryConfig config, final int maxConcurrentQueries) {
         this.config = config;
@@ -150,8 +154,8 @@ public class StandardQueryManager implements QueryManager {
         final AsyncQuerySubmission submission = new AsyncQuerySubmission(query, indexManager.getNumberOfIndices()) {
             @Override
             public void cancel() {
-                super.cancel();
                 querySubmissionMap.remove(query.getIdentifier());
+                super.cancel();
             }
         };
         
@@ -401,6 +405,39 @@ public class StandardQueryManager implements QueryManager {
         return lineageSubmission;
     }
     
+    
+    @Override
+    public void registerSubmission(final ProvenanceQuerySubmission submission) {
+        final ProvenanceQuerySubmission cancelable = new ProvenanceQuerySubmission() {
+            @Override
+            public String getQuery() { return submission.getQuery(); }
+
+            @Override
+            public ProvenanceQueryResult getResult() { return submission.getResult(); }
+
+            @Override
+            public Date getSubmissionTime() { return submission.getSubmissionTime(); }
+
+            @Override
+            public String getQueryIdentifier() { return submission.getQueryIdentifier(); }
+
+            @Override
+            public void cancel() {
+                provenanceQuerySubmissionMap.remove(submission.getQueryIdentifier());
+                submission.cancel();
+            }
+
+            @Override
+            public boolean isCanceled() { return submission.isCanceled(); }
+        };
+        
+        provenanceQuerySubmissionMap.putIfAbsent(submission.getQueryIdentifier(), cancelable);
+    }
+    
+    @Override
+    public ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(final String id) {
+        return provenanceQuerySubmissionMap.get(id);
+    }
     
     @Override
     public void close() throws IOException {

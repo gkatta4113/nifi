@@ -40,7 +40,7 @@ public class TestUtil {
             .setEventTime(System.currentTimeMillis())
             .setFlowFileEntryDate(System.currentTimeMillis() - 1000L)
             .setLineageStartDate(System.currentTimeMillis() - 2000L)
-            .setCurrentContentClaim(null, null, null, null, 0L)
+            .setCurrentContentClaim(null, null, null, null, 1L)
             .setAttributes(null, attributes == null ? Collections.<String, String>emptyMap() : attributes)
             .build();
         

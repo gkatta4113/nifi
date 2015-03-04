@@ -20,6 +20,7 @@ import java.io.Closeable;
 
 import org.apache.nifi.provenance.ProvenanceEventRepository;
 import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QuerySubmission;
 
@@ -32,6 +33,19 @@ public interface QueryManager extends Closeable {
      * @return
      */
     QuerySubmission submitQuery(Query query);
+    
+    /**
+     * Registers the given query submission with this manager so that it can be retrieved later.
+     * @param submission
+     */
+    void registerSubmission(ProvenanceQuerySubmission submission);
+    
+    /**
+     * Retrieves the ProvenanceQuerySubmission with the given identifier, if it exists, else returns <code>null</code>.
+     * @param id
+     * @return
+     */
+    ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(String id);
     
     /**
      * Returns the QueryResult associated with the given identifier, if the

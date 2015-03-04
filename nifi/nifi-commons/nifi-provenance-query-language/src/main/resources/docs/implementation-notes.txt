@@ -1,0 +1,52 @@
+ORDER BY
+	- Very Difficult.
+	- Does not have anything to do with what is selected
+	- Need to do an External Sort:
+		- Break records into groups of 10,000.
+		- Sort each group of 10,000 records.
+		- Write out those 10,000 records.
+		- Read in the first X number of records where X = 10,000 / number of files
+		- Merge the heads of the records.
+		- Algorithm is on Wikipedia. "External Sort"
+		- Similar to what we do in WALI when we order the Transactions by Transaction ID across multiple partitions.
+		
+
+GROUP BY
+	- Implement in the Accumulator. May make sense to break Accumulator into two Interfaces:
+	
+	GroupingAccumulator:
+		T accumulate(ProvenanceEventRecord record, Group group)
+	UngroupedAccumulator:
+		T accumulate(ProvenanceEventRecord record)
+		
+	Then the GroupingAccumulator will simply map a group to the appropriate UngroupedAccumulator and then call #accumulate. 
+	UngroupedAccumulator will never be used except for the GroupingAccumulator delegating to the appropriate UngroupedAccumulator.
+
+
+WHERE
+	- All functions must be able to be done in Lucene.
+	
+EventAccumulator
+	- Should store provenance event location instead of event. Regardless of whether a field was selected or the entire event.
+	
+
+	
+	
+	
+	
+	
+	
+Prov Repo:
+	- Allow ANDs and ORs in queries?
+	- ProvenanceEventRecord should return Location object. Location is a marker interface and the specific implementation will
+	  to be used will depend on the repo. For example, VolatileProvenanceRepository would return something like "int getIndex()" and "long getId()"
+	  so that we can get the event at the specified index and return null unless that event's id is equal to the result of calling 'getId()'.
+	  Persistent Prov Repo would return a Location that includes filename & offset. Perhaps also a record index so that we can add multiple
+	  records to a single repo update (byte offset of 'transaction' is 1000 and record offset into transaction is 4). This would be used
+	  so that if we do an update with 100 records and all have similar fields (component type, component id, most previous attributes?), then we
+	  can write that out once. This should probably be a new data structure that wraps a ProvenanceEventRecord:
+	  	StoredProvenanceEvent
+	  		ProvenanceEventRecord getEventRecord()
+	  		Location getLocation()
+	- Index all attributes and properties always? At least allow property value to be "*" to indicate all.
+	

@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -41,6 +42,18 @@ import org.apache.nifi.provenance.journaling.config.JournalingRepositoryConfig;
 import org.apache.nifi.provenance.search.SearchTerm;
 
 public class QueryUtils {
+    
+    public static JournaledStorageLocation createLocation(final Document document) {
+        final String containerName = document.get(IndexedFieldNames.CONTAINER_NAME);
+        final String sectionName = document.get(IndexedFieldNames.SECTION_NAME);
+        final long journalId = document.getField(IndexedFieldNames.JOURNAL_ID).numericValue().longValue();
+        final int blockIndex = document.getField(IndexedFieldNames.BLOCK_INDEX).numericValue().intValue();
+        final long eventId = document.getField(IndexedFieldNames.EVENT_ID).numericValue().longValue();
+        
+        return new JournaledStorageLocation(containerName, sectionName, journalId, blockIndex, eventId);
+    }
+    
+    
     public static org.apache.lucene.search.Query convertQueryToLucene(final org.apache.nifi.provenance.search.Query query) {
         if (query.getStartDate() == null && query.getEndDate() == null && query.getSearchTerms().isEmpty()) {
             return new MatchAllDocsQuery();

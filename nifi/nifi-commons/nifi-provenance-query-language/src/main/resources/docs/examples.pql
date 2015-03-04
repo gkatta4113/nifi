@@ -1,0 +1,48 @@
+# Select all events that occurred in the last hour
+SELECT Event
+FROM *
+WHERE
+	Event.Time > 1 HOUR AGO
+
+
+# Count the number of RECEIVE events from myHost.myDomain in the last hour
+SELECT COUNT(*)
+FROM RECEIVE
+WHERE
+	Event.Time WITHIN 1 HOUR
+	AND
+	Event.TransitUri MATCHES '.*myHost\.myDomain.*'
+	
+	
+# Count the number of bytes received from myHost.myDomain in the last hour
+SELECT SUM(FileSize)
+FROM RECEIVE
+WHERE
+	Event.Time WITHIN 1 HOUR
+	AND
+	Event.TransitUri MATCHES '.*myHost\.MyDomain.*'
+
+
+# Count the number of objects and number of bytes sent to each host on August 1, 2014, but only for the 10 hosts that we send to the most
+SELECT TransitUri, COUNT(*) as numFiles, SUM(FileSize) as fileSize
+FROM SEND
+WHERE
+	Event.Time BETWEEN '08/01/2014 00:00:00.000' AND '08/01/2014 23:59:59.999'
+GROUP BY
+	Event.TransitUri
+ORDER BY
+	fileSize
+LIMIT 10
+
+
+
+
+# Select the filename and transit URI of any SEND event that occurred as the result of receiving a filename that ends with '.txt' in the last hour:
+DEFINE LINEAGE L:
+	RECEIVE R{
+		R['filename'] MATCHES '.*\.txt'
+		AND
+		R.Time > 1 HOUR AGO
+	} --> SEND S 
+SELECT S.Time, S['filename'], S.TransitUri 
+FROM LINEAGE L

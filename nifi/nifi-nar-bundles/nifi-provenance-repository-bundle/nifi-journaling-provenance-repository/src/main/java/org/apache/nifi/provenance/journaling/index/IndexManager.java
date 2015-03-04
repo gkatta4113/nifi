@@ -67,6 +67,24 @@ public interface IndexManager extends Closeable {
     <T> Set<T> withEachIndex(IndexAction<T> action) throws IOException;
     
     /**
+     * Executes the given action against each index and returns a Set of results,
+     * where each result is obtained from performing the given action against one index
+     * 
+     * @param action the action to perform
+     * @param autoClose whether or not the EventIndexSearcher should automatically be closed
+     * 
+     * @return
+     * @throws IOException
+     */
+    <T> Set<T> withEachIndex(IndexAction<T> action, boolean autoClose) throws IOException;
+    
+    /**
+     * Returns an Iterator of EventIndexSearchers.
+     * @return
+     */
+    Set<EventIndexSearcher> getSearchers() throws IOException;
+    
+    /**
      * Performs the given action against each index, waiting for the action to complete
      * against each index before returning
      * 

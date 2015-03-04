@@ -52,7 +52,7 @@ public class TestEventIndexWriter {
         
         final File indexDir = new File("target/" + UUID.randomUUID().toString());
         
-        try (final LuceneIndexWriter indexWriter = new LuceneIndexWriter(indexDir, config)) {
+        try (final LuceneIndexWriter indexWriter = new LuceneIndexWriter(null, indexDir, config)) {
             final ProvenanceEventRecord event = TestUtil.generateEvent(23L);
             final JournaledStorageLocation location = new JournaledStorageLocation("container", "section", 1L, 2, 23L);
             final JournaledProvenanceEvent storedEvent = new JournaledProvenanceEvent(event, location);

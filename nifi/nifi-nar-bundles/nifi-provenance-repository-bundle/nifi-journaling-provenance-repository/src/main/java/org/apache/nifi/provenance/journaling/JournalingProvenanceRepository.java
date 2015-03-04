@@ -25,7 +25,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +44,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import org.apache.nifi.events.EventReporter;
+import org.apache.nifi.pql.ProvenanceQuery;
 import org.apache.nifi.processor.DataUnit;
 import org.apache.nifi.provenance.ProvenanceEventBuilder;
 import org.apache.nifi.provenance.ProvenanceEventRecord;
@@ -52,6 +55,7 @@ import org.apache.nifi.provenance.StandardProvenanceEventRecord;
 import org.apache.nifi.provenance.StorageLocation;
 import org.apache.nifi.provenance.StoredProvenanceEvent;
 import org.apache.nifi.provenance.journaling.config.JournalingRepositoryConfig;
+import org.apache.nifi.provenance.journaling.exception.EventNotFoundException;
 import org.apache.nifi.provenance.journaling.index.EventIndexSearcher;
 import org.apache.nifi.provenance.journaling.index.IndexAction;
 import org.apache.nifi.provenance.journaling.index.IndexManager;
@@ -69,6 +73,9 @@ import org.apache.nifi.provenance.journaling.query.StandardQueryManager;
 import org.apache.nifi.provenance.journaling.toc.StandardTocReader;
 import org.apache.nifi.provenance.journaling.toc.TocReader;
 import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
+import org.apache.nifi.provenance.query.ProvenanceQueryResult;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
+import org.apache.nifi.provenance.query.ProvenanceResultSet;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QuerySubmission;
 import org.apache.nifi.provenance.search.SearchableField;
@@ -78,7 +85,7 @@ import org.apache.nifi.util.NiFiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+// TODO: read-only is not checked everywhere!
 public class JournalingProvenanceRepository implements ProvenanceEventRepository {
     public static final String WORKER_THREAD_POOL_SIZE = "nifi.provenance.repository.worker.threads";
     public static final String BLOCK_SIZE = "nifi.provenance.repository.writer.block.size";
@@ -90,7 +97,7 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
     
     // the follow member variables are effectively final. They are initialized
     // in the initialize method rather than the constructor because we want to ensure
-    // that they only not created every time that the Java Service Loader instantiates the class.
+    // that they are not created every time that the Java Service Loader instantiates the class.
     private ScheduledExecutorService workerExecutor;
     private ExecutorService queryExecutor;
     private ExecutorService compressionExecutor;
@@ -226,7 +233,7 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
         final int compressionThreads = Math.max(1, config.getCompressionThreadPoolSize());
         this.compressionExecutor = Executors.newFixedThreadPool(compressionThreads, createThreadFactory("Provenance Repository Compression Thread"));
         
-        this.indexManager = new LuceneIndexManager(config, workerExecutor, queryExecutor);
+        this.indexManager = new LuceneIndexManager(this, config, workerExecutor, queryExecutor);
         this.partitionManager = new QueuingPartitionManager(indexManager, idGenerator, config, workerExecutor, compressionExecutor);
         this.queryManager = new StandardQueryManager(indexManager, queryExecutor, config, 10);
         
@@ -436,6 +443,154 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
         return maxId;
     }
 
+    ProgressAwareIterator<? extends StoredProvenanceEvent> selectMatchingEvents(final String query, final AtomicLong lastTimeProgressMade) throws IOException {
+        final Set<EventIndexSearcher> searchers = indexManager.getSearchers();
+        final Iterator<EventIndexSearcher> searchItr = searchers.iterator();
+        
+        return new ProgressAwareIterator<StoredProvenanceEvent>() {
+            private Iterator<LazyInitializedProvenanceEvent> eventItr;
+            private int searchersComplete = 0;
+            private EventIndexSearcher currentSearcher;
+            
+            @Override
+            public int getPercentComplete() {
+                return searchers.isEmpty() ? 100 : searchersComplete / searchers.size() * 100;
+            }
+            
+            @Override
+            public boolean hasNext() {
+                // while the event iterator has no information...
+                while ( eventItr == null || !eventItr.hasNext() ) {
+                    // if there's not another searcher then we're out of events.
+                    if ( !searchItr.hasNext() ) {
+                        return false;
+                    }
+                    
+                    // we're finished with this searcher. Close it.
+                    if ( currentSearcher != null ) {
+                        try {
+                            currentSearcher.close();
+                        } catch (final IOException ioe) {
+                            logger.warn("Failed to close {} due to {}", currentSearcher, ioe.toString());
+                            if ( logger.isDebugEnabled() ) {
+                                logger.warn("", ioe);
+                            }
+                        }
+                    }
+                    
+                    // We have a searcher. get events from it. If there are no matches,
+                    // then our while loop will keep going.
+                    currentSearcher = searchItr.next();
+                    searchersComplete++;
+                    
+                    try {
+                        eventItr = currentSearcher.select(query);
+                    } catch (final IOException ioe) {
+                        throw new EventNotFoundException("Could not find next event", ioe);
+                    }
+                }
+                
+                // the event iterator has no events, and the search iterator has no more
+                // searchers. There are no more events.
+                return eventItr != null && eventItr.hasNext();
+            }
+
+            @Override
+            public StoredProvenanceEvent next() {
+                lastTimeProgressMade.set(System.nanoTime());
+                return eventItr.next();
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+    
+    public ProvenanceResultSet query(final String query) throws IOException {
+        final ProvenanceQuerySubmission submission = submitQuery(query);
+        return submission.getResult().getResultSet();
+    }
+    
+    
+    public ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(final String queryIdentifier) {
+        return queryManager.retrieveProvenanceQuerySubmission(queryIdentifier);
+    }
+    
+    public ProvenanceQuerySubmission submitQuery(final String query) {
+        ProvenanceQuerySubmission submission;
+        final AtomicLong lastTimeProgressMade = new AtomicLong(System.nanoTime());
+        final long tenMinsInNanos = TimeUnit.MINUTES.toNanos(10);
+        
+        try {
+            final ProgressAwareIterator<? extends StoredProvenanceEvent> eventItr = selectMatchingEvents(query, lastTimeProgressMade);
+            final ProvenanceResultSet rs = ProvenanceQuery.compile(query).evaluate(eventItr);
+            
+            submission = new JournalingRepoQuerySubmission(query, new ProvenanceQueryResult() {
+                @Override
+                public ProvenanceResultSet getResultSet() {
+                    return rs;
+                }
+
+                @Override
+                public Date getExpiration() {
+                    return new Date(tenMinsInNanos + lastTimeProgressMade.get());
+                }
+
+                @Override
+                public String getError() {
+                    return null;
+                }
+
+                @Override
+                public int getPercentComplete() {
+                    return eventItr.getPercentComplete();
+                }
+
+                @Override
+                public boolean isFinished() {
+                    return eventItr.getPercentComplete() >= 100;
+                }
+            });
+        } catch (final IOException ioe) {
+            logger.error("Failed to perform query {} due to {}", query, ioe.toString());
+            if ( logger.isDebugEnabled() ) {
+                logger.error("", ioe);
+            }
+            
+            submission = new JournalingRepoQuerySubmission(query, new ProvenanceQueryResult() {
+                @Override
+                public ProvenanceResultSet getResultSet() {
+                    return null;
+                }
+
+                @Override
+                public Date getExpiration() {
+                    return new Date(tenMinsInNanos + lastTimeProgressMade.get());
+                }
+
+                @Override
+                public String getError() {
+                    return "Failed to perform query due to " + ioe;
+                }
+
+                @Override
+                public int getPercentComplete() {
+                    return 0;
+                }
+
+                @Override
+                public boolean isFinished() {
+                    return true;
+                }
+            });
+        }
+        
+        queryManager.registerSubmission(submission);
+        return submission;
+    }
+    
     
     @Override
     public QuerySubmission submitQuery(final Query query) {

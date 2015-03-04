@@ -34,6 +34,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.nifi.provenance.ProvenanceEventRepository;
 import org.apache.nifi.provenance.journaling.JournaledProvenanceEvent;
 import org.apache.nifi.provenance.journaling.config.JournalingRepositoryConfig;
 import org.apache.nifi.provenance.journaling.toc.TocJournalReader;
@@ -43,6 +44,7 @@ import org.slf4j.LoggerFactory;
 public class LuceneIndexManager implements IndexManager {
     private static final Logger logger = LoggerFactory.getLogger(LuceneIndexManager.class);
     
+    private final ProvenanceEventRepository repo;
     private final JournalingRepositoryConfig config;
     private final ExecutorService queryExecutor;
     
@@ -50,7 +52,8 @@ public class LuceneIndexManager implements IndexManager {
     private final Map<String, AtomicLong> writerIndexes = new HashMap<>();
     private final ConcurrentMap<String, IndexSize> indexSizes = new ConcurrentHashMap<>();
     
-    public LuceneIndexManager(final JournalingRepositoryConfig config, final ScheduledExecutorService workerExecutor, final ExecutorService queryExecutor) throws IOException {
+    public LuceneIndexManager(final ProvenanceEventRepository repo, final JournalingRepositoryConfig config, final ScheduledExecutorService workerExecutor, final ExecutorService queryExecutor) throws IOException {
+        this.repo = repo;
         this.config = config;
         this.queryExecutor = queryExecutor;
         
@@ -66,7 +69,7 @@ public class LuceneIndexManager implements IndexManager {
                 
                 for ( int i=0; i < config.getIndexesPerContainer(); i++ ){
                     final File indexDir = new File(container, "indices/" + i);
-                    writerList.add(new LuceneIndexWriter(indexDir, config));
+                    writerList.add(new LuceneIndexWriter(repo, indexDir, config));
                 }
                 
                 workerExecutor.scheduleWithFixedDelay(new Runnable() {
@@ -99,7 +102,7 @@ public class LuceneIndexManager implements IndexManager {
             if (config.isReadOnly()) {
                 for (int i=0; i < config.getIndexesPerContainer(); i++) {
                     final File indexDir = new File(containerName, "indices/" + i);
-                    searchers.add(new LuceneIndexSearcher(indexDir));
+                    searchers.add(new LuceneIndexSearcher(repo, indexDir));
                 }
             } else {
                 final List<LuceneIndexWriter> writerList = writers.get(containerName);
@@ -196,8 +199,39 @@ public class LuceneIndexManager implements IndexManager {
         }        
     }
     
+    
+    @Override
+    public Set<EventIndexSearcher> getSearchers() throws IOException {
+        final Set<EventIndexSearcher> searchers = new HashSet<>();
+        
+        try {
+            final Set<String> containerNames = config.getContainers().keySet();
+            for (final String containerName : containerNames) {
+                final EventIndexSearcher searcher = newIndexSearcher(containerName);
+                searchers.add(searcher);
+            }
+            
+            return searchers;
+        } catch (final Exception e) {
+            for ( final EventIndexSearcher searcher : searchers ) {
+                try {
+                    searcher.close();
+                } catch (final IOException ioe) {
+                    e.addSuppressed(ioe);
+                }
+            }
+            
+            throw e;
+        }
+    }
+    
     @Override
     public <T> Set<T> withEachIndex(final IndexAction<T> action) throws IOException {
+        return withEachIndex(action, true);
+    }
+    
+    @Override
+    public <T> Set<T> withEachIndex(final IndexAction<T> action, final boolean autoClose) throws IOException {
         final Set<T> results = new HashSet<>();
         final Map<String, Future<T>> futures = new HashMap<>();
         final Set<String> containerNames = config.getContainers().keySet();
@@ -205,8 +239,13 @@ public class LuceneIndexManager implements IndexManager {
             final Callable<T> callable = new Callable<T>() {
                 @Override
                 public T call() throws Exception {
-                    try (final EventIndexSearcher searcher = newIndexSearcher(containerName)) {
+                    final EventIndexSearcher searcher = newIndexSearcher(containerName);
+                    try {
                         return action.perform(searcher);
+                    } finally {
+                        if ( autoClose ) {
+                            searcher.close();
+                        }
                     }
                 }
             };

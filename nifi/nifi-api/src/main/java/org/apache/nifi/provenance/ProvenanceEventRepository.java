@@ -190,7 +190,7 @@ public interface ProvenanceEventRepository extends Closeable {
 
     /**
      * Returns a list of all fields that can be searched via the
-     * {@link #submitQuery(nifi.provenance.search.Query)} method
+     * {@link #submitQuery(Query.provenance.search.Query)} method
      *
      * @return
      */
@@ -198,7 +198,7 @@ public interface ProvenanceEventRepository extends Closeable {
 
     /**
      * Returns a list of all FlowFile attributes that can be searched via the
-     * {@link #submitQuery(nifi.provenance.search.Query)} method
+     * {@link #submitQuery(Query.provenance.search.Query)} method
      *
      * @return
      */

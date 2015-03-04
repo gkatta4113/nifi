@@ -21,10 +21,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.nifi.provenance.journaling.JournaledStorageLocation;
+import org.apache.nifi.provenance.journaling.LazyInitializedProvenanceEvent;
 import org.apache.nifi.provenance.search.Query;
+
+import com.google.common.collect.Iterators;
 
 public class MultiIndexSearcher implements EventIndexSearcher {
     private final List<EventIndexSearcher> searchers;
@@ -159,5 +163,29 @@ public class MultiIndexSearcher implements EventIndexSearcher {
     @Override
     public String toString() {
         return searchers.toString();
+    }
+
+    @Override
+    public Iterator<LazyInitializedProvenanceEvent> select(final String query) throws IOException {
+        final List<Iterator<LazyInitializedProvenanceEvent>> iterators = new ArrayList<>(searchers.size());
+        
+        for ( final EventIndexSearcher searcher : searchers ) {
+            final Iterator<LazyInitializedProvenanceEvent> itr = searcher.select(query);
+            iterators.add(itr);
+        }
+
+        return Iterators.concat(iterators.iterator());
+    }
+
+    @Override
+    public Iterator<JournaledStorageLocation> selectLocations(final String query) throws IOException {
+        final List<Iterator<JournaledStorageLocation>> iterators = new ArrayList<>(searchers.size());
+        
+        for ( final EventIndexSearcher searcher : searchers ) {
+            final Iterator<JournaledStorageLocation> itr = searcher.selectLocations(query);
+            iterators.add(itr);
+        }
+
+        return Iterators.concat(iterators.iterator());
     }
 }
