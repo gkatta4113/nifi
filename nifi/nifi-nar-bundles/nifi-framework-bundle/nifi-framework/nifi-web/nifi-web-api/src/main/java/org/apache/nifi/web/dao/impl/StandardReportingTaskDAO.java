@@ -17,6 +17,7 @@
 package org.apache.nifi.web.dao.impl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -105,7 +106,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
      */
     @Override
     public Set<ReportingTaskNode> getReportingTasks() {
-        return null;
+        return new HashSet<>();
     }
 
     /**

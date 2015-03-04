@@ -169,6 +169,16 @@ public class ControllerResource extends ApplicationResource {
     public ControllerServiceResource getControllerServiceResource() {
         return resourceContext.getResource(ControllerServiceResource.class);
     }
+    
+    /**
+     * Locates the Reporting Tasks sub-resource.
+     *
+     * @return
+     */
+    @Path("/reporting-tasks")
+    public ReportingTaskResource getReportingTaskResource() {
+        return resourceContext.getResource(ReportingTaskResource.class);
+    }
 
     /**
      * Locates the Group sub-resource.
@@ -781,7 +791,7 @@ public class ControllerResource extends ApplicationResource {
         // create response entity
         final ReportingTaskTypesEntity entity = new ReportingTaskTypesEntity();
         entity.setRevision(revision);
-        entity.setReportingTaskTypes(serviceFacade.getControllerServiceTypes());
+        entity.setReportingTaskTypes(serviceFacade.getReportingTaskTypes());
 
         // generate the response
         return clusterContext(generateOkResponse(entity)).build();

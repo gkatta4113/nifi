@@ -51,6 +51,8 @@ import org.apache.nifi.web.api.dto.RevisionDTO;
 import org.apache.nifi.web.api.request.ClientIdParameter;
 import org.apache.nifi.web.api.request.LongParameter;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.controller.ScheduledState;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
 import org.apache.nifi.web.api.entity.ControllerServiceEntity;
@@ -385,10 +387,9 @@ public class ControllerServiceResource extends ApplicationResource {
      * @param availability Whether the controller service is available on the NCM only (ncm) or on the 
      * nodes only (node). If this instance is not clustered all services should use the node availability.
      * @param id The id of the controller service to retrieve
-     * @param state Sets the state of referencing scheduled components (Processors and Reporting Tasks). 
-     * Cannot be set in conjunction with enabled.
-     * @param enabled Sets the state of referencing controller services. Cannot be set in conjunction 
-     * with state
+     * @param state Sets the state of referencing components. A value of RUNNING or STOPPED will update
+     * referencing schedulable components (Processors and Reporting Tasks). A value of ENABLED or
+     * DISABLED will update referencing controller services.
      * @return A controllerServiceEntity.
      */
     @PUT
@@ -402,18 +403,40 @@ public class ControllerServiceResource extends ApplicationResource {
             @FormParam(VERSION) LongParameter version,
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
             @PathParam("availability") String availability, @PathParam("id") String id,
-            @FormParam("state") String state, @FormParam("enabled") Boolean enabled) {
+            @FormParam("state") @DefaultValue(StringUtils.EMPTY) String state) {
 
+        // parse the state to determine the desired action
+        
+        // need to consider controller service state first as it shares a state with
+        // scheduled state (disabled) which is applicable for referencing services
+        // but not referencing schedulable components
+        ControllerServiceState controllerServiceState = null;
+        try {
+            controllerServiceState = ControllerServiceState.valueOf(state);
+        } catch (final IllegalArgumentException iae) {
+            // ignore
+        }
+        
+        ScheduledState scheduledState = null;
+        try {
+            scheduledState = ScheduledState.valueOf(state);
+        } catch (final IllegalArgumentException iae) {
+            // ignore
+        }
+        
         // ensure an action has been specified
-        if (state == null && enabled == null) {
-            throw new IllegalArgumentException("Must specify whether updating the state of Processors and Reporting Tasks or Controller Services.");
+        if (scheduledState == null && controllerServiceState == null) {
+            throw new IllegalArgumentException("Must specify the updated state. To update referencing Processors "
+                    + "and Reporting Tasks the state should be RUNNING or STOPPED. To update the referencing Controller Services the "
+                    + "state should be ENABLED or DISABLED.");
         }
         
-        // ensure both actions are not specified at the same time
-        if (state != null && enabled != null) {
-            throw new IllegalArgumentException("Cannot specify the state of Processors and Reporting Tasks and Controller Services in the same request");
+        // ensure the controller service state is not ENABLING or DISABLING
+        if (controllerServiceState != null && (ControllerServiceState.ENABLING.equals(controllerServiceState) || ControllerServiceState.DISABLING.equals(controllerServiceState))) {
+            throw new IllegalArgumentException("Cannot set the referencing services to ENABLING or DISABLING");
         }
         
+        // determine the availability
         final Availability avail = parseAvailability(availability);
         
         // replicate if cluster manager
@@ -424,6 +447,7 @@ public class ControllerServiceResource extends ApplicationResource {
         // handle expects request (usually from the cluster manager)
         final String expects = httpServletRequest.getHeader(WebClusterManager.NCM_EXPECTS_HTTP_HEADER);
         if (expects != null) {
+            serviceFacade.verifyUpdateControllerServiceReferencingComponents(id, scheduledState, controllerServiceState);
             return generateContinueResponse().build();
         }
         
@@ -435,7 +459,7 @@ public class ControllerServiceResource extends ApplicationResource {
         
         // get the controller service
         final ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> response = 
-                serviceFacade.updateControllerServiceReferencingComponents(new Revision(clientVersion, clientId.getClientId()), id, enabled, state);
+                serviceFacade.updateControllerServiceReferencingComponents(new Revision(clientVersion, clientId.getClientId()), id, scheduledState, controllerServiceState);
 
         // create the revision
         final RevisionDTO revision = new RevisionDTO();
@@ -465,7 +489,7 @@ public class ControllerServiceResource extends ApplicationResource {
      * @param name The name of the controller service
      * @param annotationData The annotation data for the controller service
      * @param comments The comments for the controller service
-     * @param enabled Whether this controller service is enabled or not
+     * @param state The state of this controller service. Should be ENABLED or DISABLED.
      * @param markedForDeletion Array of property names whose value should be removed.
      * @param formParams Additionally, the processor properties and styles are
      * specified in the form parameters. Because the property names and styles
@@ -495,7 +519,7 @@ public class ControllerServiceResource extends ApplicationResource {
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
             @PathParam("availability") String availability, @PathParam("id") String id, @FormParam("name") String name,
             @FormParam("annotationData") String annotationData, @FormParam("comments") String comments,
-            @FormParam("enabled") Boolean enabled, @FormParam("markedForDeletion[]") List<String> markedForDeletion,
+            @FormParam("state") String state, @FormParam("markedForDeletion[]") List<String> markedForDeletion,
             MultivaluedMap<String, String> formParams) {
 
         // create collections for holding the controller service properties
@@ -528,7 +552,7 @@ public class ControllerServiceResource extends ApplicationResource {
         controllerServiceDTO.setName(name);
         controllerServiceDTO.setAnnotationData(annotationData);
         controllerServiceDTO.setComments(comments);
-        controllerServiceDTO.setEnabled(enabled);
+        controllerServiceDTO.setState(state);
 
         // only set the properties when appropriate
         if (!updatedProperties.isEmpty()) {

@@ -72,16 +72,9 @@ div.controller-service-configuration-tab-container {
 
 #controller-service-configuration .setting-input {
     font-size: 11px !important;
-    width: 320px;
-}
-
-#controller-service-configuration .small-setting-input {
-    font-size: 11px !important;
-    width: 130px;
 }
 
 #controller-service-name {
-    font-size: 11px !important;
     width: 250px;
     float: left;
 }

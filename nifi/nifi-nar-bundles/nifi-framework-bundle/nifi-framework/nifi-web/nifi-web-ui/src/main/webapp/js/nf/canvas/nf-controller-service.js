@@ -65,9 +65,7 @@ nf.ControllerService = (function () {
             return true;
         }
         
-        if ($('#controller-service-enabled').hasClass('checkbox-checked') && details['enabled'] === false) {
-            return true;
-        } else if ($('#controller-service-enabled').hasClass('checkbox-unchecked') && details['enabled'] === true) {
+        if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
             return true;
         }
         
@@ -92,11 +90,9 @@ nf.ControllerService = (function () {
             controllerServiceDto['properties'] = properties;
         }
         
-        // mark the controller service disabled if appropriate
-        if ($('#controller-service-enabled').hasClass('checkbox-unchecked')) {
-            controllerServiceDto['enabled'] = false;
-        } else if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
-            controllerServiceDto['enabled'] = true;
+        // mark the controller service enabled if appropriate
+        if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
+            controllerServiceDto['state'] = 'ENABLED';
         }
 
         // create the controller service entity
@@ -281,10 +277,9 @@ nf.ControllerService = (function () {
                     updateReferencingComponentsBorder(referenceContainer);
                 });
                 
-                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled').addClass(referencingComponent.id + '-active-threads');
-                var serviceId = $('<span class="referencing-service-id hidden"></span>').text(referencingComponent.id);
+                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.state === 'ENABLED' ? 'enabled' : 'disabled').addClass(referencingComponent.id + '-active-threads');
                 var serviceType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
-                var serviceItem = $('<li></li>').append(serviceTwist).append(serviceState).append(serviceId).append(serviceLink).append(serviceType).append(referencingServiceReferencesContainer);
+                var serviceItem = $('<li></li>').append(serviceTwist).append(serviceState).append(serviceLink).append(serviceType).append(referencingServiceReferencesContainer);
                 
                 services.append(serviceItem);
             } else if (referencingComponent.referenceType === 'ReportingTask') {
@@ -327,7 +322,12 @@ nf.ControllerService = (function () {
         createReferenceBlock('Controller Services', services);
     };
     
-    // sets whether the specified controller service is enabled
+    /**
+     * Sets whether the specified controller service is enabled.
+     * 
+     * @param {object} controllerService
+     * @param {boolean} enabled
+     */
     var setEnabled = function (controllerService, enabled) {
         var revision = nf.Client.getRevision();
         return $.ajax({
@@ -336,7 +336,7 @@ nf.ControllerService = (function () {
             data: {
                 clientId: revision.clientId,
                 version: revision.version,
-                enabled: enabled
+                state: enabled === true ? 'ENABLED' : 'DISABLED'
             },
             dataType: 'json'
         }).done(function (response) {
@@ -348,8 +348,43 @@ nf.ControllerService = (function () {
         }).fail(nf.Common.handleAjaxError);
     };
     
-    // updates the referencing components with the specified state
-    var updateReferencingComponents = function (controllerService, activated) {
+    /**
+     * Gets the id's of all controller services referencing the specified controller service.
+     * 
+     * @param {object} controllerService
+     */
+    var getReferencingControllerServiceIds = function (controllerService) {
+        var ids = d3.set();
+        ids.add(controllerService.id);
+        
+        var checkReferencingServices = function (referencingComponents) {
+            $.each(referencingComponents, function (_, referencingComponent) {
+                if (referencingComponent.referenceType === 'ControllerService') {
+                    // add the id
+                    ids.add(referencingComponent.id);
+                    
+                    // consider it's referencing components if appropriate
+                    if (referencingComponent.referenceCycle === false) {
+                        checkReferencingServices(referencingComponent.referencingComponents);
+                    }
+                }
+            });
+        };
+
+        // check the referencing servcies
+        checkReferencingServices(controllerService.referencingComponents);
+        return ids;
+    };
+    
+    /**
+     * Updates the scheduled state of the processors/reporting tasks referencing
+     * the specified controller service.
+     * 
+     * @param {type} controllerService
+     * @param {type} running
+     * @returns {unresolved}
+     */
+    var updateReferencingSchedulableComponents = function (controllerService, running) {
         var revision = nf.Client.getRevision();
         
         // issue the request to update the referencing components
@@ -359,7 +394,7 @@ nf.ControllerService = (function () {
             data: {
                 clientId: revision.clientId,
                 version: revision.version,
-                activated: activated
+                state: running ? 'RUNNING' : 'STOPPED'
             },
             dataType: 'json'
         }).done(function (response) {
@@ -370,19 +405,14 @@ nf.ControllerService = (function () {
             reloadControllerServiceReferences(controllerService);
         }).fail(nf.Common.handleAjaxError);
         
-        // if we are activating, we can stop here
-        if (activated === true) {
+        // if we're just starting schedulable components we're done when the
+        // update is finished
+        if (running) {
             return updated;
         }
         
-        // identify all services... this service
-        var services = d3.set();
-        services.add(controllerService.id);
-        
-        // and all referencing services
-        $('span.referencing-service-id').each(function() {
-            services.add($(this).text());
-        });
+        // identify all referencing services
+        var services = getReferencingControllerServiceIds(controllerService);
 
         // get the controller service grid
         var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
@@ -392,7 +422,7 @@ nf.ControllerService = (function () {
         var polling = [];
         services.forEach(function(controllerServiceId) {
             var controllerService = controllerServiceData.getItemById(controllerServiceId);
-            polling.push(pollControllerServiceStatus(controllerService));
+            polling.push(pollStoppedReferencingSchedulableComponents(controllerService));
         });
         
         // wait unil the polling of each service finished
@@ -405,10 +435,15 @@ nf.ControllerService = (function () {
         }).promise();
     };
     
-    // polls for the status of the specified controller service
-    var pollControllerServiceStatus = function (controllerService) {
-        // since we are deactivating, we want to keep polling until 
-        // everything has stopped and there are 0 active threads
+    /**
+     * Polls the specified services referencing components to see if the
+     * specified condition is satisfied.
+     * 
+     * @param {object} controllerService
+     * @param {function} condition
+     */
+    var pollReferencingComponents = function (controllerService, condition) {
+        // we want to keep polling until the condition is met
         return $.Deferred(function(deferred) {
             var current = 1;
             var getTimeout = function () {
@@ -421,54 +456,86 @@ nf.ControllerService = (function () {
             };
             
             // polls for the current status of the referencing components
-            var pollReferencingComponents = function() {
+            var poll = function() {
                 $.ajax({
                     type: 'GET',
                     url: controllerService.uri + '/references',
                     dataType: 'json'
                 }).done(function (response) {
-                    checkDeactivated(response.controllerServiceReferencingComponents);
+                    if (condition(response.controllerServiceReferencingComponents)) {
+                        deferred.resolve();
+                    } else {
+                        setTimeout(poll(), getTimeout());
+                    }
                 }).fail(function (xhr, status, error) {
                     deferred.reject();
                     nf.Common.handleAjaxError(xhr, status, error);
                 });
             };
             
-            // checks the referencing components to see if any are still active
-            var checkDeactivated = function (controllerServiceReferencingComponents) {
-                var stillRunning = false;
-                
-                $.each(controllerServiceReferencingComponents, function(referencingComponent) {
-                    if (referencingComponent.referenceType === 'ControllerService') {
-                        if (referencingComponent.enable === true) {
-                            // update the current values for this component
-                            $(referencingComponent.id + '-state').removeClass('enabled disabled').addClass(referencingComponent.enabled === true ? 'enabled' : 'disabled');
-                            
-                            // mark that something is still running
-                            stillRunning = true;
-                        }
-                    } else {
-                        if (referencingComponent.state === 'RUNNING' || referencingComponent.activeThreadCount > 0) {
-                            // update the current values for this component
-                            $(referencingComponent.id + '-active-threads').text(referencingComponent.activeThreadCount);
-                            $(referencingComponent.id + '-state').removeClass('disabled stopped running').addClass(referencingComponent.state.toLowerCase());
-                            
-                            // mark that something is still running
-                            stillRunning = true;
-                        }
-                    }
-                });
-                
-                if (stillRunning) {
-                    setTimeout(pollReferencingComponents(), getTimeout());
-                } else {
-                    deferred.resolve();
-                }
-            };
-            
             // poll for the status of the referencing components
-            pollReferencingComponents();
+            poll();
         }).promise();
+    };
+    
+    /**
+     * Continues to poll the specified controller service until all referencing schedulable 
+     * components are stopped (not scheduled and 0 active threads).
+     * 
+     * @param {object} controllerService
+     */
+    var pollStoppedReferencingSchedulableComponents = function (controllerService) {
+        // continue to poll the service until all schedulable components have stopped
+        return pollReferencingComponents(controllerService, function (referencingComponents) {
+            var stillRunning = false;
+
+            $.each(referencingComponents, function(referencingComponent) {
+                if (referencingComponent.referenceType === 'Processor' || referencingComponent.referenceType === 'ReportingTask') {
+                    if (referencingComponent.state === 'RUNNING' || referencingComponent.activeThreadCount > 0) {
+                        // update the current values for this component
+                        $(referencingComponent.id + '-active-threads').text(referencingComponent.activeThreadCount);
+                        $(referencingComponent.id + '-state').removeClass('disabled stopped running').addClass(referencingComponent.state.toLowerCase());
+
+                        // mark that something is still running
+                        stillRunning = true;
+                    }
+                }
+            });
+
+            // condition is met once all referencing are not running
+            return stillRunning === false;
+        });
+    };
+    
+    /**
+     * Updates the referencing services with the specified state.
+     * 
+     * @param {type} controllerService
+     * @param {type} enabled
+     */
+    var updateReferencingServices = function (controllerService, enabled) {
+        var revision = nf.Client.getRevision();
+        
+        // issue the request to update the referencing components
+        var updated = $.ajax({
+            type: 'PUT',
+            url: controllerService.uri + '/references',
+            data: {
+                clientId: revision.clientId,
+                version: revision.version,
+                state: enabled ? 'ENABLED' : 'DISABLED'
+            },
+            dataType: 'json'
+        }).done(function (response) {
+            // update the revision
+            nf.Client.setRevision(response.revision);
+            
+            // update the service
+            reloadControllerServiceReferences(controllerService);
+        }).fail(nf.Common.handleAjaxError);
+        
+        // need to wait until finished ENALBING or DISABLING?
+        return updated;
     };
     
     /**
@@ -566,7 +633,7 @@ nf.ControllerService = (function () {
 
                         // clear the tables
                         $('#controller-service-properties').propertytable('clear');
-
+                        
                         // removed the cached controller service details
                         $('#controller-service-configuration').removeData('controllerServiceDetails');
                     }
@@ -597,15 +664,21 @@ nf.ControllerService = (function () {
                             var controllerServiceData = controllerServiceGrid.getData();
                             var controllerService = controllerServiceData.getItemById(controllerServiceId);
                             
-                            // deactivate all referencing components
-                            var deactivated = updateReferencingComponents(controllerService, false);
+                            // stop all referencing schedulable components
+                            var stopped = updateReferencingSchedulableComponents(controllerService, false);
                             
-                            // once all referencing components have been deactivated...
-                            deactivated.done(function() {
-                                // disable this service
-                                setEnabled(controllerService, false).done(function() {
-                                    // close the dialog
-                                    $('#disable-controller-service-dialog').modal('hide');
+                            // once everything has stopped
+                            stopped.done(function () {
+                                // disable all referencing services
+                                var disabled = updateReferencingServices(controllerService, false);
+                                
+                                // everything is disabled
+                                disabled.done(function () {
+                                    // disalbe this service
+                                    setEnabled(controllerService, false).done(function () {
+                                        // close the dialog
+                                        $('#disable-controller-service-dialog').modal('hide');
+                                    });
                                 });
                             });
                         }
@@ -667,7 +740,16 @@ nf.ControllerService = (function () {
                             if (scope === config.serviceAndReferencingComponents) {
                                 // once the service is enabled, activate all referencing components
                                 enabled.done(function() {
-                                    updateReferencingComponents(controllerService, true);
+                                    // enable the referencing services
+                                    var servicesEnabled = updateReferencingServices(controllerService, true);
+                                    
+                                    // once all the referencing services are enbled
+                                    servicesEnabled.done(function () {
+                                        // start all referencing schedulable components
+                                        updateReferencingSchedulableComponents(controllerService, true).done(function() {
+                                            // hide the dialog now?
+                                        });
+                                    });
                                 });
                             }
                             
@@ -728,17 +810,11 @@ nf.ControllerService = (function () {
                 // record the controller service details
                 $('#controller-service-configuration').data('controllerServiceDetails', controllerService);
 
-                // determine if the enabled checkbox is checked or not
-                var controllerServiceEnableStyle = 'checkbox-checked';
-                if (controllerService['enabled'] === false) {
-                    controllerServiceEnableStyle = 'checkbox-unchecked';
-                }
-
                 // populate the controller service settings
                 $('#controller-service-id').text(controllerService['id']);
                 $('#controller-service-type').text(nf.Common.substringAfterLast(controllerService['type'], '.'));
                 $('#controller-service-name').val(controllerService['name']);
-                $('#controller-service-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(controllerServiceEnableStyle);
+                $('#controller-service-enabled').removeClass('checkbox-checked checkbox-unchecked').addClass('checkbox-unchecked');
                 $('#controller-service-comments').val(controllerService['comments']);
 
                 // select the availability when appropriate

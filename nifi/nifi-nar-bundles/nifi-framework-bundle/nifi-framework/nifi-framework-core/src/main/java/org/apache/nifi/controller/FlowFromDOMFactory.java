@@ -105,7 +105,7 @@ public class FlowFromDOMFactory {
     	dto.setComment(getString(element, "comment"));
     	dto.setType(getString(element, "class"));
     	dto.setSchedulingPeriod(getString(element, "schedulingPeriod"));
-    	dto.setScheduledState(getString(element, "scheduledState"));
+    	dto.setState(getString(element, "scheduledState"));
     	dto.setSchedulingStrategy(getString(element, "schedulingStrategy"));
     	
     	dto.setProperties(getProperties(element, encryptor));

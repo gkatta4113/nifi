@@ -417,7 +417,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
         }
         
         if ( autoResumeState ) {
-	        if ( ScheduledState.RUNNING.name().equals(dto.getScheduledState()) ) {
+	        if ( ScheduledState.RUNNING.name().equals(dto.getState()) ) {
 	        	try {
 	        		controller.startReportingTask(reportingTask);
 	        	} catch (final Exception e) {
@@ -428,7 +428,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
 	        		controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(
 	        				"Reporting Tasks", Severity.ERROR.name(), "Failed to start " + reportingTask + " due to " + e));
 	        	}
-	        } else if ( ScheduledState.DISABLED.name().equals(dto.getScheduledState()) ) {
+	        } else if ( ScheduledState.DISABLED.name().equals(dto.getState()) ) {
 	        	try {
 	        		controller.disableReportingTask(reportingTask);
 	        	} catch (final Exception e) {
@@ -447,9 +447,9 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
     	final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(reportingTaskElement, encryptor);
     	final ReportingTaskNode taskNode = controller.getReportingTaskNode(dto.getId());
     	
-        if (!taskNode.getScheduledState().name().equals(dto.getScheduledState())) {
+        if (!taskNode.getScheduledState().name().equals(dto.getState())) {
             try {
-                switch (ScheduledState.valueOf(dto.getScheduledState())) {
+                switch (ScheduledState.valueOf(dto.getState())) {
                     case DISABLED:
                     	if ( taskNode.isRunning() ) {
                     		controller.stopReportingTask(taskNode);
@@ -471,16 +471,16 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                         break;
                 }
             } catch (final IllegalStateException ise) {
-                logger.error("Failed to change Scheduled State of {} from {} to {} due to {}", taskNode, taskNode.getScheduledState().name(), dto.getScheduledState(), ise.toString());
+                logger.error("Failed to change Scheduled State of {} from {} to {} due to {}", taskNode, taskNode.getScheduledState().name(), dto.getState(), ise.toString());
                 logger.error("", ise);
 
                 // create bulletin for the Processor Node
                 controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Node Reconnection", Severity.ERROR.name(),
-                        "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getScheduledState() + " due to " + ise.toString()));
+                        "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getState() + " due to " + ise.toString()));
 
                 // create bulletin at Controller level.
                 controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin("Node Reconnection", Severity.ERROR.name(),
-                        "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getScheduledState() + " due to " + ise.toString()));
+                        "Failed to change Scheduled State of " + taskNode + " from " + taskNode.getScheduledState().name() + " to " + dto.getState() + " due to " + ise.toString()));
             }
         }
     }

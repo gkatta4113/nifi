@@ -97,7 +97,6 @@ import org.apache.nifi.scheduling.SchedulingStrategy;
 import org.apache.nifi.user.NiFiUser;
 import org.apache.nifi.user.NiFiUserGroup;
 import org.apache.nifi.util.FormatUtils;
-import org.apache.nifi.util.NiFiProperties;
 import org.apache.nifi.web.Revision;
 import org.apache.nifi.web.api.dto.PropertyDescriptorDTO.AllowableValueDTO;
 import org.apache.nifi.web.api.dto.action.ActionDTO;
@@ -841,19 +840,71 @@ public final class DtoFactory {
 
     public ReportingTaskDTO createReportingTaskDto(final ReportingTaskNode reportingTaskNode) {
         final ReportingTaskDTO dto = new ReportingTaskDTO();
+        dto.setId(reportingTaskNode.getIdentifier());
+        dto.setName(reportingTaskNode.getName());
+        dto.setType(reportingTaskNode.getReportingTask().getClass().getName());
+        dto.setState(reportingTaskNode.getScheduledState().name());
+//        dto.setComments(reportingTaskNode.getComments());
+        
+        // sort a copy of the properties
+        final Map<PropertyDescriptor, String> sortedProperties = new TreeMap<>(new Comparator<PropertyDescriptor>() {
+            @Override
+            public int compare(PropertyDescriptor o1, PropertyDescriptor o2) {
+                return Collator.getInstance(Locale.US).compare(o1.getName(), o2.getName());
+            }
+        });
+        sortedProperties.putAll(reportingTaskNode.getProperties());
+
+        // get the property order from the reporting task
+        final ReportingTask reportingTask = reportingTaskNode.getReportingTask();
+        final Map<PropertyDescriptor, String> orderedProperties = new LinkedHashMap<>();
+        final List<PropertyDescriptor> descriptors = reportingTask.getPropertyDescriptors();
+        if (descriptors != null && !descriptors.isEmpty()) {
+            for (PropertyDescriptor descriptor : descriptors) {
+                orderedProperties.put(descriptor, null);
+            }
+        }
+        orderedProperties.putAll(sortedProperties);
+        
+        // build the descriptor and property dtos
+        dto.setDescriptors(new LinkedHashMap<String, PropertyDescriptorDTO>());
+        dto.setProperties(new LinkedHashMap<String, String>());
+        for (final Map.Entry<PropertyDescriptor, String> entry : orderedProperties.entrySet()) {
+            final PropertyDescriptor descriptor = entry.getKey();
+
+            // store the property descriptor
+            dto.getDescriptors().put(descriptor.getName(), createPropertyDescriptorDto(descriptor));
+
+            // determine the property value - don't include sensitive properties
+            String propertyValue = entry.getValue();
+            if (propertyValue != null && descriptor.isSensitive()) {
+                propertyValue = "********";
+            }
+
+            // set the property value
+            dto.getProperties().put(descriptor.getName(), propertyValue);
+        }
+        
+        // add the validation errors
+        final Collection<ValidationResult> validationErrors = reportingTaskNode.getValidationErrors();
+        if (validationErrors != null && !validationErrors.isEmpty()) {
+            final List<String> errors = new ArrayList<>();
+            for (final ValidationResult validationResult : validationErrors) {
+                errors.add(validationResult.toString());
+            }
+
+            dto.setValidationErrors(errors);
+        }
+        
         return dto;
     }
     
     public ControllerServiceDTO createControllerServiceDto(final ControllerServiceNode controllerServiceNode) {
-        if (controllerServiceNode == null) {
-            return null;
-        }
-        
         final ControllerServiceDTO dto = new ControllerServiceDTO();
         dto.setId(controllerServiceNode.getIdentifier());
         dto.setName(controllerServiceNode.getName());
         dto.setType(controllerServiceNode.getControllerServiceImplementation().getClass().getName());
-        dto.setEnabled(!controllerServiceNode.isDisabled());
+        dto.setState(controllerServiceNode.getState().name());
         dto.setComments(controllerServiceNode.getComments());
         
         // sort a copy of the properties
@@ -913,6 +964,10 @@ public final class DtoFactory {
     }
     
     public Set<ControllerServiceReferencingComponentDTO> createControllerServiceReferencingComponentsDto(final ControllerServiceReference reference) {
+        return createControllerServiceReferencingComponentsDto(reference, new HashSet<ControllerServiceNode>());
+    }
+    
+    private Set<ControllerServiceReferencingComponentDTO> createControllerServiceReferencingComponentsDto(final ControllerServiceReference reference, final Set<ControllerServiceNode> visited) {
         final Set<ControllerServiceReferencingComponentDTO> referencingComponents = new LinkedHashSet<>();
         
         // get all references
@@ -930,9 +985,15 @@ public final class DtoFactory {
                 dto.setReferenceType(Processor.class.getSimpleName());
             } else if (component instanceof ControllerServiceNode) {
                 final ControllerServiceNode node = ((ControllerServiceNode) component);
-                dto.setEnabled(!node.isDisabled());
+                dto.setState(node.getState().name());
                 dto.setType(node.getControllerServiceImplementation().getClass().getName());
                 dto.setReferenceType(ControllerService.class.getSimpleName());
+                dto.setReferenceCycle(visited.contains(node));
+                
+                // if we haven't encountered this service before include it's referencing components
+                if (!dto.getReferenceCycle()) {
+                    dto.setReferencingComponents(createControllerServiceReferencingComponentsDto(node.getReferences(), visited));
+                }
             } else if (component instanceof ReportingTask) {
                 final ReportingTaskNode node = ((ReportingTaskNode) component);
                 dto.setState(node.getScheduledState().name());
@@ -2386,8 +2447,6 @@ public final class DtoFactory {
     }
 
     /* setters */
-    public void setProperties(NiFiProperties properties) {
-    }
 
     public void setControllerServiceLookup(ControllerServiceLookup lookup) {
         this.controllerServiceLookup = lookup;

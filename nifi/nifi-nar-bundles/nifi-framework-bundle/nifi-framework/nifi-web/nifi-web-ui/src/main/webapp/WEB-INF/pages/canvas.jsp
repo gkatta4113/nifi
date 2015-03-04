@@ -83,6 +83,7 @@
         <jsp:include page="/WEB-INF/partials/canvas/disable-controller-service-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/enable-controller-service-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/new-controller-service-dialog.jsp"/>
+        <jsp:include page="/WEB-INF/partials/canvas/new-reporting-task-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/new-processor-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/new-port-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/new-process-group-dialog.jsp"/>
@@ -103,6 +104,7 @@
         <jsp:include page="/WEB-INF/partials/canvas/settings-content.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/shell.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/controller-service-configuration.jsp"/>
+        <jsp:include page="/WEB-INF/partials/canvas/reporting-task-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/processor-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/processor-details.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/process-group-configuration.jsp"/>

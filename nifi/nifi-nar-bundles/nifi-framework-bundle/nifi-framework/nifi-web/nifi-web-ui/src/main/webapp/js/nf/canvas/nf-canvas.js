@@ -1033,6 +1033,7 @@ nf.Canvas = (function () {
                         // initialize components
                         nf.ConnectionConfiguration.init();
                         nf.ControllerService.init();
+                        nf.ReportingTask.init();
                         nf.ProcessorConfiguration.init();
                         nf.ProcessGroupConfiguration.init();
                         nf.RemoteProcessGroupConfiguration.init();

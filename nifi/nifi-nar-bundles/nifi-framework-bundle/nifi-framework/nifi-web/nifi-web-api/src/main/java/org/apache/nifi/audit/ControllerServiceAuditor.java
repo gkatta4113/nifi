@@ -37,6 +37,7 @@ import org.apache.nifi.web.security.user.NiFiUserUtils;
 import org.apache.nifi.user.NiFiUser;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceReference;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -55,7 +56,6 @@ public class ControllerServiceAuditor extends NiFiAuditor {
 
     private static final String COMMENTS = "Comments";
     private static final String NAME = "Name";
-    private static final String AVAILABILITY = "Availability";
     private static final String ANNOTATION_DATA = "Annotation Data";
 
     /**
@@ -106,13 +106,12 @@ public class ControllerServiceAuditor extends NiFiAuditor {
         // determine the initial values for each property/setting thats changing
         ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceDTO.getId());
         final Map<String, String> values = extractConfiguredPropertyValues(controllerService, controllerServiceDTO);
-        final boolean isDisabled = controllerService.isDisabled();
+        final boolean isDisabled = isDisabled(controllerService);
 
         // update the controller service state
         final ControllerServiceNode updatedControllerService = (ControllerServiceNode) proceedingJoinPoint.proceed();
 
         // if no exceptions were thrown, add the controller service action...
-        // get the updated verbose state
         controllerService = controllerServiceDAO.getControllerService(updatedControllerService.getIdentifier());
 
         // get the current user
@@ -183,7 +182,7 @@ public class ControllerServiceAuditor extends NiFiAuditor {
             }
 
             // determine the new executing state
-            final boolean updateIsDisabled = controllerService.isDisabled();
+            final boolean updateIsDisabled = isDisabled(updatedControllerService);
 
             // determine if the running state has changed and its not disabled
             if (isDisabled != updateIsDisabled) {
@@ -224,7 +223,7 @@ public class ControllerServiceAuditor extends NiFiAuditor {
      * @throws Throwable
      */
     @Around("within(org.apache.nifi.web.dao.ControllerServiceDAO+) && "
-            + "execution(org.apache.nifi.controller.service.ControllerServiceReference updateControllerServiceReferencingComponents(java.lang.String, boolean))")
+            + "execution(org.apache.nifi.controller.service.ControllerServiceReference updateControllerServiceReferencingComponents(java.lang.String, org.apache.nifi.controller.ScheduledState, org.apache.nifi.controller.service.ControllerServiceState))")
     public Object updateControllerServiceReferenceAdvice(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
         // update the controller service references
         final ControllerServiceReference controllerServiceReference = (ControllerServiceReference) proceedingJoinPoint.proceed();
@@ -271,7 +270,7 @@ public class ControllerServiceAuditor extends NiFiAuditor {
                     serviceAction.setSourceName(controllerService.getName());
                     serviceAction.setSourceType(Component.ControllerService);
                     serviceAction.setComponentDetails(serviceDetails);
-                    serviceAction.setOperation(controllerService.isDisabled() ? Operation.Disable : Operation.Enable);
+                    serviceAction.setOperation(isDisabled(controllerService) ? Operation.Disable : Operation.Enable);
                     actions.add(serviceAction);
                     
                     // need to consider components referencing this controller service (transitive)
@@ -324,7 +323,7 @@ public class ControllerServiceAuditor extends NiFiAuditor {
      * @param operation
      * @return
      */
-    public Action generateAuditRecord(ControllerServiceNode controllerService, Operation operation) {
+    private Action generateAuditRecord(ControllerServiceNode controllerService, Operation operation) {
         return generateAuditRecord(controllerService, operation, null);
     }
 
@@ -336,7 +335,7 @@ public class ControllerServiceAuditor extends NiFiAuditor {
      * @param actionDetails
      * @return
      */
-    public Action generateAuditRecord(ControllerServiceNode controllerService, Operation operation, ActionDetails actionDetails) {
+    private Action generateAuditRecord(ControllerServiceNode controllerService, Operation operation, ActionDetails actionDetails) {
         Action action = null;
 
         // get the current user
@@ -384,9 +383,6 @@ public class ControllerServiceAuditor extends NiFiAuditor {
         if (controllerServiceDTO.getAnnotationData() != null) {
             values.put(ANNOTATION_DATA, controllerService.getAnnotationData());
         }
-        if (controllerServiceDTO.getAnnotationData() != null) {
-            values.put(AVAILABILITY, controllerService.getAnnotationData());
-        }
         if (controllerServiceDTO.getProperties() != null) {
             // for each property specified, extract its configured value
             Map<String, String> properties = controllerServiceDTO.getProperties();
@@ -428,4 +424,13 @@ public class ControllerServiceAuditor extends NiFiAuditor {
         return specDescriptor;
     }
 
+    /**
+     * Returns whether the specified controller service is disabled (or disabling).
+     * 
+     * @param controllerService
+     * @return 
+     */
+    private boolean isDisabled(final ControllerServiceNode controllerService) {
+        return ControllerServiceState.DISABLED.equals(controllerService.getState()) || ControllerServiceState.DISABLING.equals(controllerService.getState());
+    }
 }

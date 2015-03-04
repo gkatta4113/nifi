@@ -16,6 +16,7 @@
  */
 package org.apache.nifi.web.api.dto;
 
+import java.util.Collection;
 import java.util.Map;
 
 import javax.xml.bind.annotation.XmlType;
@@ -29,7 +30,7 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
 	private String comment;
 	private String type;
 	private String schedulingPeriod;
-	private String scheduledState;
+	private String state;
 	private String schedulingStrategy;
 	private String availability;
 	
@@ -37,6 +38,8 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
     private Map<String, PropertyDescriptorDTO> descriptors;
  
     private String annotationData;
+    
+    private Collection<String> validationErrors;
 
     /**
      * The user-defined name of the reporting task
@@ -92,12 +95,12 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
 	 * The current scheduling state of the reporting task
 	 * @return
 	 */
-	public String getScheduledState() {
-		return scheduledState;
+	public String getState() {
+		return state;
 	}
 
-	public void setScheduledState(String scheduledState) {
-		this.scheduledState = scheduledState;
+	public void setState(String state) {
+		this.state = state;
 	}
 
 	/**
@@ -163,4 +166,18 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
 		this.annotationData = annotationData;
 	}
 	
+    /**
+     * Gets the validation errors from this reporting task. These validation errors
+     * represent the problems with the reporting task that must be resolved before it
+     * can be scheduled to run.
+     *
+     * @return The validation errors
+     */
+    public Collection<String> getValidationErrors() {
+        return validationErrors;
+    }
+
+    public void setValidationErrors(Collection<String> validationErrors) {
+        this.validationErrors = validationErrors;
+    }
 }

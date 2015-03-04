@@ -19,8 +19,10 @@ package org.apache.nifi.web;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Set;
+import org.apache.nifi.controller.ScheduledState;
 
 import org.apache.nifi.controller.repository.claim.ContentDirection;
+import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.web.api.dto.BulletinBoardDTO;
 import org.apache.nifi.web.api.dto.BulletinQueryDTO;
 import org.apache.nifi.web.api.dto.ClusterDTO;
@@ -982,11 +984,11 @@ public interface NiFiServiceFacade {
      * 
      * @param revision
      * @param controllerServiceId
-     * @param enabled
-     * @param state the value of state 
-     * @return the org.apache.nifi.web.ConfigurationSnapshot<java.util.Set<org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO>> 
+     * @param scheduledState
+     * @param controllerServiceState the value of state 
+     * @return The referencing component dtos
      */
-    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, Boolean enabled, String state);
+    ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(Revision revision, String controllerServiceId, ScheduledState scheduledState, ControllerServiceState controllerServiceState);
     
     /**
      * Updates the specified label.
@@ -1012,7 +1014,16 @@ public interface NiFiServiceFacade {
      * @param controllerServiceDTO
      */
     void verifyUpdateControllerService(ControllerServiceDTO controllerServiceDTO);
-
+    
+    /**
+     * Verifies the referencing components of the specified controller service can be updated.
+     * 
+     * @param controllerServiceId
+     * @param scheduledState
+     * @param controllerServiceState 
+     */
+    void verifyUpdateControllerServiceReferencingComponents(String controllerServiceId, ScheduledState scheduledState, ControllerServiceState controllerServiceState);
+    
     /**
      * Verifies the specified controller service can be removed.
      *
