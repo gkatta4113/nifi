@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+/* global nf, Slick */
+
 /**
  * Create a property table. The options are specified in the following
  * format:
