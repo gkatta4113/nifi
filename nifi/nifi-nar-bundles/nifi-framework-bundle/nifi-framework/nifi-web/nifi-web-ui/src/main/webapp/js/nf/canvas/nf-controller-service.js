@@ -237,13 +237,26 @@ nf.ControllerService = (function () {
                     referenceContainer.closest('.dialog').modal('hide');
                     $('#shell-close-button').click();
                 });
-                
+
+                // active thread count
                 var activeThreadCount = $('<span class="referencing-component-active-thread-count"></span>').addClass(referencingComponent.id + '-active-threads');
                 if (nf.Common.isDefinedAndNotNull(referencingComponent.activeThreadCount) && referencingComponent.activeThreadCount > 0) {
                     activeThreadCount.text('(' + referencingComponent.activeThreadCount + ')');
                 }
-                var processorState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.state.toLowerCase()).addClass(referencingComponent.id + '-state');
+                
+                // state
+                var processorState = $('<div class="referencing-component-state"></div>').addClass(function() {
+                    var state = referencingComponent.state.toLowerCase();
+                    if (state === 'stopped' && !nf.Common.isEmpty(referencingComponent.validationErrors)) {
+                        state = 'invalid';
+                    }
+                    return state;
+                }).addClass(referencingComponent.id + '-state');
+                
+                // type
                 var processorType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
+                
+                // processor
                 var processorItem = $('<li></li>').append(processorState).append(activeThreadCount).append(processorLink).append(processorType);
                 processors.append(processorItem);
             } else if (referencingComponent.referenceType === 'ControllerService') {
@@ -280,8 +293,19 @@ nf.ControllerService = (function () {
                     updateReferencingComponentsBorder(referenceContainer);
                 });
                 
-                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.state === 'ENABLED' ? 'enabled' : 'disabled').addClass(referencingComponent.id + '-active-threads');
+                // state
+                var serviceState = $('<div class="referencing-component-state"></div>').addClass(function() {
+                    var state = referencingComponent.state === 'ENABLED' ? 'enabled' : 'disabled';
+                    if (state === 'disabled' && !nf.Common.isEmpty(referencingComponent.validationErrors)) {
+                        state = 'invalid';
+                    }
+                    return state;
+                }).addClass(referencingComponent.id + '-state');
+                
+                // type
                 var serviceType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
+                
+                // service
                 var serviceItem = $('<li></li>').append(serviceTwist).append(serviceState).append(serviceLink).append(serviceType).append(referencingServiceReferencesContainer);
                 
                 services.append(serviceItem);
@@ -414,24 +438,28 @@ nf.ControllerService = (function () {
             return updated;
         }
         
-        // identify all referencing services
-        var services = getReferencingControllerServiceIds(controllerService);
-
-        // get the controller service grid
-        var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
-        var controllerServiceData = controllerServiceGrid.getData();
-        
-        // start polling for each controller service
-        var polling = [];
-        services.forEach(function(controllerServiceId) {
-            var controllerService = controllerServiceData.getItemById(controllerServiceId);
-            polling.push(pollStoppedReferencingSchedulableComponents(controllerService));
-        });
-        
         // wait unil the polling of each service finished
         return $.Deferred(function(deferred) {
-            $.when.apply(window, polling).done(function () {
-                deferred.resolve();
+            updated.done(function() {
+                // identify all referencing services
+                var services = getReferencingControllerServiceIds(controllerService);
+
+                // get the controller service grid
+                var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+                var controllerServiceData = controllerServiceGrid.getData();
+
+                // start polling for each controller service
+                var polling = [];
+                services.forEach(function(controllerServiceId) {
+                    var controllerService = controllerServiceData.getItemById(controllerServiceId);
+                    polling.push(pollStoppedReferencingSchedulableComponents(controllerService));
+                });
+
+                $.when.apply(window, polling).done(function () {
+                    deferred.resolve();
+                }).fail(function() {
+                    deferred.reject();
+                });
             }).fail(function() {
                 deferred.reject();
             });
