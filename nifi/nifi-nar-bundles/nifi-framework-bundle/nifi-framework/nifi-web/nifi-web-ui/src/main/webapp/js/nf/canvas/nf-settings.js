@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* global nf, Slick */
+
 nf.Settings = (function () {
 
     var config = {
@@ -32,7 +35,7 @@ nf.Settings = (function () {
             reportingTasks: '../nifi-api/controller/reporting-tasks'
         }
     };
-    
+
     var gridOptions = {
         forceFitColumns: true,
         enableTextSelectionOnCells: true,
@@ -50,7 +53,7 @@ nf.Settings = (function () {
         if (nf.Common.isDFM()) {
             $('#general-settings div.editable').show();
             $('#general-settings div.read-only').hide();
-            
+
             // register the click listener for the archive link
             $('#archive-flow-link').click(function () {
                 var revision = nf.Client.getRevision();
@@ -125,7 +128,7 @@ nf.Settings = (function () {
         configuration['maxEventDrivenThreadCount'] = $('#maximum-event-driven-thread-count-field').val();
         return configuration;
     };
-    
+
     /**
      * Get the text out of the filter field. If the filter field doesn't
      * have any text it will contain the text 'filter list' so this method
@@ -139,7 +142,7 @@ nf.Settings = (function () {
         }
         return filterText;
     };
-    
+
     /**
      * Filters the processor type table.
      */
@@ -156,14 +159,14 @@ nf.Settings = (function () {
                 searchString: getControllerServiceTypeFilterText(),
                 property: $('#controller-service-type-filter-options').combo('getSelectedOption').value
             });
-            
+
             // need to invalidate the entire table since parent elements may need to be 
             // rerendered due to changes in their children
             controllerServiceTypesData.refresh();
             controllerServiceTypesGrid.invalidate();
         }
     };
-    
+
     /**
      * Determines if all of the ancestors of the specified item are expanded.
      * 
@@ -178,10 +181,10 @@ nf.Settings = (function () {
             }
             documentedType = documentedType.parent;
         }
-        
+
         return true;
     };
-    
+
     /**
      * Determines if the specified item is an ancestor.
      * 
@@ -205,7 +208,7 @@ nf.Settings = (function () {
         $('#selected-controller-service-type').text('');
         $('#controller-service-description-container').hide();
     };
-    
+
     /**
      * Clears the selected controller service type.
      */
@@ -217,7 +220,7 @@ nf.Settings = (function () {
         var controllerServiceTypesGrid = $('#controller-service-types-table').data('gridInstance');
         controllerServiceTypesGrid.resetActiveCell();
     };
-    
+
     /**
      * Performs the filtering.
      * 
@@ -231,22 +234,22 @@ nf.Settings = (function () {
             if ($('#selected-controller-service-type').text() === item['type']) {
                 clearControllerServiceSelection();
             }
-            
+
             // update visibility flag
             item.visible = false;
-            
+
             return false;
         }
-        
+
         // don't allow ancestors to be filtered out (unless any of their ancestors
         // are collapsed)
         if (isAncestor(item)) {
             // update visibility flag
             item.visible = false;
-            
+
             return true;
         }
-        
+
         // determine if the item matches the filter
         var matchesFilter = matchesRegex(item, args);
 
@@ -267,13 +270,13 @@ nf.Settings = (function () {
         if (matches === false && $('#selected-controller-service-type').text() === item['type']) {
             clearControllerServiceSelection();
         }
-        
+
         // update visibility flag
         item.visible = matches;
-        
+
         return matches;
     };
-    
+
     /**
      * Determines if the item matches the filter.
      * 
@@ -323,7 +326,7 @@ nf.Settings = (function () {
 
         return matches;
     };
-    
+
     /**
      * Formats the type by introducing expand/collapse where appropriate.
      * 
@@ -335,16 +338,16 @@ nf.Settings = (function () {
      */
     var expandableTypeFormatter = function (row, cell, value, columnDef, dataContext) {
         var markup = '';
-        
+
         var indent = 0;
         var documentedType = dataContext;
         while (documentedType.parent !== null) {
             indent += 10;
             documentedType = documentedType.parent;
         }
-        
+
         var padding = 3;
-        
+
         // create the markup for the row
         if (dataContext.children.length > 0) {
             // determine how to render the expansion button
@@ -352,24 +355,24 @@ nf.Settings = (function () {
             if (dataContext.collapsed === true) {
                 expansionStyle = 'collapsed';
             }
-            
+
             // to calculate the number of visible children
             var visibleChildren = 0;
-            $.each(dataContext.children, function(_, child) {
+            $.each(dataContext.children, function (_, child) {
                 if (child.visible) {
                     visibleChildren++;
                 }
             });
-            
+
             markup += ('<span style="margin-top: 5px; margin-left: ' + indent + 'px;" class="expansion-button ' + expansionStyle + '"></span><span class="ancestor-type" style="margin-left: ' + padding + 'px;">' + value + '</span><span class="ancestor-type-rollup">(' + visibleChildren + ' of ' + dataContext.children.length + ')</span>');
         } else {
             if (dataContext.parent === null) {
                 padding = 0;
             }
-            
+
             markup += ('<span style="margin-left: ' + (indent + padding) + 'px;">' + value + '</span>');
         }
-        
+
         return markup;
     };
 
@@ -408,22 +411,22 @@ nf.Settings = (function () {
             var controllerServicesGrid = $('#controller-services-table').data('gridInstance');
             var controllerServicesData = controllerServicesGrid.getData();
             controllerServicesData.addItem(controllerService);
-            
+
             // resort
             controllerServicesData.reSort();
             controllerServicesGrid.invalidate();
-            
+
             // select the new controller service
             var row = controllerServicesData.getRowById(controllerService.id);
             controllerServicesGrid.setSelectedRows([row]);
         }).fail(nf.Common.handleAjaxError);
-        
+
         // hide the dialog
         $('#new-controller-service-dialog').modal('hide');
-        
+
         return addService;
     };
-    
+
     /**
      * Initializes the new controller service dialog.
      */
@@ -441,7 +444,7 @@ nf.Settings = (function () {
                 applyControllerServiceTypeFilter();
             }
         });
-        
+
         // specify the controller service availability
         if (nf.Canvas.isClustered()) {
             $('#controller-service-availability-combo').combo({
@@ -457,7 +460,7 @@ nf.Settings = (function () {
             });
             $('#controller-service-availability-container').show();
         }
-        
+
         // define the function for filtering the list
         $('#controller-service-type-filter').keyup(function () {
             applyControllerServiceTypeFilter();
@@ -502,7 +505,7 @@ nf.Settings = (function () {
                 return {};
             }
         };
-        
+
         var getVisibleControllerServiceCount = function () {
             var count = 0;
             for (var i = 0; i < controllerServiceTypesData.getLength(); i++) {
@@ -537,7 +540,7 @@ nf.Settings = (function () {
                     $('#controller-service-type-name').text(controllerServiceType.label).ellipsis();
                     $('#selected-controller-service-name').text(controllerServiceType.label);
                     $('#selected-controller-service-type').text(controllerServiceType.type);
-                    
+
                     // show the selected controller service
                     $('#controller-service-description-container').show();
                 }
@@ -549,7 +552,7 @@ nf.Settings = (function () {
                 // update the grid
                 item.collapsed = !item.collapsed;
                 controllerServiceTypesData.updateItem(item.id, item);
-                
+
                 // prevent selection within slickgrid
                 e.stopImmediatePropagation();
             }
@@ -575,13 +578,13 @@ nf.Settings = (function () {
 
         // hold onto an instance of the grid
         $('#controller-service-types-table').data('gridInstance', controllerServiceTypesGrid);
-        
+
         // load the available controller services
         $.ajax({
             type: 'GET',
             url: config.urls.controllerServiceTypes,
             dataType: 'json'
-        }).done(function(response) {
+        }).done(function (response) {
             var id = 0;
             var tags = [];
 
@@ -600,21 +603,21 @@ nf.Settings = (function () {
                     collapsed: false,
                     visible: true
                 };
-                
+
                 // add the documented type
                 controllerServiceTypesData.addItem(item);
-                
+
                 // count the frequency of each tag for this type
                 $.each(documentedType.tags, function (i, tag) {
                     tags.push(tag.toLowerCase());
                 });
-                
+
                 // add each of its children
                 $.each(documentedType.childTypes, function (_, documentedChildType) {
                     var childItem = addType(item, documentedChildType);
                     item.children.push(childItem);
                 });
-                
+
                 return item;
             };
 
@@ -625,7 +628,7 @@ nf.Settings = (function () {
 
             // end the udpate
             controllerServiceTypesData.endUpdate();
-
+            
             // set the total number of processors
             $('#total-controller-service-types, #displayed-controller-service-types').text(getVisibleControllerServiceCount());
 
@@ -636,28 +639,28 @@ nf.Settings = (function () {
                 remove: applyControllerServiceTypeFilter
             });
         }).fail(nf.Common.handleAjaxError);
-        
+
         // initialize the controller service dialog
         $('#new-controller-service-dialog').modal({
             headerText: 'Add Controller Service',
             overlayBackground: false,
             buttons: [{
-                buttonText: 'Add',
-                handler: {
-                    click: function () {
-                        var selectedServiceType = $('#selected-controller-service-type').text();
-                        addControllerService(selectedServiceType);
+                    buttonText: 'Add',
+                    handler: {
+                        click: function () {
+                            var selectedServiceType = $('#selected-controller-service-type').text();
+                            addControllerService(selectedServiceType);
+                        }
                     }
-                }
-            }, {
-                buttonText: 'Cancel',
-                handler: {
-                    click: function () {
-                        $(this).modal('hide');
+                }, {
+                    buttonText: 'Cancel',
+                    handler: {
+                        click: function () {
+                            $(this).modal('hide');
+                        }
                     }
-                }
-            }],
-            close: function() {
+                }],
+            close: function () {
                 // clear the selected row
                 clearSelectedControllerService();
 
@@ -677,7 +680,7 @@ nf.Settings = (function () {
             handle: '.dialog-header'
         });
     };
-    
+
     /**
      * Formatter for the type column.
      * 
@@ -691,7 +694,7 @@ nf.Settings = (function () {
     var typeFormatter = function (row, cell, value, columnDef, dataContext) {
         return nf.Common.substringAfterLast(value, '.');
     };
-    
+
     /**
      * Formatter for the availability column.
      * 
@@ -709,7 +712,7 @@ nf.Settings = (function () {
             return 'Cluster Manager';
         }
     };
-    
+
     /**
      * Sorts the specified data using the specified sort details.
      * 
@@ -727,14 +730,14 @@ nf.Settings = (function () {
         // perform the sort
         data.sort(comparer, sortDetails.sortAsc);
     };
-    
+
     /**
      * Initializes the controller services tab.
      */
     var initControllerServices = function () {
         // initialize the new controller service dialog
         initNewControllerServiceDialog();
-      
+
         // more details formatter
         var moreControllerServiceDetails = function (row, cell, value, columnDef, dataContext) {
             var markup = '<img src="images/iconDetails.png" title="View Details" class="pointer view-controller-service" style="margin-top: 5px; float: left;" />&nbsp;&nbsp;';
@@ -743,7 +746,7 @@ nf.Settings = (function () {
             }
             return markup;
         };
-        
+
         // define the column model for the controller services table
         var controllerServicesColumns = [
             {id: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreControllerServiceDetails, sortable: false, width: 50, maxWidth: 50},
@@ -751,12 +754,12 @@ nf.Settings = (function () {
             {id: 'type', field: 'type', name: 'Type', formatter: typeFormatter, sortable: true, resizable: true},
             {id: 'state', field: 'state', name: 'State', sortable: true, resizeable: true}
         ];
-        
+
         // only show availability when clustered
         if (nf.Canvas.isClustered()) {
             controllerServicesColumns.push({id: 'availability', field: 'availability', name: 'Availability', formatter: availabilityFormatter, sortable: true, resizeable: true});
         }
-        
+
         // only DFM can edit controller services
         if (nf.Common.isDFM()) {
             var controllerServiceActionFormatter = function (row, cell, value, columnDef, dataContext) {
@@ -766,33 +769,33 @@ nf.Settings = (function () {
                     markup += '<img src="images/iconDisable.png" title="Disable" class="pointer disable-controller-service" style="margin-top: 2px;" />&nbsp;';
                 } else if (dataContext.state === 'DISABLED') {
                     markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-controller-service" style="margin-top: 2px;" />&nbsp;';
-                    
+
                     // only enable the enable icon if the service has no validation errors
                     if (nf.Common.isEmpty(dataContext.validationErrors)) {
                         markup += '<img src="images/iconEnable.png" title="Enable" class="pointer enable-controller-service" style="margin-top: 2px;"/>&nbsp;';
                     }
-                    
+
                     markup += '<img src="images/iconDelete.png" title="Remove" class="pointer delete-controller-service" style="margin-top: 2px;" />&nbsp;';
                 }
 
                 return markup;
             };
-            
+
             controllerServicesColumns.push({id: 'actions', name: '&nbsp;', resizable: false, formatter: controllerServiceActionFormatter, sortable: false, width: 75, maxWidth: 75});
         }
-        
+
         // initialize the dataview
         var controllerServicesData = new Slick.Data.DataView({
             inlineFilters: false
         });
         controllerServicesData.setItems([]);
-        
+
         // initialize the sort
         sort({
             columnId: 'name',
             sortAsc: true
         }, controllerServicesData);
-        
+
         // initialize the grid
         var controllerServicesGrid = new Slick.Grid('#controller-services-table', controllerServicesData, controllerServicesColumns, gridOptions);
         controllerServicesGrid.setSelectionModel(new Slick.RowSelectionModel());
@@ -804,14 +807,14 @@ nf.Settings = (function () {
                 sortAsc: args.sortAsc
             }, controllerServicesData);
         });
-        
+
         // configure a click listener
         controllerServicesGrid.onClick.subscribe(function (e, args) {
             var target = $(e.target);
-            
+
             // get the service at this row
             var controllerService = controllerServicesData.getItem(args.row);
-            
+
             // determine the desired action
             if (controllerServicesGrid.getColumns()[args.cell].id === 'actions') {
                 if (target.hasClass('edit-controller-service')) {
@@ -825,7 +828,7 @@ nf.Settings = (function () {
                 }
             } else if (controllerServicesGrid.getColumns()[args.cell].id === 'moreDetails') {
                 if (target.hasClass('view-controller-service')) {
-                    
+
                 }
             }
         });
@@ -871,52 +874,52 @@ nf.Settings = (function () {
             }
         });
     };
-    
+
     /**
      * Loads the controller services.
      */
     var loadControllerServices = function () {
         var services = [];
-        
+
         // get the controller services that are running on the nodes
         var nodeControllerServices = $.ajax({
             type: 'GET',
             url: config.urls.controllerServices + '/' + encodeURIComponent(config.node),
             dataType: 'json'
-        }).done(function(response) {
+        }).done(function (response) {
             var nodeServices = response.controllerServices;
             if (nf.Common.isDefinedAndNotNull(nodeServices)) {
-                $.each(nodeServices, function(_, nodeService) {
+                $.each(nodeServices, function (_, nodeService) {
                     services.push(nodeService);
                 });
             }
         });
-        
+
         // get the controller services that are running on the ncm
-        var ncmControllerServices = $.Deferred(function(deferred) {
+        var ncmControllerServices = $.Deferred(function (deferred) {
             if (nf.Canvas.isClustered()) {
                 $.ajax({
                     type: 'GET',
                     url: config.urls.controllerServices + '/' + encodeURIComponent(config.ncm),
                     dataType: 'json'
-                }).done(function(response) {
+                }).done(function (response) {
                     var ncmServices = response.controllerServices;
                     if (nf.Common.isDefinedAndNotNull(ncmServices)) {
-                        $.each(ncmServices, function(_, ncmService) {
+                        $.each(ncmServices, function (_, ncmService) {
                             services.push(ncmService);
                         });
                     }
                     deferred.resolve();
-                }).fail(function() {
+                }).fail(function () {
                     deferred.reject();
                 });
             } else {
                 deferred.resolve();
             }
         }).promise();
-        
+
         // add all controller services
-        return $.when(nodeControllerServices, ncmControllerServices).done(function() {
+        return $.when(nodeControllerServices, ncmControllerServices).done(function () {
             var controllerServicesElement = $('#controller-services-table');
             nf.Common.cleanUpTooltips(controllerServicesElement, 'img.has-errors');
 
@@ -929,7 +932,7 @@ nf.Settings = (function () {
             controllerServicesGrid.invalidate();
         });
     };
-    
+
     /**
      * Get the text out of the filter field. If the filter field doesn't
      * have any text it will contain the text 'filter list' so this method
@@ -943,7 +946,7 @@ nf.Settings = (function () {
         }
         return filterText;
     };
-    
+
     /**
      * Filters the reporting task type table.
      */
@@ -960,14 +963,14 @@ nf.Settings = (function () {
                 searchString: getReportingTaskTypeFilterText(),
                 property: $('#reporting-task-type-filter-options').combo('getSelectedOption').value
             });
-            
+
             // need to invalidate the entire table since parent elements may need to be 
             // rerendered due to changes in their children
             reportingTaskTypesData.refresh();
             reportingTaskTypesGrid.invalidate();
         }
     };
-    
+
     /**
      * Hides the selected reporting task.
      */
@@ -981,7 +984,7 @@ nf.Settings = (function () {
         $('#selected-reporting-task-type').text('');
         $('#reporting-task-description-container').hide();
     };
-    
+
     /**
      * Clears the selected reporting task type.
      */
@@ -993,7 +996,7 @@ nf.Settings = (function () {
         var reportingTaskTypesGrid = $('#reporting-task-types-table').data('gridInstance');
         reportingTaskTypesGrid.resetActiveCell();
     };
-    
+
     /**
      * Performs the filtering.
      * 
@@ -1022,13 +1025,13 @@ nf.Settings = (function () {
         if (matches === false && $('#selected-reporting-task-type').text() === item['type']) {
             clearReportingTaskSelection();
         }
-        
+
         // update visibility flag
         item.visible = matches;
-        
+
         return matches;
     };
-    
+
     /**
      * Adds a new reporting task of the specified type.
      * 
@@ -1064,22 +1067,22 @@ nf.Settings = (function () {
             var reportingTaskGrid = $('#reporting-tasks-table').data('gridInstance');
             var reportingTaskData = reportingTaskGrid.getData();
             reportingTaskData.addItem(reportingTask);
-            
+
             // resort
             reportingTaskData.reSort();
             reportingTaskGrid.invalidate();
-            
+
             // select the new reporting task
             var row = reportingTaskData.getRowById(reportingTask.id);
             reportingTaskGrid.setSelectedRows([row]);
         }).fail(nf.Common.handleAjaxError);
-        
+
         // hide the dialog
         $('#new-reporting-task-dialog').modal('hide');
-        
+
         return addTask;
     };
-    
+
     /**
      * Initializes the new reporting task dialog.
      */
@@ -1097,7 +1100,7 @@ nf.Settings = (function () {
                 applyReportingTaskTypeFilter();
             }
         });
-        
+
         // specify the reporting task availability
         if (nf.Canvas.isClustered()) {
             $('#reporting-task-availability-combo').combo({
@@ -1113,7 +1116,7 @@ nf.Settings = (function () {
             });
             $('#reporting-task-availability-container').show();
         }
-        
+
         // define the function for filtering the list
         $('#reporting-task-type-filter').keyup(function () {
             applyReportingTaskTypeFilter();
@@ -1143,7 +1146,7 @@ nf.Settings = (function () {
             property: $('#reporting-task-type-filter-options').combo('getSelectedOption').value
         });
         reportingTaskTypesData.setFilter(filterReportingTaskTypes);
-        
+
         // initialize the grid
         var reportingTaskTypesGrid = new Slick.Grid('#reporting-task-types-table', reportingTaskTypesData, reportingTaskTypesColumns, gridOptions);
         reportingTaskTypesGrid.setSelectionModel(new Slick.RowSelectionModel());
@@ -1189,13 +1192,13 @@ nf.Settings = (function () {
 
         // hold onto an instance of the grid
         $('#reporting-task-types-table').data('gridInstance', reportingTaskTypesGrid);
-        
+
         // load the available reporting tasks
         $.ajax({
             type: 'GET',
             url: config.urls.reportingTaskTypes,
             dataType: 'json'
-        }).done(function(response) {
+        }).done(function (response) {
             var id = 0;
             var tags = [];
 
@@ -1215,7 +1218,7 @@ nf.Settings = (function () {
                     collapsed: false,
                     visible: true
                 });
-                
+
                 // count the frequency of each tag for this type
                 $.each(documentedType.tags, function (i, tag) {
                     tags.push(tag.toLowerCase());
@@ -1235,28 +1238,28 @@ nf.Settings = (function () {
                 remove: applyReportingTaskTypeFilter
             });
         }).fail(nf.Common.handleAjaxError);
-        
+
         // initialize the reporting task dialog
         $('#new-reporting-task-dialog').modal({
             headerText: 'Add Reporting Task',
             overlayBackground: false,
             buttons: [{
-                buttonText: 'Add',
-                handler: {
-                    click: function () {
-                        var selectedTaskType = $('#selected-reporting-task-type').text();
-                        addReportingTask(selectedTaskType);
+                    buttonText: 'Add',
+                    handler: {
+                        click: function () {
+                            var selectedTaskType = $('#selected-reporting-task-type').text();
+                            addReportingTask(selectedTaskType);
+                        }
                     }
-                }
-            }, {
-                buttonText: 'Cancel',
-                handler: {
-                    click: function () {
-                        $(this).modal('hide');
+                }, {
+                    buttonText: 'Cancel',
+                    handler: {
+                        click: function () {
+                            $(this).modal('hide');
+                        }
                     }
-                }
-            }],
-            close: function() {
+                }],
+            close: function () {
                 // clear the selected row
                 clearSelectedReportingTask();
 
@@ -1276,14 +1279,14 @@ nf.Settings = (function () {
             handle: '.dialog-header'
         });
     };
-    
+
     /**
      * Initializes the reporting tasks tab.
      */
     var initReportingTasks = function () {
         // initialize the new reporting task dialog
         initNewReportingTaskDialog();
-        
+
         var moreReportingTaskDetails = function (row, cell, value, columnDef, dataContext) {
             var markup = '<img src="images/iconDetails.png" title="View Details" class="pointer view-reporting-task" style="margin-top: 5px; float: left;" />&nbsp;&nbsp;';
             if (!nf.Common.isEmpty(dataContext.validationErrors)) {
@@ -1291,7 +1294,7 @@ nf.Settings = (function () {
             }
             return markup;
         };
-        
+
         // define the column model for the reporting tasks table
         var reportingTasksColumnModel = [
             {id: 'moreDetails', field: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreReportingTaskDetails, sortable: true, width: 50, maxWidth: 50},
@@ -1299,12 +1302,12 @@ nf.Settings = (function () {
             {id: 'type', field: 'type', name: 'Type', sortable: true, resizable: true, formatter: typeFormatter},
             {id: 'state', field: 'state', name: 'State', sortable: true, resizeable: true}
         ];
-        
+
         // only show availability when clustered
         if (nf.Canvas.isClustered()) {
             reportingTasksColumnModel.push({id: 'availability', field: 'availability', name: 'Availability', formatter: availabilityFormatter, sortable: true, resizeable: true});
         }
-        
+
         // only DFM can edit reporting tasks
         if (nf.Common.isDFM()) {
             var reportingTaskActionFormatter = function (row, cell, value, columnDef, dataContext) {
@@ -1314,33 +1317,33 @@ nf.Settings = (function () {
                     markup += '<img src="images/iconDisable.png" title="Disable" class="pointer disable-controller-service" style="margin-top: 2px;" />&nbsp;';
                 } else if (dataContext.state === 'DISABLED') {
                     markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-controller-service" style="margin-top: 2px;" />&nbsp;';
-                    
+
                     // only enable the enable icon if the service has no validation errors
                     if (nf.Common.isEmpty(dataContext.validationErrors)) {
                         markup += '<img src="images/iconEnable.png" title="Enable" class="pointer enable-controller-service" style="margin-top: 2px;"/>&nbsp;';
                     }
-                    
+
                     markup += '<img src="images/iconDelete.png" title="Remove" class="pointer delete-controller-service" style="margin-top: 2px;" />&nbsp;';
                 }
 
                 return markup;
             };
-            
+
             reportingTasksColumnModel.push({id: 'actions', name: '&nbsp;', resizable: false, formatter: reportingTaskActionFormatter, sortable: false, width: 75, maxWidth: 75});
         }
-        
+
         // initialize the dataview
         var reportingTasksData = new Slick.Data.DataView({
             inlineFilters: false
         });
         reportingTasksData.setItems([]);
-        
+
         // initialize the sort
         sort({
             columnId: 'name',
             sortAsc: true
         }, reportingTasksData);
-        
+
         // initialize the grid
         var reportingTasksGrid = new Slick.Grid('#reporting-tasks-table', reportingTasksData, reportingTasksColumnModel, gridOptions);
         reportingTasksGrid.setSelectionModel(new Slick.RowSelectionModel());
@@ -1352,14 +1355,14 @@ nf.Settings = (function () {
                 sortAsc: args.sortAsc
             }, reportingTasksData);
         });
-        
+
         // configure a click listener
         reportingTasksGrid.onClick.subscribe(function (e, args) {
             var target = $(e.target);
-            
+
             // get the service at this row
             var reportingTask = reportingTasksData.getItem(args.row);
-            
+
             // determine the desired action
             if (reportingTasksGrid.getColumns()[args.cell].id === 'actions') {
                 if (target.hasClass('edit-reporting-task')) {
@@ -1369,7 +1372,7 @@ nf.Settings = (function () {
                 }
             } else if (reportingTasksGrid.getColumns()[args.cell].id === 'moreDetails') {
                 if (target.hasClass('view-reporting-task')) {
-                    
+
                 }
             }
         });
@@ -1415,52 +1418,52 @@ nf.Settings = (function () {
             }
         });
     };
-    
+
     /**
      * Loads the reporting tasks.
      */
     var loadReportingTasks = function () {
         var tasks = [];
-        
+
         // get the reporting tasks that are running on the nodes
         var nodeReportingTasks = $.ajax({
             type: 'GET',
             url: config.urls.reportingTasks + '/' + encodeURIComponent(config.node),
             dataType: 'json'
-        }).done(function(response) {
+        }).done(function (response) {
             var nodeTasks = response.reportingTasks;
             if (nf.Common.isDefinedAndNotNull(nodeTasks)) {
-                $.each(nodeTasks, function(_, nodeTask) {
+                $.each(nodeTasks, function (_, nodeTask) {
                     tasks.push(nodeTask);
                 });
             }
         });
-        
+
         // get the reporting tasks that are running on the ncm
-        var ncmReportingTasks = $.Deferred(function(deferred) {
+        var ncmReportingTasks = $.Deferred(function (deferred) {
             if (nf.Canvas.isClustered()) {
                 $.ajax({
                     type: 'GET',
                     url: config.urls.reportingTasks + '/' + encodeURIComponent(config.ncm),
                     dataType: 'json'
-                }).done(function(response) {
+                }).done(function (response) {
                     var ncmTasks = response.reportingTasks;
                     if (nf.Common.isDefinedAndNotNull(ncmTasks)) {
-                        $.each(ncmTasks, function(_, ncmTask) {
+                        $.each(ncmTasks, function (_, ncmTask) {
                             tasks.push(ncmTask);
                         });
                     }
                     deferred.resolve();
-                }).fail(function() {
+                }).fail(function () {
                     deferred.reject();
                 });
             } else {
                 deferred.resolve();
             }
         }).promise();
-        
+
         // add all reporting tasks
-        return $.when(nodeReportingTasks, ncmReportingTasks).done(function() {
+        return $.when(nodeReportingTasks, ncmReportingTasks).done(function () {
             var reportingTasksElement = $('#reporting-tasks-table');
             nf.Common.cleanUpTooltips(reportingTasksElement, 'img.has-errors');
 
@@ -1484,42 +1487,42 @@ nf.Settings = (function () {
                 tabStyle: 'settings-tab',
                 selectedTabStyle: 'settings-selected-tab',
                 tabs: [{
-                    name: 'General',
-                    tabContentId: 'general-settings-tab-content'
-                }, {
-                    name: 'Controller Services',
-                    tabContentId: 'controller-services-tab-content'
-                }, {
-                    name: 'Reporting Tasks',
-                    tabContentId: 'reporting-tasks-tab-content'
-                }],
+                        name: 'General',
+                        tabContentId: 'general-settings-tab-content'
+                    }, {
+                        name: 'Controller Services',
+                        tabContentId: 'controller-services-tab-content'
+                    }, {
+                        name: 'Reporting Tasks',
+                        tabContentId: 'reporting-tasks-tab-content'
+                    }],
                 select: function () {
                     var tab = $(this).text();
                     if (tab === 'General') {
                         $('#new-service-or-task').hide();
                     } else {
                         $('#new-service-or-task').show();
-                        
+
                         // update the tooltip on the button
-                        $('#new-service-or-task').attr('title', function() {
+                        $('#new-service-or-task').attr('title', function () {
                             if (tab === 'Controller Services') {
                                 return 'Create a new controller service';
                             } else if (tab === 'Reporting Tasks') {
                                 return 'Create a new reporting task';
                             }
                         });
-                        
+
                         // resize the table
                         nf.Settings.resetTableSize();
                     }
                 }
             });
-            
+
             // setup the tooltip for the refresh icon
             $('#settings-refresh-required-icon').qtip($.extend({
                 content: 'This flow has been modified by another user. Please refresh.'
             }, nf.CanvasUtils.config.systemTooltipConfig));
-            
+
             // refresh the system diagnostics when clicked
             nf.Common.addHoverEffect('#settings-refresh-button', 'button-refresh', 'button-refresh-hover').click(function () {
                 if ($('#settings-refresh-required-icon').is(':visible')) {
@@ -1528,23 +1531,34 @@ nf.Settings = (function () {
                     nf.Settings.loadSettings();
                 }
             });
-            
+
             // create a new controller service or reporting task
-            $('#new-service-or-task').on('click', function() {
+            $('#new-service-or-task').on('click', function () {
                 var selectedTab = $('li.settings-selected-tab').text();
                 if (selectedTab === 'Controller Services') {
                     $('#new-controller-service-dialog').modal('show');
+                    
+                    // reset the canvas size after the dialog is shown
+                    var controllerServiceTypesGrid = $('#controller-service-types-table').data('gridInstance');
+                    if (nf.Common.isDefinedAndNotNull(controllerServiceTypesGrid)) {
+                        controllerServiceTypesGrid.resizeCanvas();
+                    }
                 } else if (selectedTab === 'Reporting Tasks') {
                     $('#new-reporting-task-dialog').modal('show');
+                    
+                    // reset the canvas size after the dialog is shown
+                    var reportingTaskTypesGrid = $('#reporting-task-types-table').data('gridInstance');
+                    if (nf.Common.isDefinedAndNotNull(reportingTaskTypesGrid)) {
+                        reportingTaskTypesGrid.resizeCanvas();
+                    }
                 }
             });
-            
+
             // initialize each tab
             initGeneral();
             initControllerServices();
             initReportingTasks();
         },
-        
         /**
          * Update the size of the grid based on its container's current size.
          */
@@ -1559,7 +1573,6 @@ nf.Settings = (function () {
                 reportingTasksGrid.resizeCanvas();
             }
         },
-        
         /**
          * Shows the settings dialog.
          */
@@ -1572,7 +1585,6 @@ nf.Settings = (function () {
                 });
             });
         },
-        
         /**
          * Loads the settings.
          */
@@ -1602,13 +1614,13 @@ nf.Settings = (function () {
                     }
                 }
             });
-            
+
             // load the controller services
             var controllerServices = loadControllerServices();
-            
+
             // load the reporting tasks
             var reportingTasks = loadReportingTasks();
-            
+
             // return a deferred for all parts of the settings
             return $.when(settings, controllerServices, reportingTasks).fail(nf.Common.handleAjaxError);
         }
