@@ -41,7 +41,9 @@ import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.CompletionService;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -66,6 +68,7 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.admin.service.AuditService;
+import org.apache.nifi.annotation.lifecycle.OnAdded;
 import org.apache.nifi.annotation.lifecycle.OnRemoved;
 import org.apache.nifi.cluster.BulletinsPayload;
 import org.apache.nifi.cluster.HeartbeatPayload;
@@ -126,8 +129,10 @@ import org.apache.nifi.controller.Heartbeater;
 import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.StandardFlowSerializer;
 import org.apache.nifi.controller.ValidationContextFactory;
+import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
 import org.apache.nifi.controller.reporting.ClusteredReportingTaskNode;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
+import org.apache.nifi.controller.reporting.ReportingTaskProvider;
 import org.apache.nifi.controller.reporting.StandardReportingInitializationContext;
 import org.apache.nifi.controller.scheduling.QuartzSchedulingAgent;
 import org.apache.nifi.controller.scheduling.StandardProcessScheduler;
@@ -233,7 +238,7 @@ import com.sun.jersey.api.client.ClientResponse;
  *
  * @author unattributed
  */
-public class WebClusterManager implements HttpClusterManager, ProtocolHandler, ControllerServiceProvider {
+public class WebClusterManager implements HttpClusterManager, ProtocolHandler, ControllerServiceProvider, ReportingTaskProvider {
 
     public static final String ROOT_GROUP_ID_ALIAS = "root";
     public static final String BULLETIN_CATEGORY = "Clustering";
@@ -315,7 +320,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     private final ClusterManagerLock writeLock = new ClusterManagerLock(resourceRWLock.writeLock(), "Write");
 
     private final Set<Node> nodes = new HashSet<>();
-    private final Map<String, ReportingTaskNode> reportingTasks = new HashMap<>();
+    private final ConcurrentMap<String, ReportingTaskNode> reportingTasks = new ConcurrentHashMap<>();
 
     // null means the dataflow should be read from disk
     private StandardDataFlow cachedDataFlow = null;
@@ -471,7 +476,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                 // Load and start running Reporting Tasks
                 final byte[] serializedReportingTasks = clusterDataFlow.getReportingTasks();
                 if ( serializedReportingTasks != null && serializedReportingTasks.length > 0 ) {
-                	reportingTasks.putAll(loadReportingTasks(serializedReportingTasks));
+                	loadReportingTasks(serializedReportingTasks);
                 }
             } catch (final IOException ioe) {
                 logger.warn("Failed to initialize cluster services due to: " + ioe, ioe);
@@ -931,7 +936,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
                 //set the class to be used for the configured reporting task
                 final ReportingTaskNode reportingTaskNode;
                 try {
-                    reportingTaskNode = createReportingTask(taskClass, taskId);
+                    reportingTaskNode = createReportingTask(taskClass, taskId, false);
                 } catch (final ReportingTaskInstantiationException e) {
                     logger.error("Unable to load reporting task {} due to {}", new Object[]{taskId, e});
                     if (logger.isDebugEnabled()) {
@@ -973,7 +978,9 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         return tasks;
     }
 
-    private ReportingTaskNode createReportingTask(final String type, final String id) throws ReportingTaskInstantiationException {
+    
+    @Override
+    public ReportingTaskNode createReportingTask(final String type, final String id, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
         if (type == null) {
             throw new NullPointerException();
         }
@@ -1003,6 +1010,16 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
         final ValidationContextFactory validationContextFactory = new StandardValidationContextFactory(this);
         final ReportingTaskNode taskNode = new ClusteredReportingTaskNode(task, id, processScheduler,
                 new ClusteredEventAccess(this), bulletinRepository, controllerServiceProvider, validationContextFactory);
+        
+        reportingTasks.put(id, taskNode);
+        if ( firstTimeAdded ) {
+            try (final NarCloseable x = NarCloseable.withNarLoader()) {
+                ReflectionUtils.invokeMethodsWithAnnotation(OnAdded.class, task);
+            } catch (final Exception e) {
+                throw new ProcessorLifeCycleException("Failed to invoke On-Added Lifecycle methods of " + task, e);
+            }
+        }
+        
         return taskNode;
     }
 
