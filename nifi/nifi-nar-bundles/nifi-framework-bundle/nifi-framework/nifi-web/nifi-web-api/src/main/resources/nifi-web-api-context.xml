@@ -24,7 +24,11 @@
     http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd">
 
-    <bean id="controllerServiceProvider" class="org.apache.nifi.web.spring.ControllerServiceProviderFactoryBean" depends-on="clusterManagerOptimisticLockingManager">
+    <!-- controller service / reporting task -->
+    <bean id="controllerServiceProvider" class="org.apache.nifi.web.spring.ControllerServiceProviderFactoryBean" depends-on="clusterManager flowController">
+        <property name="properties" ref="nifiProperties"/>
+    </bean>
+    <bean id="reportingTaskProvider" class="org.apache.nifi.web.spring.ReportingTaskProviderFactoryBean" depends-on="clusterManager flowController">
         <property name="properties" ref="nifiProperties"/>
     </bean>
     
@@ -73,7 +77,7 @@
         <property name="serviceProvider" ref="controllerServiceProvider"/>
     </bean>
     <bean id="reportingTaskDAO" class="org.apache.nifi.web.dao.impl.StandardReportingTaskDAO">
-        <property name="flowController" ref="flowController"/>
+        <property name="reportingTaskProvider" ref="reportingTaskProvider"/>
     </bean>
     <bean id="templateDAO" class="org.apache.nifi.web.dao.impl.StandardTemplateDAO">
         <property name="flowController" ref="flowController"/>
