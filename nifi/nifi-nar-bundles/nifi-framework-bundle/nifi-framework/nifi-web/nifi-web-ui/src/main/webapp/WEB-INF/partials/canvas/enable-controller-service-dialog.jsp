@@ -18,23 +18,27 @@
 <div id="enable-controller-service-dialog">
     <div class="dialog-content">
         <div class="settings-left">
-            <div class="setting">
+            <div id="enable-controller-service-service-container" class="setting">
                 <div class="setting-name">Service</div>
                 <div class="setting-field">
                     <span id="enable-controller-service-id" class="hidden"></span>
                     <span id="enable-controller-service-name"></span>
                 </div>
             </div>
-            <div class="setting">
+            <div id="enable-controller-service-scope-container" class="setting">
                 <div class="setting-name">Scope</div>
                 <div class="setting-field">
                     <div id="enable-controller-service-scope"></div>
                 </div>
             </div>
-            <div id="enable-progress-container" class="setting hidden">
+            <div id="enable-controller-service-progress-container" class="setting hidden">
                 <div class="setting-name">Progress</div>
                 <div class="setting-field">
-                    <div id="enable-progress"></div>
+                    <ol id="enable-controller-service-progress">
+                        <li>Enabling this controller service<div id="enable-referencing-schedulable" class="enable-referencing-components"></div></li>
+                        <li>Enabling referencing controller services<div id="enable-referencing-schedulable" class="enable-referencing-components"></div></li>
+                        <li>Starting referencing processors and reporting tasks<div id="enable-referencing-schedulable" class="enable-referencing-components"></div></li>
+                    </ol>
                 </div>
             </div>
         </div>

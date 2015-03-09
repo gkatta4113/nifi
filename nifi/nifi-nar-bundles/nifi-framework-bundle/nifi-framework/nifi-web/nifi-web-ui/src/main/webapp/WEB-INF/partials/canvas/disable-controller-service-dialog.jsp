@@ -18,24 +18,28 @@
 <div id="disable-controller-service-dialog">
     <div class="dialog-content">
         <div class="settings-left">
-            <div class="setting">
+            <div id="disable-controller-service-service-container" class="setting">
                 <div class="setting-name">Service</div>
                 <div class="setting-field">
                     <span id="disable-controller-service-id" class="hidden"></span>
                     <span id="disable-controller-service-name"></span>
                 </div>
             </div>
-            <div class="setting">
+            <div id="disable-controller-service-scope-container" class="setting">
                 <div class="setting-name">Scope</div>
                 <div class="setting-field">
                     Service and referencing components
                     <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Referencing components must disabled/stopped in order to disable this service."/>
                 </div>
             </div>
-            <div id="disable-progress-container" class="setting hidden">
+            <div id="disable-controller-service-progress-container" class="setting hidden">
                 <div class="setting-name">Progress</div>
                 <div class="setting-field">
-                    <div id="disable-progress"></div>
+                    <ol id="disable-controller-service-progress">
+                        <li>Stopping referencing processors and reporting tasks<div id="disable-referencing-schedulable" class="disable-referencing-components"></div></li>
+                        <li>Disabling referencing controller services<div id="disable-referencing-services" class="disable-referencing-components"></div></li>
+                        <li>Disabling this controller service<div id="disable-controller-service" class="disable-referencing-components"></div></li>
+                    </ol>
                 </div>
             </div>
         </div>

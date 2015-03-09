@@ -627,6 +627,109 @@ nf.ControllerService = (function () {
         updateReferencingComponentsBorder(referencingComponentsContainer);
     };
     
+    /**
+     * Used to handle closing a modal dialog
+     */
+    var closeModal = function() {
+        $(this).modal('hide');
+    };
+    
+    /**
+     * Handles the disable action of the disable controller service dialog.
+     */
+    var disableHandler = function() {
+        var disableDialog = $(this);
+                            
+        // only provide a close option
+        disableDialog.modal('setButtonModel', [{
+            buttonText: 'Close',
+            handler: {
+                click: closeModal
+            }
+        }]).modal('setHeaderText', 'Disabling Controller Service');
+
+        // show the progress
+        $('#disable-controller-service-service-container').hide();
+        $('#disable-controller-service-scope-container').hide();
+        $('#disable-controller-service-progress-container').show();
+
+        // get the controller service
+        var controllerServiceId = $('#disable-controller-service-id').text();
+        var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+        var controllerServiceData = controllerServiceGrid.getData();
+        var controllerService = controllerServiceData.getItemById(controllerServiceId);
+
+        // stop all referencing schedulable components
+        var stopped = updateReferencingSchedulableComponents(controllerService, false);
+
+        // once everything has stopped
+        stopped.done(function () {
+            // disable all referencing services
+            var disabled = updateReferencingServices(controllerService, false);
+
+            // everything is disabled
+            disabled.done(function () {
+                // disalbe this service
+                setEnabled(controllerService, false).done(function () {
+                    $('#disabling-controller-service-spinner').removeClass('ajax-loading');
+                });
+            });
+        });
+    };
+    
+    /**
+     * Handles the enable action of the enable controller service dialog.
+     */
+    var enableHandler = function() {
+        var enableDialog = $(this);
+                            
+        // only provide a close option
+        enableDialog.modal('setButtonModel', [{
+            buttonText: 'Close',
+            handler: {
+                click: function () {
+                    enableDialog.modal('hide');
+                }
+            }
+        }]);
+
+        // show the progress
+        $('#enable-controller-service-service-container').hide();
+        $('#enable-controller-service-scope-container').hide();
+        $('#enable-controller-service-progress-container').show();
+
+        // get the controller service
+        var controllerServiceId = $('#enable-controller-service-id').text();
+        var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+        var controllerServiceData = controllerServiceGrid.getData();
+        var controllerService = controllerServiceData.getItemById(controllerServiceId);
+
+        // enable this controller service
+        var enabled = setEnabled(controllerService, true);
+
+        // determine if we want to also activate referencing components
+        var scope = $('#enable-controller-service-scope').combo('getSelectedOption').value;
+        if (scope === config.serviceAndReferencingComponents) {
+            // once the service is enabled, activate all referencing components
+            enabled.done(function() {
+                // enable the referencing services
+                var servicesEnabled = updateReferencingServices(controllerService, true);
+
+                // once all the referencing services are enbled
+                servicesEnabled.done(function () {
+                    // start all referencing schedulable components
+                    updateReferencingSchedulableComponents(controllerService, true).done(function() {
+                        $('#enabling-controller-service-spinner').removeClass('ajax-loading');
+                    });
+                });
+            });
+        } else {
+            enabled.done(function() {
+                $('#enabling-controller-service-spinner').removeClass('ajax-loading');
+            });
+        }
+    };
+    
     return {
         /**
          * Initializes the controller service configuration dialog.
@@ -705,63 +808,47 @@ nf.ControllerService = (function () {
                 buttons: [{
                     buttonText: 'Disable',
                     handler: {
-                        click: function () {
-                            var disableDialog = $(this);
-                            
-                            // only provide a close option
-                            disableDialog.modal('setButtonModel', [{
-                                buttonText: 'Close',
-                                handler: {
-                                    click: function () {
-                                        disableDialog.modal('hide');
-                                    }
-                                }
-                            }]);
-                        
-                            // show the progress
-                            
-                            // get the controller service
-                            var controllerServiceId = $('#disable-controller-service-id').text();
-                            var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
-                            var controllerServiceData = controllerServiceGrid.getData();
-                            var controllerService = controllerServiceData.getItemById(controllerServiceId);
-                            
-                            // stop all referencing schedulable components
-                            var stopped = updateReferencingSchedulableComponents(controllerService, false);
-                            
-                            // once everything has stopped
-                            stopped.done(function () {
-                                // disable all referencing services
-                                var disabled = updateReferencingServices(controllerService, false);
-                                
-                                // everything is disabled
-                                disabled.done(function () {
-                                    // disalbe this service
-                                    setEnabled(controllerService, false).done(function () {
-                                        
-                                    });
-                                });
-                            });
-                        }
+                        click: disableHandler
                     }
                 }, {
                     buttonText: 'Cancel',
                     handler: {
-                        click: function () {
-                            $(this).modal('hide');
-                        }
+                        click: closeModal
                     }
                 }],
                 handler: {
                     close: function() {
+                        var disableDialog = $(this);
+                        
+                        // reset visibility
+                        $('#disable-controller-service-service-container').show();
+                        $('#disable-controller-service-scope-container').show();
+                        $('#disable-controller-service-progress-container').hide();
+                        
                         // clear the dialog
                         $('#disable-controller-service-id').text('');
                         $('#disable-controller-service-name').text('');
+                        
+                        // reset progress
+                        $('#disabling-controller-service-spinner').addClass('ajax-loading');
                         
                         // referencing components
                         var referencingComponents = $('#disable-controller-service-referencing-components');
                         nf.Common.cleanUpTooltips(referencingComponents, 'div.referencing-component-state');
                         referencingComponents.css('border-width', '0').empty();
+                        
+                        // reset dialog
+                        disableDialog.modal('setButtonModel', [{
+                            buttonText: 'Disable',
+                            handler: {
+                                click: disableHandler
+                            }
+                        }, {
+                            buttonText: 'Cancel',
+                            handler: {
+                                click: closeModal
+                            }
+                        }]).modal('setHeaderText', 'Disable Controller Service');
                     }
                 }
             }).draggable({
@@ -789,67 +876,47 @@ nf.ControllerService = (function () {
                 buttons: [{
                     buttonText: 'Enable',
                     handler: {
-                        click: function () {
-                            var enableDialog = $(this);
-                            
-                            // only provide a close option
-                            enableDialog.modal('setButtonModel', [{
-                                buttonText: 'Close',
-                                handler: {
-                                    click: function () {
-                                        enableDialog.modal('hide');
-                                    }
-                                }
-                            }]);
-                        
-                            // show the progress
-                            
-                            // get the controller service
-                            var controllerServiceId = $('#enable-controller-service-id').text();
-                            var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
-                            var controllerServiceData = controllerServiceGrid.getData();
-                            var controllerService = controllerServiceData.getItemById(controllerServiceId);
-                            
-                            // enable this controller service
-                            var enabled = setEnabled(controllerService, true);
-                            
-                            // determine if we want to also activate referencing components
-                            var scope = $('#enable-controller-service-scope').combo('getSelectedOption').value;
-                            if (scope === config.serviceAndReferencingComponents) {
-                                // once the service is enabled, activate all referencing components
-                                enabled.done(function() {
-                                    // enable the referencing services
-                                    var servicesEnabled = updateReferencingServices(controllerService, true);
-                                    
-                                    // once all the referencing services are enbled
-                                    servicesEnabled.done(function () {
-                                        // start all referencing schedulable components
-                                        updateReferencingSchedulableComponents(controllerService, true).done(function() {
-                                            
-                                        });
-                                    });
-                                });
-                            }
-                        }
+                        click: enableHandler
                     }
                 }, {
                     buttonText: 'Cancel',
                     handler: {
-                        click: function () {
-                            $(this).modal('hide');
-                        }
+                        click: closeModal
                     }
                 }],
                 handler: {
                     close: function() {
+                        var enableDialog = $(this);
+                        
+                        // reset visibility
+                        $('#enable-controller-service-service-container').show();
+                        $('#enable-controller-service-scope-container').show();
+                        $('#enable-controller-service-progress-container').hide();
+                        
                         // clear the dialog
                         $('#enable-controller-service-id').text('');
                         $('#enable-controller-service-name').text('');
+                        
+                        // reset progress
+                        $('#enabling-controller-service-spinner').addClass('ajax-loading');
                         
                         // referencing components
                         var referencingComponents = $('#enable-controller-service-referencing-components');
                         nf.Common.cleanUpTooltips(referencingComponents, 'div.referencing-component-state');
                         referencingComponents.css('border-width', '0').empty();
+                        
+                        // reset dialog
+                        enableDialog.modal('setButtonModel', [{
+                            buttonText: 'Disable',
+                            handler: {
+                                click: enableHandler
+                            }
+                        }, {
+                            buttonText: 'Cancel',
+                            handler: {
+                                click: closeModal
+                            }
+                        }]).modal('setHeaderText', 'Enable Controller Service');
                     }
                 }
             }).draggable({

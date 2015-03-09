@@ -249,3 +249,20 @@ div.referencing-component-references {
     overflow: auto;
     white-space: nowrap;
 }
+
+/* enable, disable progress */
+
+div.disable-referencing-components {
+    width: 16px;
+    height: 16px;
+    background-color: transparent;
+    float: right;
+}
+
+#enable-controller-service-progress, #disable-controller-service-progress {
+    margin-top: 2px;
+}
+
+#enable-controller-service-progress li, #disable-controller-service-progress li {
+    line-height: 16px;
+}
