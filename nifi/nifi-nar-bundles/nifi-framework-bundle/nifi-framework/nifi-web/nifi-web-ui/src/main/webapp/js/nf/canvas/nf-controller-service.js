@@ -706,9 +706,22 @@ nf.ControllerService = (function () {
                     buttonText: 'Disable',
                     handler: {
                         click: function () {
-                            var controllerServiceId = $('#disable-controller-service-id').text();
+                            var disableDialog = $(this);
+                            
+                            // only provide a close option
+                            disableDialog.modal('setButtonModel', [{
+                                buttonText: 'Close',
+                                handler: {
+                                    click: function () {
+                                        disableDialog.modal('hide');
+                                    }
+                                }
+                            }]);
+                        
+                            // show the progress
                             
                             // get the controller service
+                            var controllerServiceId = $('#disable-controller-service-id').text();
                             var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
                             var controllerServiceData = controllerServiceGrid.getData();
                             var controllerService = controllerServiceData.getItemById(controllerServiceId);
@@ -725,8 +738,7 @@ nf.ControllerService = (function () {
                                 disabled.done(function () {
                                     // disalbe this service
                                     setEnabled(controllerService, false).done(function () {
-                                        // close the dialog
-                                        $('#disable-controller-service-dialog').modal('hide');
+                                        
                                     });
                                 });
                             });
@@ -778,9 +790,22 @@ nf.ControllerService = (function () {
                     buttonText: 'Enable',
                     handler: {
                         click: function () {
-                            var controllerServiceId = $('#enable-controller-service-id').text();
+                            var enableDialog = $(this);
+                            
+                            // only provide a close option
+                            enableDialog.modal('setButtonModel', [{
+                                buttonText: 'Close',
+                                handler: {
+                                    click: function () {
+                                        enableDialog.modal('hide');
+                                    }
+                                }
+                            }]);
+                        
+                            // show the progress
                             
                             // get the controller service
+                            var controllerServiceId = $('#enable-controller-service-id').text();
                             var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
                             var controllerServiceData = controllerServiceGrid.getData();
                             var controllerService = controllerServiceData.getItemById(controllerServiceId);
@@ -800,14 +825,11 @@ nf.ControllerService = (function () {
                                     servicesEnabled.done(function () {
                                         // start all referencing schedulable components
                                         updateReferencingSchedulableComponents(controllerService, true).done(function() {
-                                            // hide the dialog now?
+                                            
                                         });
                                     });
                                 });
                             }
-                            
-                            // hide the dialog immediately as there's nothing to show
-                            $(this).modal('hide');
                         }
                     }
                 }, {
