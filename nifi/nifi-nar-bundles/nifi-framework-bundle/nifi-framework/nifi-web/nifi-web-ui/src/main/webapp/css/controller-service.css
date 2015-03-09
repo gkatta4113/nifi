@@ -178,16 +178,31 @@ div.referencing-component-references {
 #disable-controller-service-dialog {
     z-index: 1301;
     display: none;
-    width: 500px;
+    width: 800px;
     height: 450px;
     line-height: normal;
+}
+
+#disable-controller-service-dialog div.settings-left {
+    float: left;
+    width: 300px;
+}
+
+#disable-controller-service-dialog div.settings-right {
+    float: left;
+    width: 435px;
+}
+
+#disable-controller-service-dialog div.spacer {
+    float: left;
+    margin-right: 40px;
 }
 
 #disable-controller-service-referencing-components {
     border: 0 solid #CCCCCC;
     padding: 2px;
-    width: 474px;
-    height: 290px;
+    width: 432px;
+    height: 335px;
     overflow: auto;
     white-space: nowrap;
 }
@@ -199,9 +214,24 @@ div.referencing-component-references {
 #enable-controller-service-dialog {
     z-index: 1301;
     display: none;
-    width: 500px;
+    width: 800px;
     height: 450px;
     line-height: normal;
+}
+
+#enable-controller-service-dialog div.settings-left {
+    float: left;
+    width: 300px;
+}
+
+#enable-controller-service-dialog div.settings-right {
+    float: left;
+    width: 435px;
+}
+
+#enable-controller-service-dialog div.spacer {
+    float: left;
+    margin-right: 40px;
 }
 
 #enable-controller-service-scope {
@@ -214,8 +244,8 @@ div.referencing-component-references {
 #enable-controller-service-referencing-components {
     border: 0 solid #CCCCCC;
     padding: 2px;
-    width: 474px;
-    height: 290px;
+    width: 432px;
+    height: 335px;
     overflow: auto;
     white-space: nowrap;
 }

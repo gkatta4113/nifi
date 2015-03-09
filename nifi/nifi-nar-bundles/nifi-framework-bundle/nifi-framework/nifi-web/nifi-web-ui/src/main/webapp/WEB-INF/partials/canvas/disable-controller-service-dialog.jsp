@@ -17,24 +17,35 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" session="false" %>
 <div id="disable-controller-service-dialog">
     <div class="dialog-content">
-        <div class="setting">
-            <div class="setting-name">Service</div>
-            <div class="setting-field">
-                <span id="disable-controller-service-id" class="hidden"></span>
-                <span id="disable-controller-service-name"></span>
+        <div class="settings-left">
+            <div class="setting">
+                <div class="setting-name">Service</div>
+                <div class="setting-field">
+                    <span id="disable-controller-service-id" class="hidden"></span>
+                    <span id="disable-controller-service-name"></span>
+                </div>
+            </div>
+            <div class="setting">
+                <div class="setting-name">Scope</div>
+                <div class="setting-field">
+                    Service and referencing components
+                    <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Referencing components must disabled/stopped in order to disable this service."/>
+                </div>
+            </div>
+            <div id="disable-progress-container" class="setting hidden">
+                <div class="setting-name">Progress</div>
+                <div class="setting-field">
+                    <div id="disable-progress"></div>
+                </div>
             </div>
         </div>
-        <div class="setting">
-            <div class="setting-name">Scope</div>
-            <div class="setting-field">
-                Service and referencing components
-                <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Referencing components must disabled/stopped in order to disable this service."/>
-            </div>
-        </div>
-        <div class="setting">
-            <div class="setting-name">Referencing Components</div>
-            <div class="setting-field">
-                <div id="disable-controller-service-referencing-components"></div>
+        <div class="spacer">&nbsp;</div>
+        <div class="settings-right">
+            <div class="setting">
+                <div class="setting-name">Referencing Components</div>
+                <div class="setting-field">
+                    <div id="disable-controller-service-referencing-components"></div>
+                </div>
             </div>
         </div>
     </div>

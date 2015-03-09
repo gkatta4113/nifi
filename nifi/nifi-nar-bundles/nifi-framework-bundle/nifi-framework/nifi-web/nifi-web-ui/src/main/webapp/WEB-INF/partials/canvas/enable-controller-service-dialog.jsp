@@ -17,23 +17,34 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" session="false" %>
 <div id="enable-controller-service-dialog">
     <div class="dialog-content">
-        <div class="setting">
-            <div class="setting-name">Service</div>
-            <div class="setting-field">
-                <span id="enable-controller-service-id" class="hidden"></span>
-                <span id="enable-controller-service-name"></span>
+        <div class="settings-left">
+            <div class="setting">
+                <div class="setting-name">Service</div>
+                <div class="setting-field">
+                    <span id="enable-controller-service-id" class="hidden"></span>
+                    <span id="enable-controller-service-name"></span>
+                </div>
+            </div>
+            <div class="setting">
+                <div class="setting-name">Scope</div>
+                <div class="setting-field">
+                    <div id="enable-controller-service-scope"></div>
+                </div>
+            </div>
+            <div id="enable-progress-container" class="setting hidden">
+                <div class="setting-name">Progress</div>
+                <div class="setting-field">
+                    <div id="enable-progress"></div>
+                </div>
             </div>
         </div>
-        <div class="setting">
-            <div class="setting-name">Scope</div>
-            <div class="setting-field">
-                <div id="enable-controller-service-scope"></div>
-            </div>
-        </div>
-        <div class="setting">
-            <div class="setting-name">Referencing Components</div>
-            <div class="setting-field">
-                <div id="enable-controller-service-referencing-components"></div>
+        <div class="spacer">&nbsp;</div>
+        <div class="settings-right">
+            <div class="setting">
+                <div class="setting-name">Referencing Components</div>
+                <div class="setting-field">
+                    <div id="enable-controller-service-referencing-components"></div>
+                </div>
             </div>
         </div>
     </div>

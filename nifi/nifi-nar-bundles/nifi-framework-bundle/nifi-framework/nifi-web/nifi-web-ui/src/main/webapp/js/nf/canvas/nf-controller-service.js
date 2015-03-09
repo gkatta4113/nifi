@@ -246,9 +246,17 @@ nf.ControllerService = (function () {
                 
                 // state
                 var processorState = $('<div class="referencing-component-state"></div>').addClass(function() {
+                    var icon = $(this);
+                    
                     var state = referencingComponent.state.toLowerCase();
                     if (state === 'stopped' && !nf.Common.isEmpty(referencingComponent.validationErrors)) {
                         state = 'invalid';
+                        
+                        // add tooltip for the warnings
+                        var list = nf.Common.formatUnorderedList(referencingComponent.validationErrors);
+                        icon.qtip($.extend({
+                            content: list
+                        }, nf.CanvasUtils.config.systemTooltipConfig));
                     }
                     return state;
                 }).addClass(referencingComponent.id + '-state');
@@ -295,9 +303,17 @@ nf.ControllerService = (function () {
                 
                 // state
                 var serviceState = $('<div class="referencing-component-state"></div>').addClass(function() {
+                    var icon = $(this);
+                    
                     var state = referencingComponent.state === 'ENABLED' ? 'enabled' : 'disabled';
                     if (state === 'disabled' && !nf.Common.isEmpty(referencingComponent.validationErrors)) {
                         state = 'invalid';
+                        
+                        // add tooltip for the warnings
+                        var list = nf.Common.formatUnorderedList(referencingComponent.validationErrors);
+                        icon.qtip($.extend({
+                            content: list
+                        }, nf.CanvasUtils.config.systemTooltipConfig));
                     }
                     return state;
                 }).addClass(referencingComponent.id + '-state');
@@ -657,8 +673,10 @@ nf.ControllerService = (function () {
                 handler: {
                     close: function () {
                         // empty the referencing components list
-                        $('#controller-service-referencing-components').css('border-width', '0').empty();
-
+                        var referencingComponents = $('#controller-service-referencing-components');
+                        nf.Common.cleanUpTooltips(referencingComponents, 'div.referencing-component-state');
+                        referencingComponents.css('border-width', '0').empty();
+                        
                         // cancel any active edits
                         $('#controller-service-properties').propertytable('cancelEdit');
 
@@ -727,7 +745,11 @@ nf.ControllerService = (function () {
                         // clear the dialog
                         $('#disable-controller-service-id').text('');
                         $('#disable-controller-service-name').text('');
-                        $('#disable-controller-service-referencing-components').css('border-width', '0').empty();
+                        
+                        // referencing components
+                        var referencingComponents = $('#disable-controller-service-referencing-components');
+                        nf.Common.cleanUpTooltips(referencingComponents, 'div.referencing-component-state');
+                        referencingComponents.css('border-width', '0').empty();
                     }
                 }
             }).draggable({
@@ -801,7 +823,11 @@ nf.ControllerService = (function () {
                         // clear the dialog
                         $('#enable-controller-service-id').text('');
                         $('#enable-controller-service-name').text('');
-                        $('#enable-controller-service-referencing-components').css('border-width', '0').empty();
+                        
+                        // referencing components
+                        var referencingComponents = $('#enable-controller-service-referencing-components');
+                        nf.Common.cleanUpTooltips(referencingComponents, 'div.referencing-component-state');
+                        referencingComponents.css('border-width', '0').empty();
                     }
                 }
             }).draggable({
