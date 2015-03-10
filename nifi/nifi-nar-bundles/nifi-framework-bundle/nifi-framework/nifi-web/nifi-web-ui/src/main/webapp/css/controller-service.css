@@ -252,7 +252,7 @@ div.referencing-component-references {
 
 /* enable, disable progress */
 
-div.disable-referencing-components {
+div.disable-referencing-components, div.enable-referencing-components {
     width: 16px;
     height: 16px;
     background-color: transparent;

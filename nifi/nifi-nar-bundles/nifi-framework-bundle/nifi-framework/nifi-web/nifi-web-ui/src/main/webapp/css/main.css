@@ -189,6 +189,15 @@ div.ajax-loading {
     background-image: url(../images/iconLoading.gif);
 }
 
+div.ajax-complete {
+    background-image: url(../images/iconCommit.png);
+}
+
+div.ajax-error {
+    /*margin-left: -2px;*/
+    background-image: url(../images/iconDelete.png);
+}
+
 div.button-refresh {
     background: transparent url(../images/buttonRefresh.png) no-repeat scroll top left;
 }

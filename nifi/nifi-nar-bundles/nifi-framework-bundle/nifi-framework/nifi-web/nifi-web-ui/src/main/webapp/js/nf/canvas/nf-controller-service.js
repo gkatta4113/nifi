@@ -202,6 +202,62 @@ nf.ControllerService = (function () {
     };
     
     /**
+     * Updates the referencingComponentState using the specified referencingComponent.
+     * 
+     * @param {jQuery} referencingComponentState
+     * @param {object} referencingComponent
+     */
+    var updateReferencingSchedulableComponentState = function (referencingComponentState, referencingComponent) {
+        referencingComponentState.removeClass('disabled stopped running invalid').addClass(function() {
+            var icon = $(this);
+
+            var state = referencingComponent.state.toLowerCase();
+            if (state === 'stopped' && !nf.Common.isEmpty(referencingComponent.validationErrors)) {
+                state = 'invalid';
+
+                // add tooltip for the warnings
+                var list = nf.Common.formatUnorderedList(referencingComponent.validationErrors);
+                if (icon.data('qtip')) {
+                    icon.qtip('option', 'content.text', list);
+                } else {
+                    icon.qtip($.extend({
+                        content: list
+                    }, nf.CanvasUtils.config.systemTooltipConfig));
+                }
+            }
+            return state;
+        });
+    };
+    
+    /**
+     * Updates the referencingServiceState using the specified referencingService.
+     * 
+     * @param {jQuery} referencingServiceState
+     * @param {object} referencingService
+     */
+    var updateReferencingServiceState = function (referencingServiceState, referencingService) {
+        referencingServiceState.removeClass('disabled enabled invalid').addClass(function() {
+            var icon = $(this);
+
+            var state = referencingService.state === 'ENABLED' ? 'enabled' : 'disabled';
+            if (state === 'disabled' && !nf.Common.isEmpty(referencingService.validationErrors)) {
+                state = 'invalid';
+
+                // add tooltip for the warnings
+                var list = nf.Common.formatUnorderedList(referencingService.validationErrors);
+                if (icon.data('qtip')) {
+                    icon.qtip('option', 'content.text', list);
+                } else {
+                    icon.qtip($.extend({
+                        content: list
+                    }, nf.CanvasUtils.config.systemTooltipConfig));
+                }
+            }
+            return state;
+        });
+    };
+    
+    /**
      * Adds the specified reference for this controller service.
      * 
      * @argument {jQuery} referenceContainer 
@@ -245,21 +301,8 @@ nf.ControllerService = (function () {
                 }
                 
                 // state
-                var processorState = $('<div class="referencing-component-state"></div>').addClass(function() {
-                    var icon = $(this);
-                    
-                    var state = referencingComponent.state.toLowerCase();
-                    if (state === 'stopped' && !nf.Common.isEmpty(referencingComponent.validationErrors)) {
-                        state = 'invalid';
-                        
-                        // add tooltip for the warnings
-                        var list = nf.Common.formatUnorderedList(referencingComponent.validationErrors);
-                        icon.qtip($.extend({
-                            content: list
-                        }, nf.CanvasUtils.config.systemTooltipConfig));
-                    }
-                    return state;
-                }).addClass(referencingComponent.id + '-state');
+                var processorState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.id + '-state');
+                updateReferencingSchedulableComponentState(processorState, referencingComponent);
                 
                 // type
                 var processorType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
@@ -302,21 +345,8 @@ nf.ControllerService = (function () {
                 });
                 
                 // state
-                var serviceState = $('<div class="referencing-component-state"></div>').addClass(function() {
-                    var icon = $(this);
-                    
-                    var state = referencingComponent.state === 'ENABLED' ? 'enabled' : 'disabled';
-                    if (state === 'disabled' && !nf.Common.isEmpty(referencingComponent.validationErrors)) {
-                        state = 'invalid';
-                        
-                        // add tooltip for the warnings
-                        var list = nf.Common.formatUnorderedList(referencingComponent.validationErrors);
-                        icon.qtip($.extend({
-                            content: list
-                        }, nf.CanvasUtils.config.systemTooltipConfig));
-                    }
-                    return state;
-                }).addClass(referencingComponent.id + '-state');
+                var serviceState = $('<div class="referencing-component-state"></div>').addClass(referencingComponent.id + '-state');
+                updateReferencingServiceState(serviceState, referencingComponent);
                 
                 // type
                 var serviceType = $('<span class="referencing-component-type"></span>').text(nf.Common.substringAfterLast(referencingComponent.type, '.'));
@@ -370,10 +400,12 @@ nf.ControllerService = (function () {
      * 
      * @param {object} controllerService
      * @param {boolean} enabled
+     * @param {function} pollCondition
      */
-    var setEnabled = function (controllerService, enabled) {
+    var setEnabled = function (controllerService, enabled, pollCondition) {
         var revision = nf.Client.getRevision();
-        return $.ajax({
+        
+        var updated = $.ajax({
             type: 'PUT',
             url: controllerService.uri,
             data: {
@@ -389,6 +421,27 @@ nf.ControllerService = (function () {
             // update the service
             renderControllerService(response.controllerService);
         }).fail(nf.Common.handleAjaxError);
+        
+        // wait unil the polling of each service finished
+        return $.Deferred(function(deferred) {
+            updated.done(function() {
+                var updateService = pollReferencingComponents(controllerService, function (service) {
+                    if (enabled) {
+                        return service.state === 'ENABLED';
+                    } else {
+                        return service.state === 'DISABLED';
+                    }
+                }, pollCondition);
+
+                updateService.done(function () {
+                    deferred.resolve();
+                }).fail(function() {
+                    deferred.reject();
+                });
+            }).fail(function() {
+                deferred.reject();
+            });
+        }).promise();
     };
     
     /**
@@ -425,9 +478,9 @@ nf.ControllerService = (function () {
      * 
      * @param {type} controllerService
      * @param {type} running
-     * @returns {unresolved}
+     * @param {type} pollCondition
      */
-    var updateReferencingSchedulableComponents = function (controllerService, running) {
+    var updateReferencingSchedulableComponents = function (controllerService, running, pollCondition) {
         var revision = nf.Client.getRevision();
         
         // issue the request to update the referencing components
@@ -468,7 +521,7 @@ nf.ControllerService = (function () {
                 var polling = [];
                 services.forEach(function(controllerServiceId) {
                     var controllerService = controllerServiceData.getItemById(controllerServiceId);
-                    polling.push(pollStoppedReferencingSchedulableComponents(controllerService));
+                    polling.push(stopReferencingSchedulableComponents(controllerService, pollCondition));
                 });
 
                 $.when.apply(window, polling).done(function () {
@@ -487,9 +540,10 @@ nf.ControllerService = (function () {
      * specified condition is satisfied.
      * 
      * @param {object} controllerService
-     * @param {function} condition
+     * @param {function} completeCondition
+     * @param {function} pollCondition
      */
-    var pollReferencingComponents = function (controllerService, condition) {
+    var pollReferencingComponents = function (controllerService, completeCondition, pollCondition) {
         // we want to keep polling until the condition is met
         return $.Deferred(function(deferred) {
             var current = 1;
@@ -506,13 +560,17 @@ nf.ControllerService = (function () {
             var poll = function() {
                 $.ajax({
                     type: 'GET',
-                    url: controllerService.uri + '/references',
+                    url: controllerService.uri,
                     dataType: 'json'
                 }).done(function (response) {
-                    if (condition(response.controllerServiceReferencingComponents)) {
+                    if (completeCondition(response.controllerService)) {
                         deferred.resolve();
                     } else {
-                        setTimeout(poll(), getTimeout());
+                        if (pollCondition()) {
+                            setTimeout(poll(), getTimeout());
+                        } else {
+                            deferred.reject();
+                        }
                     }
                 }).fail(function (xhr, status, error) {
                     deferred.reject();
@@ -530,37 +588,100 @@ nf.ControllerService = (function () {
      * components are stopped (not scheduled and 0 active threads).
      * 
      * @param {object} controllerService
+     * @param {function} pollCondition
      */
-    var pollStoppedReferencingSchedulableComponents = function (controllerService) {
+    var stopReferencingSchedulableComponents = function (controllerService, pollCondition) {
         // continue to poll the service until all schedulable components have stopped
-        return pollReferencingComponents(controllerService, function (referencingComponents) {
+        return pollReferencingComponents(controllerService, function (service) {
+            var referencingComponents = service.referencingComponents;
             var stillRunning = false;
 
             $.each(referencingComponents, function(referencingComponent) {
                 if (referencingComponent.referenceType === 'Processor' || referencingComponent.referenceType === 'ReportingTask') {
-                    if (referencingComponent.state === 'RUNNING' || referencingComponent.activeThreadCount > 0) {
-                        // update the current values for this component
-                        $(referencingComponent.id + '-active-threads').text(referencingComponent.activeThreadCount);
-                        $(referencingComponent.id + '-state').removeClass('disabled stopped running').addClass(referencingComponent.state.toLowerCase());
-
-                        // mark that something is still running
+                    if (referencingComponent.state !== 'STOPPED' || referencingComponent.activeThreadCount > 0) {
                         stillRunning = true;
                     }
+                    
+                    // update the current active thread count
+                    $(referencingComponent.id + '-active-threads').text(referencingComponent.activeThreadCount);
+                    
+                    // update the current state of this component
+                    var referencingComponentState = $(referencingComponent.id + '-state');
+                    updateReferencingSchedulableComponentState(referencingComponentState, referencingComponent);
                 }
             });
 
             // condition is met once all referencing are not running
             return stillRunning === false;
-        });
+        }, pollCondition);
+    };
+    
+    /**
+     * Continues to poll until all referencing services are enabled.
+     * 
+     * @param {type} controllerService
+     * @param {type} pollCondition
+     */
+    var enableReferencingServices = function (controllerService, pollCondition) {
+        // continue to poll the service until all referencing services are enabled
+        return pollReferencingComponents(controllerService, function (service) {
+            var referencingComponents = service.referencingComponents;
+            var notEnabled = false;
+
+            $.each(referencingComponents, function(referencingComponent) {
+                if (referencingComponent.referenceType === 'ControllerService') {
+                    if (referencingComponent.state !== 'ENABLED') {
+                        notEnabled = true;
+                    } 
+                        
+                    // update the state of the referencing service
+                    var referencingServiceState = $(referencingComponent.id + '-state');
+                    updateReferencingServiceState(referencingServiceState, referencingComponent);
+                }
+            });
+
+            // condition is met once all referencing are not disabled
+            return notEnabled === false;
+        }, pollCondition);
+    };
+    
+    /**
+     * Continues to poll until all referencing services are disabled.
+     * 
+     * @param {type} controllerService
+     * @param {type} pollCondition
+     */
+    var disableReferencingServices = function (controllerService, pollCondition) {
+        // continue to poll the service until all referencing services are disabled
+        return pollReferencingComponents(controllerService, function (service) {
+            var referencingComponents = service.referencingComponents;
+            var notDisabled = false;
+
+            $.each(referencingComponents, function(referencingComponent) {
+                if (referencingComponent.referenceType === 'ControllerService') {
+                    if (referencingComponent.state !== 'DISABLED') {
+                        notDisabled = true;
+                    } 
+                        
+                    // update the state of the referencing service
+                    var referencingServiceState = $(referencingComponent.id + '-state');
+                    updateReferencingServiceState(referencingServiceState, referencingComponent);
+                }
+            });
+
+            // condition is met once all referencing are not enabled
+            return notDisabled === false;
+        }, pollCondition);
     };
     
     /**
      * Updates the referencing services with the specified state.
      * 
-     * @param {type} controllerService
-     * @param {type} enabled
+     * @param {object} controllerService
+     * @param {boolean} enabled
+     * @param {function} pollCondition
      */
-    var updateReferencingServices = function (controllerService, enabled) {
+    var updateReferencingServices = function (controllerService, enabled, pollCondition) {
         var revision = nf.Client.getRevision();
         
         // issue the request to update the referencing components
@@ -582,7 +703,37 @@ nf.ControllerService = (function () {
         }).fail(nf.Common.handleAjaxError);
         
         // need to wait until finished ENALBING or DISABLING?
-        return updated;
+        // wait unil the polling of each service finished
+        return $.Deferred(function(deferred) {
+            updated.done(function() {
+                // identify all referencing services
+                var services = getReferencingControllerServiceIds(controllerService);
+
+                // get the controller service grid
+                var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+                var controllerServiceData = controllerServiceGrid.getData();
+
+                // start polling for each controller service
+                var polling = [];
+                services.forEach(function(controllerServiceId) {
+                    var controllerService = controllerServiceData.getItemById(controllerServiceId);
+                    
+                    if (enabled) {
+                        polling.push(enableReferencingServices(controllerService, pollCondition));
+                    } else {
+                        polling.push(disableReferencingServices(controllerService, pollCondition));
+                    }
+                });
+
+                $.when.apply(window, polling).done(function () {
+                    deferred.resolve();
+                }).fail(function() {
+                    deferred.reject();
+                });
+            }).fail(function() {
+                deferred.reject();
+            });
+        }).promise();
     };
     
     /**
@@ -639,12 +790,15 @@ nf.ControllerService = (function () {
      */
     var disableHandler = function() {
         var disableDialog = $(this);
+        var canceled = false;
                             
         // only provide a close option
         disableDialog.modal('setButtonModel', [{
-            buttonText: 'Close',
+            buttonText: 'Cancel',
             handler: {
-                click: closeModal
+                click: function () {
+                    canceled = true;
+                }
             }
         }]).modal('setHeaderText', 'Disabling Controller Service');
 
@@ -659,21 +813,54 @@ nf.ControllerService = (function () {
         var controllerServiceData = controllerServiceGrid.getData();
         var controllerService = controllerServiceData.getItemById(controllerServiceId);
 
+        // whether or not to continue polling
+        var continuePolling = function () {
+            return canceled === false;
+        };
+        
+        // sets the close button on the dialog
+        var setCloseButton = function () {
+            disableDialog.modal('setButtonModel', [{
+                buttonText: 'Close',
+                handler: {
+                    click: closeModal
+                }
+            }]);
+        };
+
+        var disableReferencingSchedulable = $('#disable-referencing-schedulable').addClass('ajax-loading');
+
         // stop all referencing schedulable components
-        var stopped = updateReferencingSchedulableComponents(controllerService, false);
+        var stopped = updateReferencingSchedulableComponents(controllerService, false, continuePolling);
 
         // once everything has stopped
         stopped.done(function () {
+            disableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-complete');
+            var disableReferencingServices = $('#disable-referencing-services').addClass('ajax-loading');
+            
             // disable all referencing services
             var disabled = updateReferencingServices(controllerService, false);
 
             // everything is disabled
             disabled.done(function () {
-                // disalbe this service
+                disableReferencingServices.removeClass('ajax-loading').addClass('ajax-complete');
+                var disableControllerService = $('#disable-controller-service').addClass('ajax-loading');
+                
+                // disable this service
                 setEnabled(controllerService, false).done(function () {
-                    $('#disabling-controller-service-spinner').removeClass('ajax-loading');
+                    disableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
+                }).fail(function () {
+                    disableControllerService.removeClass('ajax-loading').addClass('ajax-error');
+                }).always(function () {
+                    setCloseButton();
                 });
+            }).fail(function () {
+                disableReferencingServices.removeClass('ajax-loading').addClass('ajax-error');
+                setCloseButton();
             });
+        }).fail(function () {
+            disableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-error');
+            setCloseButton();
         });
     };
     
@@ -682,16 +869,23 @@ nf.ControllerService = (function () {
      */
     var enableHandler = function() {
         var enableDialog = $(this);
+        var canceled = false;
                             
         // only provide a close option
         enableDialog.modal('setButtonModel', [{
-            buttonText: 'Close',
+            buttonText: 'Cancel',
             handler: {
                 click: function () {
-                    enableDialog.modal('hide');
+                    canceled = true;
                 }
             }
-        }]);
+        }]).modal('setHeaderText', 'Enabling Controller Service');
+
+        // determine if we want to also activate referencing components
+        var scope = $('#enable-controller-service-scope').combo('getSelectedOption').value;
+        if (scope === config.serviceOnly) {
+            $('#enable-controller-service-progress li.referencing-component').hide();
+        }
 
         // show the progress
         $('#enable-controller-service-service-container').hide();
@@ -704,28 +898,63 @@ nf.ControllerService = (function () {
         var controllerServiceData = controllerServiceGrid.getData();
         var controllerService = controllerServiceData.getItemById(controllerServiceId);
 
+        // whether or not to continue polling
+        var continuePolling = function () {
+            return canceled === false;
+        };
+
+        // sets the button to close
+        var setCloseButton = function () {
+            enableDialog.modal('setButtonModel', [{
+                buttonText: 'Close',
+                handler: {
+                    click: closeModal
+                }
+            }]);
+        };
+
+        var enableControllerService = $('#enable-controller-service').addClass('ajax-loading');
+
         // enable this controller service
         var enabled = setEnabled(controllerService, true);
 
-        // determine if we want to also activate referencing components
-        var scope = $('#enable-controller-service-scope').combo('getSelectedOption').value;
         if (scope === config.serviceAndReferencingComponents) {
             // once the service is enabled, activate all referencing components
             enabled.done(function() {
+                enableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
+                var enableReferencingServices = $('#enable-referencing-services').addClass('ajax-loading');
+                
                 // enable the referencing services
                 var servicesEnabled = updateReferencingServices(controllerService, true);
 
                 // once all the referencing services are enbled
                 servicesEnabled.done(function () {
+                    enableReferencingServices.removeClass('ajax-loading').addClass('ajax-complete');
+                    var enableReferencingSchedulable = $('#enable-referencing-schedulable').addClass('ajax-loading');
+                
                     // start all referencing schedulable components
-                    updateReferencingSchedulableComponents(controllerService, true).done(function() {
-                        $('#enabling-controller-service-spinner').removeClass('ajax-loading');
+                    updateReferencingSchedulableComponents(controllerService, true, continuePolling).done(function() {
+                        enableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-complete');
+                    }).fail(function () {
+                        enableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-error');
+                    }).always(function () {
+                        setCloseButton();
                     });
+                }).fail(function () {
+                    enableReferencingServices.removeClass('ajax-loading').addClass('ajax-error');
+                    setCloseButton();
                 });
+            }).fail(function () {
+                enableControllerService.removeClass('ajax-loading').addClass('ajax-error');
+                setCloseButton();
             });
         } else {
             enabled.done(function() {
-                $('#enabling-controller-service-spinner').removeClass('ajax-loading');
+                enableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
+            }).fail(function () {
+                enableControllerService.removeClass('ajax-loading').addClass('ajax-error');
+            }).always(function () {
+                setCloseButton();
             });
         }
     };
@@ -830,7 +1059,7 @@ nf.ControllerService = (function () {
                         $('#disable-controller-service-name').text('');
                         
                         // reset progress
-                        $('#disabling-controller-service-spinner').addClass('ajax-loading');
+                        $('div.disable-referencing-components').removeClass('ajax-loading ajax-complete ajax-error');
                         
                         // referencing components
                         var referencingComponents = $('#disable-controller-service-referencing-components');
@@ -892,13 +1121,14 @@ nf.ControllerService = (function () {
                         $('#enable-controller-service-service-container').show();
                         $('#enable-controller-service-scope-container').show();
                         $('#enable-controller-service-progress-container').hide();
+                        $('#enable-controller-service-progress li.referencing-component').show();
                         
                         // clear the dialog
                         $('#enable-controller-service-id').text('');
                         $('#enable-controller-service-name').text('');
                         
                         // reset progress
-                        $('#enabling-controller-service-spinner').addClass('ajax-loading');
+                        $('div.enable-referencing-components').removeClass('ajax-loading ajax-complete ajax-error');
                         
                         // referencing components
                         var referencingComponents = $('#enable-controller-service-referencing-components');

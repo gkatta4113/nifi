@@ -35,9 +35,9 @@
                 <div class="setting-name">Progress</div>
                 <div class="setting-field">
                     <ol id="enable-controller-service-progress">
-                        <li>Enabling this controller service<div id="enable-referencing-schedulable" class="enable-referencing-components"></div></li>
-                        <li>Enabling referencing controller services<div id="enable-referencing-schedulable" class="enable-referencing-components"></div></li>
-                        <li>Starting referencing processors and reporting tasks<div id="enable-referencing-schedulable" class="enable-referencing-components"></div></li>
+                        <li>Enabling this controller service<div id="enable-controller-service" class="enable-referencing-components"></div></li>
+                        <li class="referencing-component">Enabling referencing controller services<div id="enable-referencing-services" class="enable-referencing-components"></div></li>
+                        <li class="referencing-component">Starting referencing processors and reporting tasks<div id="enable-referencing-schedulable" class="enable-referencing-components"></div></li>
                     </ol>
                 </div>
             </div>
