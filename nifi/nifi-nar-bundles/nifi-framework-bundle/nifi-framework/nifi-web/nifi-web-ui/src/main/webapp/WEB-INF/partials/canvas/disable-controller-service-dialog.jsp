@@ -33,12 +33,24 @@
                 </div>
             </div>
             <div id="disable-controller-service-progress-container" class="setting hidden">
-                <div class="setting-name">Progress</div>
+                <div id="disable-progress-label" class="setting-name"></div>
                 <div class="setting-field">
                     <ol id="disable-controller-service-progress">
-                        <li>Stopping referencing processors and reporting tasks<div id="disable-referencing-schedulable" class="disable-referencing-components"></div></li>
-                        <li>Disabling referencing controller services<div id="disable-referencing-services" class="disable-referencing-components"></div></li>
-                        <li>Disabling this controller service<div id="disable-controller-service" class="disable-referencing-components"></div></li>
+                        <li>
+                            Stopping referencing processors and reporting tasks
+                            <div id="disable-referencing-schedulable" class="disable-referencing-components"></div>
+                            <div class="clear"></div>
+                        </li>
+                        <li>
+                            Disabling referencing controller services
+                            <div id="disable-referencing-services" class="disable-referencing-components"></div>
+                            <div class="clear"></div>
+                        </li>
+                        <li>
+                            Disabling this controller service
+                            <div id="disable-controller-service" class="disable-referencing-components"></div>
+                            <div class="clear"></div>
+                        </li>
                     </ol>
                 </div>
             </div>

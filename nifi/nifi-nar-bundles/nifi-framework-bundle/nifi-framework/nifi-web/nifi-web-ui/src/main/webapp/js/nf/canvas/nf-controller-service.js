@@ -425,7 +425,7 @@ nf.ControllerService = (function () {
         // wait unil the polling of each service finished
         return $.Deferred(function(deferred) {
             updated.done(function() {
-                var updateService = pollReferencingComponents(controllerService, function (service) {
+                var serviceUpdated = pollReferencingComponents(controllerService, function (service) {
                     if (enabled) {
                         return service.state === 'ENABLED';
                     } else {
@@ -433,7 +433,7 @@ nf.ControllerService = (function () {
                     }
                 }, pollCondition);
 
-                updateService.done(function () {
+                serviceUpdated.done(function () {
                     deferred.resolve();
                 }).fail(function() {
                     deferred.reject();
@@ -800,7 +800,7 @@ nf.ControllerService = (function () {
                     canceled = true;
                 }
             }
-        }]).modal('setHeaderText', 'Disabling Controller Service');
+        }]);
 
         // show the progress
         $('#disable-controller-service-service-container').hide();
@@ -828,6 +828,7 @@ nf.ControllerService = (function () {
             }]);
         };
 
+        $('#disable-progress-label').text('Steps to disable ' + controllerService.name);
         var disableReferencingSchedulable = $('#disable-referencing-schedulable').addClass('ajax-loading');
 
         // stop all referencing schedulable components
@@ -879,7 +880,7 @@ nf.ControllerService = (function () {
                     canceled = true;
                 }
             }
-        }]).modal('setHeaderText', 'Enabling Controller Service');
+        }]);
 
         // determine if we want to also activate referencing components
         var scope = $('#enable-controller-service-scope').combo('getSelectedOption').value;
@@ -913,6 +914,7 @@ nf.ControllerService = (function () {
             }]);
         };
 
+        $('#enable-progress-label').text('Steps to enable ' + controllerService.name);
         var enableControllerService = $('#enable-controller-service').addClass('ajax-loading');
 
         // enable this controller service
@@ -1077,7 +1079,7 @@ nf.ControllerService = (function () {
                             handler: {
                                 click: closeModal
                             }
-                        }]).modal('setHeaderText', 'Disable Controller Service');
+                        }]);
                     }
                 }
             }).draggable({
@@ -1146,7 +1148,7 @@ nf.ControllerService = (function () {
                             handler: {
                                 click: closeModal
                             }
-                        }]).modal('setHeaderText', 'Enable Controller Service');
+                        }]);
                     }
                 }
             }).draggable({
