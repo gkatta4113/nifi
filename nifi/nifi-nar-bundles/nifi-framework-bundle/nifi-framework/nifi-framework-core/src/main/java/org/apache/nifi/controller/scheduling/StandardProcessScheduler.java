@@ -201,6 +201,7 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         };
 
         componentLifeCycleThreadPool.execute(startReportingTaskRunnable);
+        taskNode.setScheduledState(ScheduledState.RUNNING);
     }
 
     
@@ -215,7 +216,8 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         final SchedulingAgent agent = getSchedulingAgent(taskNode.getSchedulingStrategy());
         final ReportingTask reportingTask = taskNode.getReportingTask();
         scheduleState.setScheduled(false);
-
+        taskNode.setScheduledState(ScheduledState.STOPPED);
+        
         final Runnable unscheduleReportingTaskRunnable = new Runnable() {
             @SuppressWarnings("deprecation")
             @Override

@@ -64,4 +64,40 @@ public interface ReportingTaskProvider {
      */
     void removeReportingTask(ReportingTaskNode reportingTask);
     
+    /**
+     * Begins scheduling the reporting task to run and invokes appropriate lifecycle methods
+     * @param reportingTask
+     * 
+     * @throws IllegalStateException if the ReportingTask's state is not STOPPED, or if the Reporting Task has active
+     * threads, or if the ReportingTask is not valid
+     */
+    void startReportingTask(ReportingTaskNode reportingTask);
+    
+    /**
+     * Stops scheduling the reporting task to run and invokes appropriate lifecycle methods
+     * @param reportingTask
+     * 
+     * @throws IllegalStateException if the ReportingTask's state is not RUNNING
+     */
+    void stopReportingTask(ReportingTaskNode reportingTask);
+    
+    
+    /**
+     * Enables the reporting task to be scheduled to run
+     * @param reportingTask
+     * 
+     * @throws IllegalStateException if the ReportingTask's state is not DISABLED
+     */
+    void enableReportingTask(ReportingTaskNode reportingTask);
+    
+    
+    /**
+     * Disables the ability to schedul the reporting task to run
+     * 
+     * @param reportingTask
+     * 
+     * @throws IllegalStateException if the ReportingTask's state is not STOPPED, or if the Reporting Task has active
+     * threads
+     */
+    void disableReportingTask(ReportingTaskNode reportingTask);
 }

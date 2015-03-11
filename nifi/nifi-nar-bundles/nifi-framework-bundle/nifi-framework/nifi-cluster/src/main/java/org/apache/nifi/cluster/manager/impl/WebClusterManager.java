@@ -1493,6 +1493,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	}
     }
 
+    @Override
     public ReportingTaskNode getReportingTaskNode(final String taskId) {
     	readLock.lock();
     	try {
@@ -1502,17 +1503,20 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	}
     }
 
+    @Override
     public void startReportingTask(final ReportingTaskNode reportingTaskNode) {
         reportingTaskNode.verifyCanStart();
        	processScheduler.schedule(reportingTaskNode);
     }
 
     
+    @Override
     public void stopReportingTask(final ReportingTaskNode reportingTaskNode) {
         reportingTaskNode.verifyCanStop();
         processScheduler.unschedule(reportingTaskNode);
     }
 
+    @Override
     public void removeReportingTask(final ReportingTaskNode reportingTaskNode) {
     	writeLock.lock();
     	try {
@@ -1544,6 +1548,19 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	} finally {
     		writeLock.unlock("removeReportingTask");
     	}
+    }
+    
+    
+    @Override
+    public void disableReportingTask(final ReportingTaskNode reportingTask) {
+        reportingTask.verifyCanDisable();
+        processScheduler.disableReportingTask(reportingTask);
+    }
+    
+    @Override
+    public void enableReportingTask(final ReportingTaskNode reportingTask) {
+        reportingTask.verifyCanEnable();
+        processScheduler.enableReportingTask(reportingTask);
     }
     
     

@@ -2517,10 +2517,12 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
         return taskNode;
     }
 
+    @Override
     public ReportingTaskNode getReportingTaskNode(final String taskId) {
         return reportingTasks.get(taskId);
     }
 
+    @Override
     public void startReportingTask(final ReportingTaskNode reportingTaskNode) {
         if (isTerminated()) {
             throw new IllegalStateException("Cannot start reporting task " + reportingTaskNode + " because the controller is terminated");
@@ -2531,6 +2533,7 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
     }
 
     
+    @Override
     public void stopReportingTask(final ReportingTaskNode reportingTaskNode) {
         if (isTerminated()) {
             return;
@@ -2540,6 +2543,7 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
         processScheduler.unschedule(reportingTaskNode);
     }
 
+    @Override
     public void removeReportingTask(final ReportingTaskNode reportingTaskNode) {
         final ReportingTaskNode existing = reportingTasks.get(reportingTaskNode.getIdentifier());
         if ( existing == null || existing != reportingTaskNode ) {
@@ -2578,11 +2582,13 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
         return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
     }
     
+    @Override
     public void enableReportingTask(final ReportingTaskNode reportingTaskNode) {
         reportingTaskNode.verifyCanEnable();
         processScheduler.enableReportingTask(reportingTaskNode);
     }
     
+    @Override
     public void disableReportingTask(final ReportingTaskNode reportingTaskNode) {
         reportingTaskNode.verifyCanDisable();
         processScheduler.disableReportingTask(reportingTaskNode);
