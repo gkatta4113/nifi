@@ -21,13 +21,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.RejectedExecutionException;
-import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
 
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
+import org.apache.nifi.controller.reporting.ReportingTaskProvider;
 import org.apache.nifi.web.NiFiCoreException;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ReportingTaskDTO;
@@ -35,7 +35,7 @@ import org.apache.nifi.web.dao.ReportingTaskDAO;
 
 public class StandardReportingTaskDAO extends ComponentDAO implements ReportingTaskDAO {
 
-    private FlowController reportingTaskProvider;
+    private ReportingTaskProvider reportingTaskProvider;
 
     /**
      * Locates the specified reporting task.
@@ -298,7 +298,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
 
     /* setters */
     
-    public void setReportingTaskProvider(FlowController reportingTaskProvider) {
+    public void setReportingTaskProvider(ReportingTaskProvider reportingTaskProvider) {
         this.reportingTaskProvider = reportingTaskProvider;
     }
 }
