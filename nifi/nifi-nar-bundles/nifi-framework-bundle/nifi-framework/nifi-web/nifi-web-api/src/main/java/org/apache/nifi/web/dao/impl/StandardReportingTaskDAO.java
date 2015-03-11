@@ -17,16 +17,17 @@
 package org.apache.nifi.web.dao.impl;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
 import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.controller.ReportingTaskNode;
+import org.apache.nifi.controller.ScheduledState;
+import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
 
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
-import org.apache.nifi.controller.reporting.ReportingTaskProvider;
 import org.apache.nifi.web.NiFiCoreException;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ReportingTaskDTO;
@@ -34,7 +35,7 @@ import org.apache.nifi.web.dao.ReportingTaskDAO;
 
 public class StandardReportingTaskDAO extends ComponentDAO implements ReportingTaskDAO {
 
-    private ReportingTaskProvider reportingTaskProvider;
+    private FlowController reportingTaskProvider;
 
     /**
      * Locates the specified reporting task.
@@ -107,7 +108,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
      */
     @Override
     public Set<ReportingTaskNode> getReportingTasks() {
-        return new HashSet<>();
+        return reportingTaskProvider.getAllReportingTasks();
     }
 
     /**
@@ -119,17 +120,54 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
     @Override
     public ReportingTaskNode updateReportingTask(final ReportingTaskDTO reportingTaskDTO) {
         // get the reporting task
-        final ReportingTaskNode controllerService = locateReportingTask(reportingTaskDTO.getId());
+        final ReportingTaskNode reportingTask = locateReportingTask(reportingTaskDTO.getId());
         
         // ensure we can perform the update 
-        verifyUpdate(controllerService, reportingTaskDTO);
+        verifyUpdate(reportingTask, reportingTaskDTO);
         
         // perform the update
-        configureReportingTask(controllerService, reportingTaskDTO);
+        configureReportingTask(reportingTask, reportingTaskDTO);
 
         // configure scheduled state
+        // see if an update is necessary
+        if (isNotNull(reportingTaskDTO.getState())) {
+            final ScheduledState purposedScheduledState = ScheduledState.valueOf(reportingTaskDTO.getState());
+
+            // only attempt an action if it is changing
+            if (!purposedScheduledState.equals(reportingTask.getScheduledState())) {
+                try {
+                    // perform the appropriate action
+                    switch (purposedScheduledState) {
+                        case RUNNING:
+                            reportingTaskProvider.startReportingTask(reportingTask);
+                            break;
+                        case STOPPED:
+                            switch (reportingTask.getScheduledState()) {
+                                case RUNNING:
+                                    reportingTaskProvider.stopReportingTask(reportingTask);
+                                    break;
+                                case DISABLED:
+                                    reportingTaskProvider.enableReportingTask(reportingTask);
+                                    break;
+                            }
+                            break;
+                        case DISABLED:
+                            reportingTaskProvider.disableReportingTask(reportingTask);
+                            break;
+                    }
+                } catch (IllegalStateException | ProcessorLifeCycleException ise) {
+                    throw new NiFiCoreException(ise.getMessage(), ise);
+                } catch (RejectedExecutionException ree) {
+                    throw new NiFiCoreException("Unable to schedule all tasks for the specified reporting task.", ree);
+                } catch (NullPointerException npe) {
+                    throw new NiFiCoreException("Unable to update reporting task run state.", npe);
+                } catch (Exception e) {
+                    throw new NiFiCoreException("Unable to update reporting task run state: " + e, e);
+                }
+            }
+        }
         
-        return controllerService;
+        return reportingTask;
     }
 
     /**
@@ -163,6 +201,40 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
      * @param reportingTaskDTO 
      */
     private void verifyUpdate(final ReportingTaskNode reportingTask, final ReportingTaskDTO reportingTaskDTO) {
+        // ensure the state, if specified, is valid
+        if (isNotNull(reportingTaskDTO.getState())) {
+            try {
+                final ScheduledState purposedScheduledState = ScheduledState.valueOf(reportingTaskDTO.getState());
+
+                // only attempt an action if it is changing
+                if (!purposedScheduledState.equals(reportingTask.getScheduledState())) {
+                    // perform the appropriate action
+                    switch (purposedScheduledState) {
+                        case RUNNING:
+                            reportingTask.verifyCanStart();
+                            break;
+                        case STOPPED:
+                            switch (reportingTask.getScheduledState()) {
+                                case RUNNING:
+                                    reportingTask.verifyCanStop();
+                                    break;
+                                case DISABLED:
+                                    reportingTask.verifyCanEnable();
+                                    break;
+                            }
+                            break;
+                        case DISABLED:
+                            reportingTask.verifyCanDisable();
+                            break;
+                    }
+                }
+            } catch (IllegalArgumentException iae) {
+                throw new IllegalArgumentException(String.format(
+                        "The specified reporting task state (%s) is not valid. Valid options are 'RUNNING', 'STOPPED', and 'DISABLED'.",
+                        reportingTaskDTO.getState()));
+            }
+        }
+        
         boolean modificationRequest = false;
         if (isAnyNotNull(reportingTaskDTO.getName(),
                 reportingTaskDTO.getAnnotationData(),
@@ -226,7 +298,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
 
     /* setters */
     
-    public void setReportingTaskProvider(ReportingTaskProvider reportingTaskProvider) {
+    public void setReportingTaskProvider(FlowController reportingTaskProvider) {
         this.reportingTaskProvider = reportingTaskProvider;
     }
 }

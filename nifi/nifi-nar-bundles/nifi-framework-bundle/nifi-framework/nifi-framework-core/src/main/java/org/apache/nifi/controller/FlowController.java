@@ -2568,8 +2568,9 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
         reportingTasks.remove(reportingTaskNode.getIdentifier());
     }
     
-    Collection<ReportingTaskNode> getReportingTasks() {
-        return reportingTasks.values();
+    @Override
+    public Set<ReportingTaskNode> getAllReportingTasks() {
+        return new HashSet<>(reportingTasks.values());
     }
 
     @Override

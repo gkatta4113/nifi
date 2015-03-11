@@ -344,6 +344,7 @@ public class ReportingTaskResource extends ApplicationResource {
      * @param name The name of the reporting task
      * @param annotationData The annotation data for the reporting task
      * @param markedForDeletion Array of property names whose value should be removed.
+     * @param state The updated scheduled state
      * @param formParams Additionally, the processor properties and styles are
      * specified in the form parameters. Because the property names and styles
      * differ from processor to processor they are specified in a map-like
@@ -372,7 +373,7 @@ public class ReportingTaskResource extends ApplicationResource {
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
             @PathParam("availability") String availability, @PathParam("id") String id, @FormParam("name") String name,
             @FormParam("annotationData") String annotationData, @FormParam("markedForDeletion[]") List<String> markedForDeletion,
-            MultivaluedMap<String, String> formParams) {
+            @FormParam("state") String state, MultivaluedMap<String, String> formParams) {
 
         // create collections for holding the reporting task properties
         final Map<String, String> updatedProperties = new LinkedHashMap<>();
@@ -402,6 +403,7 @@ public class ReportingTaskResource extends ApplicationResource {
         final ReportingTaskDTO reportingTaskDTO = new ReportingTaskDTO();
         reportingTaskDTO.setId(id);
         reportingTaskDTO.setName(name);
+        reportingTaskDTO.setState(state);
         reportingTaskDTO.setAnnotationData(annotationData);
 
         // only set the properties when appropriate

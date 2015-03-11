@@ -1447,7 +1447,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	final Element rootElement = document.createElement("reportingTasks");
     	document.appendChild(rootElement);
     	
-    	for ( final ReportingTaskNode taskNode : getReportingTasks() ) {
+    	for ( final ReportingTaskNode taskNode : getAllReportingTasks() ) {
     		StandardFlowSerializer.addReportingTask(rootElement, taskNode, encryptor);
     	}
     	
@@ -1483,8 +1483,8 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     	}
     }
 
-    
-    public Set<ReportingTaskNode> getReportingTasks() {
+    @Override
+    public Set<ReportingTaskNode> getAllReportingTasks() {
     	readLock.lock();
     	try {
     		return new HashSet<>(reportingTasks.values());
@@ -1492,8 +1492,7 @@ public class WebClusterManager implements HttpClusterManager, ProtocolHandler, C
     		readLock.unlock("getReportingTasks");
     	}
     }
-    
-    
+
     public ReportingTaskNode getReportingTaskNode(final String taskId) {
     	readLock.lock();
     	try {

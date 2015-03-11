@@ -16,6 +16,7 @@
  */
 package org.apache.nifi.controller.reporting;
 
+import java.util.Set;
 import org.apache.nifi.controller.ReportingTaskNode;
 
 /**
@@ -47,6 +48,11 @@ public interface ReportingTaskProvider {
      */
     ReportingTaskNode getReportingTaskNode(String identifier);
     
+    /**
+     * Returns a Set of all Reporting Tasks that exist for this service provider.
+     * @return
+     */
+    Set<ReportingTaskNode> getAllReportingTasks();
     
     /**
      * Removes the given reporting task from the flow

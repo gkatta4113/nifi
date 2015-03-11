@@ -89,7 +89,7 @@ public class StandardFlowSerializer implements FlowSerializer {
             
             final Element reportingTasksNode = doc.createElement("reportingTasks");
             rootNode.appendChild(reportingTasksNode);
-            for ( final ReportingTaskNode taskNode : controller.getReportingTasks() ) {
+            for ( final ReportingTaskNode taskNode : controller.getAllReportingTasks() ) {
             	addReportingTask(reportingTasksNode, taskNode, encryptor);
             }
 

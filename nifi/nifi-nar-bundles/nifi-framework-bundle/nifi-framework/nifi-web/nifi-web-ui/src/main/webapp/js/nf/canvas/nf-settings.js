@@ -1313,17 +1313,17 @@ nf.Settings = (function () {
             var reportingTaskActionFormatter = function (row, cell, value, columnDef, dataContext) {
                 var markup = '';
 
-                if (dataContext.state === 'ENABLED' || dataContext.state === 'ENABLING') {
-                    markup += '<img src="images/iconDisable.png" title="Disable" class="pointer disable-controller-service" style="margin-top: 2px;" />&nbsp;';
-                } else if (dataContext.state === 'DISABLED') {
-                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-controller-service" style="margin-top: 2px;" />&nbsp;';
-
-                    // only enable the enable icon if the service has no validation errors
+                if (dataContext.state === 'RUNNING') {
+                    markup += '<img src="images/iconStop.png" title="Stop" class="pointer stop-reporting-task" style="margin-top: 2px;" />&nbsp;';
+                } else if (dataContext.state === 'STOPPED') {
+                    markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-reporting-task" style="margin-top: 2px;" />&nbsp;';
+                    
+                    // only enable the start icon if the reporting task has no validation errors
                     if (nf.Common.isEmpty(dataContext.validationErrors)) {
-                        markup += '<img src="images/iconEnable.png" title="Enable" class="pointer enable-controller-service" style="margin-top: 2px;"/>&nbsp;';
+                        markup += '<img src="images/iconRun.png" title="Start" class="pointer start-reporting-task" style="margin-top: 2px;"/>&nbsp;';
                     }
-
-                    markup += '<img src="images/iconDelete.png" title="Remove" class="pointer delete-controller-service" style="margin-top: 2px;" />&nbsp;';
+                    
+                    markup += '<img src="images/iconDelete.png" title="Remove" class="pointer delete-reporting-task" style="margin-top: 2px;" />&nbsp;';
                 }
 
                 return markup;
@@ -1366,9 +1366,13 @@ nf.Settings = (function () {
             // determine the desired action
             if (reportingTasksGrid.getColumns()[args.cell].id === 'actions') {
                 if (target.hasClass('edit-reporting-task')) {
+                    nf.ReportingTask.showConfiguration(reportingTask);
                 } else if (target.hasClass('start-reporting-task')) {
+                    nf.ReportingTask.start(reportingTask);
                 } else if (target.hasClass('stop-reporting-task')) {
+                    nf.ReportingTask.stop(reportingTask);
                 } else if (target.hasClass('delete-reporting-task')) {
+                    nf.ReportingTask.remove(reportingTask);
                 }
             } else if (reportingTasksGrid.getColumns()[args.cell].id === 'moreDetails') {
                 if (target.hasClass('view-reporting-task')) {
