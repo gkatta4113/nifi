@@ -20,7 +20,10 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -28,7 +31,13 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.nifi.controller.FlowFromDOMFactory;
+import org.apache.nifi.encrypt.StringEncryptor;
+import org.apache.nifi.events.BulletinFactory;
+import org.apache.nifi.reporting.BulletinRepository;
+import org.apache.nifi.reporting.Severity;
 import org.apache.nifi.util.DomUtils;
+import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
@@ -42,11 +51,9 @@ public class ControllerServiceLoader {
     private static final Log logger = LogFactory.getLog(ControllerServiceLoader.class);
 
 
-    public static List<ControllerServiceNode> loadControllerServices(final ControllerServiceProvider provider, final InputStream serializedStream) throws IOException {
+    public static List<ControllerServiceNode> loadControllerServices(final ControllerServiceProvider provider, final InputStream serializedStream, final StringEncryptor encryptor, final BulletinRepository bulletinRepo, final boolean autoResumeState) throws IOException {
         final DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         documentBuilderFactory.setNamespaceAware(true);
-
-        final List<ControllerServiceNode> services = new ArrayList<>();
 
         try (final InputStream in = new BufferedInputStream(serializedStream)) {
             final DocumentBuilder builder = documentBuilderFactory.newDocumentBuilder();
@@ -80,34 +87,87 @@ public class ControllerServiceLoader {
                     throw err;
                 }
             });
-
-            //if controllerService.xml does not exist, create an empty file...
+            
             final Document document = builder.parse(in);
             final Element controllerServices = DomUtils.getChild(document.getDocumentElement(), "controllerServices");
-            final List<Element> serviceNodes = DomUtils.getChildElementsByTagName(controllerServices, "controllerService");
-            for (final Element serviceElement : serviceNodes) {
-                //get properties for the specific controller task - id, name, class,
-                //and schedulingPeriod must be set
-                final String serviceId = DomUtils.getChild(serviceElement, "id").getTextContent().trim();
-                final String serviceClass = DomUtils.getChild(serviceElement, "class").getTextContent().trim();
-                
-                //set the class to be used for the configured controller task
-                final ControllerServiceNode serviceNode = provider.createControllerService(serviceClass, serviceId, false);
-
-                //optional task-specific properties
-                for (final Element optionalProperty : DomUtils.getChildElementsByTagName(serviceElement, "property")) {
-                    final String name = optionalProperty.getAttribute("name").trim();
-                    final String value = optionalProperty.getTextContent().trim();
-                    serviceNode.setProperty(name, value);
-                }
-
-                services.add(serviceNode);
-                provider.enableControllerService(serviceNode);
-            }
+            final List<Element> serviceElements = DomUtils.getChildElementsByTagName(controllerServices, "controllerService");
+            return new ArrayList<ControllerServiceNode>(loadControllerServices(serviceElements, provider, encryptor, bulletinRepo, autoResumeState));
         } catch (SAXException | ParserConfigurationException sxe) {
             throw new IOException(sxe);
         }
-
-        return services;
+    }
+    
+    public static Collection<ControllerServiceNode> loadControllerServices(final List<Element> serviceElements, final ControllerServiceProvider provider, final StringEncryptor encryptor, final BulletinRepository bulletinRepo, final boolean autoResumeState) {
+        final Map<Element, ControllerServiceNode> nodeMap = new HashMap<>();
+        for ( final Element serviceElement : serviceElements ) {
+            final ControllerServiceNode serviceNode = createControllerService(provider, serviceElement, encryptor);
+            nodeMap.put(serviceElement, serviceNode);
+        }
+        for ( final Map.Entry<Element, ControllerServiceNode> entry : nodeMap.entrySet() ) {
+            configureControllerService(entry.getValue(), entry.getKey(), encryptor);
+        }
+        
+        // Start services
+        if ( autoResumeState ) {
+            for ( final Map.Entry<Element, ControllerServiceNode> entry : nodeMap.entrySet() ) {
+                final Element controllerServiceElement = entry.getKey();
+                final ControllerServiceNode serviceNode = entry.getValue();
+                
+                final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
+                final ControllerServiceState state = ControllerServiceState.valueOf(dto.getState());
+                final boolean enable = (state == ControllerServiceState.ENABLED || state == ControllerServiceState.ENABLING);
+                if (enable) {
+                    try {
+                        provider.enableReferencingServices(serviceNode);
+                    } catch (final Exception e) {
+                        logger.error("Failed to enable " + serviceNode + " due to " + e);
+                        if ( logger.isDebugEnabled() ) {
+                            logger.error("", e);
+                        }
+                        
+                        bulletinRepo.addBulletin(BulletinFactory.createBulletin(
+                                "Controller Service", Severity.ERROR.name(), "Could not start services referencing " + serviceNode + " due to " + e));
+                        continue;
+                    }
+                    
+                    try {
+                        provider.enableControllerService(serviceNode);
+                    } catch (final Exception e) {
+                        logger.error("Failed to enable " + serviceNode + " due to " + e);
+                        if ( logger.isDebugEnabled() ) {
+                            logger.error("", e);
+                        }
+                        
+                        bulletinRepo.addBulletin(BulletinFactory.createBulletin(
+                                "Controller Service", Severity.ERROR.name(), "Could not start " + serviceNode + " due to " + e));
+                    }
+                }
+            }
+        }
+        
+        return nodeMap.values();
+    }
+    
+    
+    private static ControllerServiceNode createControllerService(final ControllerServiceProvider provider, final Element controllerServiceElement, final StringEncryptor encryptor) {
+        final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
+        
+        final ControllerServiceNode node = provider.createControllerService(dto.getType(), dto.getId(), false);
+        node.setName(dto.getName());
+        node.setComments(dto.getComments());
+        return node;
+    }
+    
+    private static void configureControllerService(final ControllerServiceNode node, final Element controllerServiceElement, final StringEncryptor encryptor) {
+        final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
+        node.setAnnotationData(dto.getAnnotationData());
+        
+        for (final Map.Entry<String, String> entry : dto.getProperties().entrySet()) {
+            if (entry.getValue() == null) {
+                node.removeProperty(entry.getKey());
+            } else {
+                node.setProperty(entry.getKey(), entry.getValue());
+            }
+        }
     }
 }

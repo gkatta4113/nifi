@@ -53,6 +53,7 @@ import org.apache.nifi.connectable.Size;
 import org.apache.nifi.controller.exception.ProcessorInstantiationException;
 import org.apache.nifi.controller.label.Label;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
+import org.apache.nifi.controller.service.ControllerServiceLoader;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceState;
 import org.apache.nifi.encrypt.StringEncryptor;
@@ -231,12 +232,13 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
                 final Element controllerServicesElement = (Element) DomUtils.getChild(rootElement, "controllerServices");
 	            if ( controllerServicesElement != null ) {
 	                final List<Element> serviceElements = DomUtils.getChildElementsByTagName(controllerServicesElement, "controllerService");
-	                for ( final Element serviceElement : serviceElements ) {
-	                	if ( !initialized || existingFlowEmpty ) {
-	                		addControllerService(controller, serviceElement, encryptor);
-	                	} else {
-	                		updateControllerService(controller, serviceElement, encryptor);
-	                	}
+	                
+	                if ( !initialized || existingFlowEmpty ) {
+	                    ControllerServiceLoader.loadControllerServices(serviceElements, controller, encryptor, controller.getBulletinRepository(), autoResumeState);
+	                } else {
+	                    for ( final Element serviceElement : serviceElements ) {
+	                        updateControllerService(controller, serviceElement, encryptor);
+	                    }
 	                }
                 }
 
@@ -345,40 +347,6 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
         return baos.toByteArray();
     }
     
-    private void addControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
-    	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
-    	
-    	final ControllerServiceNode node = controller.createControllerService(dto.getType(), dto.getId(), false);
-    	node.setName(dto.getName());
-    	node.setComments(dto.getComments());
-    	node.setAnnotationData(dto.getAnnotationData());
-    	
-        for (final Map.Entry<String, String> entry : dto.getProperties().entrySet()) {
-            if (entry.getValue() == null) {
-                node.removeProperty(entry.getKey());
-            } else {
-                node.setProperty(entry.getKey(), entry.getValue());
-            }
-        }
-
-        if ( autoResumeState ) {
-            final ControllerServiceState state = ControllerServiceState.valueOf(dto.getState());
-            final boolean enable = (state == ControllerServiceState.ENABLED || state == ControllerServiceState.ENABLING);
-	    	if (enable) {
-	    		try {
-	    			controller.enableControllerService(node);
-	    		} catch (final Exception e) {
-	    			logger.error("Failed to enable " + node + " due to " + e);
-	    			if ( logger.isDebugEnabled() ) {
-	    				logger.error("", e);
-	    			}
-	    			
-	    			controller.getBulletinRepository().addBulletin(BulletinFactory.createBulletin(
-	    					"Controller Service", Severity.ERROR.name(), "Could not start " + node + " due to " + e));
-	    		}
-	    	}
-        }
-    }
     
     private void updateControllerService(final FlowController controller, final Element controllerServiceElement, final StringEncryptor encryptor) {
     	final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElement, encryptor);
