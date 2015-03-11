@@ -2504,6 +2504,7 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
 
         final ValidationContextFactory validationContextFactory = new StandardValidationContextFactory(controllerServiceProvider);
         final ReportingTaskNode taskNode = new StandardReportingTaskNode(task, id, this, processScheduler, validationContextFactory);
+        taskNode.setName(task.getClass().getSimpleName());
         
         if ( firstTimeAdded ) {
             try (final NarCloseable x = NarCloseable.withNarLoader()) {
