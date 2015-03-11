@@ -976,6 +976,7 @@ public final class DtoFactory {
             dto.setId(component.getIdentifier());
             dto.setName(component.getName());
 
+            Collection<ValidationResult> validationErrors = null;
             if (component instanceof ProcessorNode) {
                 final ProcessorNode node = ((ProcessorNode) component);
                 dto.setGroupId(node.getProcessGroup().getIdentifier());
@@ -983,6 +984,8 @@ public final class DtoFactory {
                 dto.setActiveThreadCount(node.getActiveThreadCount());
                 dto.setType(node.getProcessor().getClass().getName());
                 dto.setReferenceType(Processor.class.getSimpleName());
+                
+                validationErrors = node.getValidationErrors();
             } else if (component instanceof ControllerServiceNode) {
                 final ControllerServiceNode node = ((ControllerServiceNode) component);
                 dto.setState(node.getState().name());
@@ -994,12 +997,25 @@ public final class DtoFactory {
                 if (!dto.getReferenceCycle()) {
                     dto.setReferencingComponents(createControllerServiceReferencingComponentsDto(node.getReferences(), visited));
                 }
+                
+                validationErrors = node.getValidationErrors();
             } else if (component instanceof ReportingTask) {
                 final ReportingTaskNode node = ((ReportingTaskNode) component);
                 dto.setState(node.getScheduledState().name());
                 dto.setActiveThreadCount(node.getActiveThreadCount());
                 dto.setType(node.getReportingTask().getClass().getName());
                 dto.setReferenceType(ReportingTask.class.getSimpleName());
+                
+                validationErrors = node.getValidationErrors();
+            }
+            
+            if (validationErrors != null && !validationErrors.isEmpty()) {
+                final List<String> errors = new ArrayList<>();
+                for (final ValidationResult validationResult : validationErrors) {
+                    errors.add(validationResult.toString());
+                }
+
+                dto.setValidationErrors(errors);
             }
             
             referencingComponents.add(dto);

@@ -15,8 +15,10 @@
  * limitations under the License.
  */
 
+/* global nf */
+
 /**
- * Create a tag cloud. The options are specified in the following
+ * jQuery plugin for a NiFi style tag cloud. The options are specified in the following
  * format:
  *
  * {
@@ -24,10 +26,6 @@
  *   select: selectHandler,
  *   remove: removeHandler
  * }
- */
-
-/**
- * jQuery plugin for a NiFi style tag cloud.
  * 
  * @param {type} $
  * @returns {undefined}

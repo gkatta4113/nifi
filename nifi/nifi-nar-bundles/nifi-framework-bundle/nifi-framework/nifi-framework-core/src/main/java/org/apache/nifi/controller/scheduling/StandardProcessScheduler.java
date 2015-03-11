@@ -375,9 +375,9 @@ public final class StandardProcessScheduler implements ProcessScheduler {
                 return;
             }
 
+            state.setScheduled(false);
             getSchedulingAgent(procNode).unschedule(procNode, state);
             procNode.setScheduledState(ScheduledState.STOPPED);
-            state.setScheduled(false);
         }
 
         final Runnable stopProcRunnable = new Runnable() {
@@ -475,8 +475,8 @@ public final class StandardProcessScheduler implements ProcessScheduler {
         if (!state.isScheduled()) {
             return;
         }
+        
         state.setScheduled(false);
-
         getSchedulingAgent(connectable).unschedule(connectable, state);
 
         if (!state.isScheduled() && state.getActiveThreadCount() == 0 && state.mustCallOnStoppedMethods()) {

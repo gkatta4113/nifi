@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* global nf, parseFloat */
+
 $(document).ready(function () {
     // preload the image for the error page - this is preloaded because the system
     // may be unavailable to return the image when the error page is rendered

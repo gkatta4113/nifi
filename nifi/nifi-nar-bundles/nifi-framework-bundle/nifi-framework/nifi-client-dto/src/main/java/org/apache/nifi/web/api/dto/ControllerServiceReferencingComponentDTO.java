@@ -16,6 +16,7 @@
  */
 package org.apache.nifi.web.api.dto;
 
+import java.util.Collection;
 import java.util.Set;
 import javax.xml.bind.annotation.XmlType;
 
@@ -32,6 +33,8 @@ public class ControllerServiceReferencingComponentDTO {
     private String type;
     private String state;
 
+    private Collection<String> validationErrors;
+    
     private String referenceType;
     private Integer activeThreadCount;
     
@@ -117,6 +120,19 @@ public class ControllerServiceReferencingComponentDTO {
         this.referenceType = referenceType;
     }
 
+    /**
+     * Any validation error associated with this component.
+     * 
+     * @return 
+     */
+    public Collection<String> getValidationErrors() {
+        return validationErrors;
+    }
+
+    public void setValidationErrors(Collection<String> validationErrors) {
+        this.validationErrors = validationErrors;
+    }
+    
     /**
      * The active thread count for the referencing component.
      * 

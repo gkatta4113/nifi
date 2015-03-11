@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* global nf, d3 */
+
 nf.CanvasHeader = (function () {
 
     var config = {
@@ -280,7 +283,7 @@ nf.CanvasHeader = (function () {
                     var delta = 0;
                     if (nf.Common.isDefinedAndNotNull(evt.originalEvent.detail)) {
                         delta = -evt.originalEvent.detail;
-                    } else if (nf.Common.isDefinedAndNotNull(evnt.originalEvent.wheelDelta)) {
+                    } else if (nf.Common.isDefinedAndNotNull(evt.originalEvent.wheelDelta)) {
                         delta = evt.originalEvent.wheelDelta;
                     }
 

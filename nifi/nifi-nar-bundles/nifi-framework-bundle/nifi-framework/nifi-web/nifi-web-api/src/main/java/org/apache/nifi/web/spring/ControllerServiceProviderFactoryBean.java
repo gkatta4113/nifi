@@ -20,7 +20,6 @@ import org.apache.nifi.cluster.manager.impl.WebClusterManager;
 import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.controller.service.ControllerServiceProvider;
 import org.apache.nifi.util.NiFiProperties;
-import org.apache.nifi.web.dao.ControllerServiceDAO;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
@@ -50,7 +49,7 @@ public class ControllerServiceProviderFactoryBean implements FactoryBean, Applic
 
     @Override
     public Class getObjectType() {
-        return ControllerServiceDAO.class;
+        return ControllerServiceProvider.class;
     }
 
     @Override

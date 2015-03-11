@@ -34,6 +34,7 @@
         <module>nifi-standard-services</module>
         <module>nifi-update-attribute-bundle</module>
         <module>nifi-kafka-bundle</module>
+		<module>nifi-kite-bundle</module>
     </modules>
     <dependencyManagement>
         <dependencies>
@@ -60,6 +61,12 @@
                 <version>0.0.2-incubating-SNAPSHOT</version>
                 <scope>provided</scope>
             </dependency>
+			<dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-http-context-map-api</artifactId>
+                <version>0.0.2-incubating-SNAPSHOT</version>
+                <scope>provided</scope>
+            </dependency>
             <dependency>
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-distributed-cache-protocol</artifactId>
@@ -73,6 +80,11 @@
             <dependency>
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-ssl-context-service</artifactId>
+                <version>0.0.2-incubating-SNAPSHOT</version>
+            </dependency>
+			<dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-http-context-map</artifactId>
                 <version>0.0.2-incubating-SNAPSHOT</version>
             </dependency>
             <dependency>

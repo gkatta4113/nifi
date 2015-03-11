@@ -26,6 +26,7 @@ import org.apache.nifi.controller.ReportingTaskNode;
 
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
+import org.apache.nifi.controller.reporting.ReportingTaskProvider;
 import org.apache.nifi.web.NiFiCoreException;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ReportingTaskDTO;
@@ -33,7 +34,7 @@ import org.apache.nifi.web.dao.ReportingTaskDAO;
 
 public class StandardReportingTaskDAO extends ComponentDAO implements ReportingTaskDAO {
 
-    private FlowController flowController;
+    private ReportingTaskProvider reportingTaskProvider;
 
     /**
      * Locates the specified reporting task.
@@ -43,7 +44,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
      */
     private ReportingTaskNode locateReportingTask(final String reportingTaskId) {
         // get the reporting task
-        final ReportingTaskNode reportingTask = flowController.getReportingTaskNode(reportingTaskId);
+        final ReportingTaskNode reportingTask = reportingTaskProvider.getReportingTaskNode(reportingTaskId);
 
         // ensure the reporting task exists
         if (reportingTask == null) {
@@ -63,7 +64,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
     public ReportingTaskNode createReportingTask(final ReportingTaskDTO reportingTaskDTO) {
         try {
             // create the reporting task
-            final ReportingTaskNode reportingTask = flowController.createReportingTask(reportingTaskDTO.getType(), reportingTaskDTO.getId(), true);
+            final ReportingTaskNode reportingTask = reportingTaskProvider.createReportingTask(reportingTaskDTO.getType(), reportingTaskDTO.getId(), true);
 
             // ensure we can perform the update 
             verifyUpdate(reportingTask, reportingTaskDTO);
@@ -96,7 +97,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
      */
     @Override
     public boolean hasReportingTask(final String reportingTaskId) {
-        return flowController.getReportingTaskNode(reportingTaskId) != null;
+        return reportingTaskProvider.getReportingTaskNode(reportingTaskId) != null;
     }
 
     /**
@@ -220,12 +221,12 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
     @Override
     public void deleteReportingTask(String reportingTaskId) {
         final ReportingTaskNode reportingTask = locateReportingTask(reportingTaskId);
-        flowController.removeReportingTask(reportingTask);
+        reportingTaskProvider.removeReportingTask(reportingTask);
     }
 
     /* setters */
     
-    public void setFlowController(FlowController flowController) {
-        this.flowController = flowController;
+    public void setReportingTaskProvider(ReportingTaskProvider reportingTaskProvider) {
+        this.reportingTaskProvider = reportingTaskProvider;
     }
 }
