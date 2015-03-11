@@ -158,12 +158,33 @@ nf.ControllerService = (function () {
         // reload all dependent processors if they are currently visible
         $.each(controllerService.referencingComponents, function (_, reference) {
             if (reference.referenceType === 'Processor') {
+                // reload the processor on the canvas if appropriate
                 if (nf.Canvas.getGroupId() === reference.groupId) {
                     var processor = nf.Processor.get(reference.id);
                     nf.Processor.reload(processor.component);
                 }
+                
+                // update the current state of this processor
+                var referencingComponentState = $('div.' + reference.id + '-state');
+                if (referencingComponentState.length) {
+                    updateReferencingSchedulableComponentState(referencingComponentState, reference);
+                }
+            } else if (reference.referenceType === 'ReportingTask') {
+                reloadOther = true;
+                
+                // update the current state of this reporting task
+                var referencingComponentState = $('div.' + reference.id + '-state');
+                if (referencingComponentState.length) {
+                    updateReferencingSchedulableComponentState(referencingComponentState, reference);
+                }
             } else {
                 reloadOther = true;
+                
+                // update the current state of this service
+                var referencingComponentState = $('div.' + reference.id + '-state');
+                if (referencingComponentState.length) {
+                    updateReferencingServiceState(referencingComponentState, reference);
+                }
             }
         });
 
@@ -224,6 +245,8 @@ nf.ControllerService = (function () {
                         content: list
                     }, nf.CanvasUtils.config.systemTooltipConfig));
                 }
+            } else if (icon.data('qtip')) {
+                icon.qtip('destroy');
             }
             return state;
         });
@@ -252,6 +275,8 @@ nf.ControllerService = (function () {
                         content: list
                     }, nf.CanvasUtils.config.systemTooltipConfig));
                 }
+            } else if (icon.data('qtip')) {
+                icon.qtip('destroy');
             }
             return state;
         });
@@ -415,17 +440,17 @@ nf.ControllerService = (function () {
             },
             dataType: 'json'
         }).done(function (response) {
-            // update the revision
             nf.Client.setRevision(response.revision);
-            
-            // update the service
-            renderControllerService(response.controllerService);
         }).fail(nf.Common.handleAjaxError);
         
         // wait unil the polling of each service finished
         return $.Deferred(function(deferred) {
-            updated.done(function() {
-                var serviceUpdated = pollReferencingComponents(controllerService, function (service) {
+            updated.done(function(response) {
+                var serviceUpdated = pollService(controllerService, function (service) {
+                    // update the service in the table
+                    renderControllerService(service);
+                    
+                    // the condition is met once the service is ENABLED/DISABLED
                     if (enabled) {
                         return service.state === 'ENABLED';
                     } else {
@@ -433,8 +458,12 @@ nf.ControllerService = (function () {
                     }
                 }, pollCondition);
 
+                // once the service has updated, resolve and render the updated service
                 serviceUpdated.done(function () {
                     deferred.resolve();
+                    
+                    // update the service in the table
+                    renderControllerService(response.controllerService);
                 }).fail(function() {
                     deferred.reject();
                 });
@@ -494,36 +523,38 @@ nf.ControllerService = (function () {
             },
             dataType: 'json'
         }).done(function (response) {
-            // update the revision
             nf.Client.setRevision(response.revision);
-            
-            // update the service
-            reloadControllerServiceReferences(controllerService);
         }).fail(nf.Common.handleAjaxError);
-        
-        // if we're just starting schedulable components we're done when the
-        // update is finished
-        if (running) {
-            return updated;
-        }
         
         // wait unil the polling of each service finished
         return $.Deferred(function(deferred) {
-            updated.done(function() {
-                // identify all referencing services
-                var services = getReferencingControllerServiceIds(controllerService);
+            updated.done(function(response) {
+                // update the controller service
+                controllerService.referencingComponents = response.controllerServiceReferencingComponents;
+                
+                // if we're just starting schedulable components we're done when the update is finished
+                if (running) {
+                    deferred.resolve();
+                    
+                    // reload the controller service
+                    reloadControllerServiceReferences(controllerService);
+                } else {
+                    // identify all referencing services
+                    var services = getReferencingControllerServiceIds(controllerService);
 
-                // get the controller service grid
-                var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
-                var controllerServiceData = controllerServiceGrid.getData();
+                    // get the controller service grid
+                    var controllerServiceGrid = $('#controller-services-table').data('gridInstance');
+                    var controllerServiceData = controllerServiceGrid.getData();
 
-                // start polling for each controller service
-                var polling = [];
-                services.forEach(function(controllerServiceId) {
-                    var controllerService = controllerServiceData.getItemById(controllerServiceId);
-                    polling.push(stopReferencingSchedulableComponents(controllerService, pollCondition));
-                });
+                    // start polling for each controller service
+                    var polling = [];
+                    services.forEach(function(controllerServiceId) {
+                        var controllerService = controllerServiceData.getItemById(controllerServiceId);
+                        polling.push(stopReferencingSchedulableComponents(controllerService, pollCondition));
+                    });
 
+                }
+                
                 $.when.apply(window, polling).done(function () {
                     deferred.resolve();
                 }).fail(function() {
@@ -543,7 +574,7 @@ nf.ControllerService = (function () {
      * @param {function} completeCondition
      * @param {function} pollCondition
      */
-    var pollReferencingComponents = function (controllerService, completeCondition, pollCondition) {
+    var pollService = function (controllerService, completeCondition, pollCondition) {
         // we want to keep polling until the condition is met
         return $.Deferred(function(deferred) {
             var current = 1;
@@ -563,23 +594,28 @@ nf.ControllerService = (function () {
                     url: controllerService.uri,
                     dataType: 'json'
                 }).done(function (response) {
-                    if (completeCondition(response.controllerService)) {
-                        deferred.resolve();
-                    } else {
-                        if (pollCondition()) {
-                            setTimeout(poll(), getTimeout());
-                        } else {
-                            deferred.reject();
-                        }
-                    }
+                    conditionMet(response.controllerService);
                 }).fail(function (xhr, status, error) {
                     deferred.reject();
                     nf.Common.handleAjaxError(xhr, status, error);
                 });
             };
             
+            // tests to if the condition has been met
+            var conditionMet = function (service) {
+                if (completeCondition(service)) {
+                    deferred.resolve();
+                } else {
+                    if (typeof pollCondition === 'function' && pollCondition()) {
+                        setTimeout(poll(), getTimeout());
+                    } else {
+                        deferred.reject();
+                    }
+                }
+            };
+            
             // poll for the status of the referencing components
-            poll();
+            conditionMet(controllerService);
         }).promise();
     };
     
@@ -592,21 +628,24 @@ nf.ControllerService = (function () {
      */
     var stopReferencingSchedulableComponents = function (controllerService, pollCondition) {
         // continue to poll the service until all schedulable components have stopped
-        return pollReferencingComponents(controllerService, function (service) {
+        return pollService(controllerService, function (service) {
             var referencingComponents = service.referencingComponents;
+            
+            // update the service in the table
+            renderControllerService(service);
+            
             var stillRunning = false;
-
-            $.each(referencingComponents, function(referencingComponent) {
+            $.each(referencingComponents, function(_, referencingComponent) {
                 if (referencingComponent.referenceType === 'Processor' || referencingComponent.referenceType === 'ReportingTask') {
                     if (referencingComponent.state !== 'STOPPED' || referencingComponent.activeThreadCount > 0) {
                         stillRunning = true;
                     }
                     
                     // update the current active thread count
-                    $(referencingComponent.id + '-active-threads').text(referencingComponent.activeThreadCount);
+                    $('div.' + referencingComponent.id + '-active-threads').text(referencingComponent.activeThreadCount);
                     
                     // update the current state of this component
-                    var referencingComponentState = $(referencingComponent.id + '-state');
+                    var referencingComponentState = $('div.' + referencingComponent.id + '-state');
                     updateReferencingSchedulableComponentState(referencingComponentState, referencingComponent);
                 }
             });
@@ -624,18 +663,21 @@ nf.ControllerService = (function () {
      */
     var enableReferencingServices = function (controllerService, pollCondition) {
         // continue to poll the service until all referencing services are enabled
-        return pollReferencingComponents(controllerService, function (service) {
+        return pollService(controllerService, function (service) {
             var referencingComponents = service.referencingComponents;
+            
+            // update the service in the table
+            renderControllerService(service);
+            
             var notEnabled = false;
-
-            $.each(referencingComponents, function(referencingComponent) {
+            $.each(referencingComponents, function(_, referencingComponent) {
                 if (referencingComponent.referenceType === 'ControllerService') {
                     if (referencingComponent.state !== 'ENABLED') {
                         notEnabled = true;
                     } 
                         
                     // update the state of the referencing service
-                    var referencingServiceState = $(referencingComponent.id + '-state');
+                    var referencingServiceState = $('div.' + referencingComponent.id + '-state');
                     updateReferencingServiceState(referencingServiceState, referencingComponent);
                 }
             });
@@ -653,18 +695,21 @@ nf.ControllerService = (function () {
      */
     var disableReferencingServices = function (controllerService, pollCondition) {
         // continue to poll the service until all referencing services are disabled
-        return pollReferencingComponents(controllerService, function (service) {
+        return pollService(controllerService, function (service) {
             var referencingComponents = service.referencingComponents;
+            
+            // update the service in the table
+            renderControllerService(service);
+            
             var notDisabled = false;
-
-            $.each(referencingComponents, function(referencingComponent) {
+            $.each(referencingComponents, function(_, referencingComponent) {
                 if (referencingComponent.referenceType === 'ControllerService') {
                     if (referencingComponent.state !== 'DISABLED') {
                         notDisabled = true;
                     } 
                         
                     // update the state of the referencing service
-                    var referencingServiceState = $(referencingComponent.id + '-state');
+                    var referencingServiceState = $('div.' + referencingComponent.id + '-state');
                     updateReferencingServiceState(referencingServiceState, referencingComponent);
                 }
             });
@@ -695,17 +740,16 @@ nf.ControllerService = (function () {
             },
             dataType: 'json'
         }).done(function (response) {
-            // update the revision
             nf.Client.setRevision(response.revision);
-            
-            // update the service
-            reloadControllerServiceReferences(controllerService);
         }).fail(nf.Common.handleAjaxError);
         
         // need to wait until finished ENALBING or DISABLING?
         // wait unil the polling of each service finished
         return $.Deferred(function(deferred) {
-            updated.done(function() {
+            updated.done(function(response) {
+                // update the controller service
+                controllerService.referencingComponents = response.controllerServiceReferencingComponents;
+                
                 // identify all referencing services
                 var services = getReferencingControllerServiceIds(controllerService);
 
@@ -840,7 +884,7 @@ nf.ControllerService = (function () {
             var disableReferencingServices = $('#disable-referencing-services').addClass('ajax-loading');
             
             // disable all referencing services
-            var disabled = updateReferencingServices(controllerService, false);
+            var disabled = updateReferencingServices(controllerService, false, continuePolling);
 
             // everything is disabled
             disabled.done(function () {
@@ -848,7 +892,7 @@ nf.ControllerService = (function () {
                 var disableControllerService = $('#disable-controller-service').addClass('ajax-loading');
                 
                 // disable this service
-                setEnabled(controllerService, false).done(function () {
+                setEnabled(controllerService, false, continuePolling).done(function () {
                     disableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
                 }).fail(function () {
                     disableControllerService.removeClass('ajax-loading').addClass('ajax-error');
@@ -918,7 +962,7 @@ nf.ControllerService = (function () {
         var enableControllerService = $('#enable-controller-service').addClass('ajax-loading');
 
         // enable this controller service
-        var enabled = setEnabled(controllerService, true);
+        var enabled = setEnabled(controllerService, true, continuePolling);
 
         if (scope === config.serviceAndReferencingComponents) {
             // once the service is enabled, activate all referencing components
@@ -927,7 +971,7 @@ nf.ControllerService = (function () {
                 var enableReferencingServices = $('#enable-referencing-services').addClass('ajax-loading');
                 
                 // enable the referencing services
-                var servicesEnabled = updateReferencingServices(controllerService, true);
+                var servicesEnabled = updateReferencingServices(controllerService, true, continuePolling);
 
                 // once all the referencing services are enbled
                 servicesEnabled.done(function () {
@@ -1232,7 +1276,6 @@ nf.ControllerService = (function () {
                                         contentType: 'application/json'
                                     }).done(function (response) {
                                         if (nf.Common.isDefinedAndNotNull(response.controllerService)) {
-                                            // update the revision
                                             nf.Client.setRevision(response.revision);
 
                                             // reload the controller service
@@ -1377,7 +1420,6 @@ nf.ControllerService = (function () {
                 }),
                 dataType: 'json'
             }).done(function (response) {
-                // update the revision
                 nf.Client.setRevision(response.revision);
 
                 // remove the service
