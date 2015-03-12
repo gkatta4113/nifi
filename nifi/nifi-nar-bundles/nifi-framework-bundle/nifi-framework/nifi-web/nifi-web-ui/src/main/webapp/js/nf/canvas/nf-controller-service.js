@@ -68,7 +68,9 @@ nf.ControllerService = (function () {
             return true;
         }
         
-        if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
+        if ($('#controller-service-enabled').hasClass('checkbox-checked') && details['state'] === 'DISABLED') {
+            return true;
+        } else if ($('#controller-service-enabled').hasClass('checkbox-unchecked') && details['state'] === 'ENABLED') {
             return true;
         }
         
@@ -94,7 +96,9 @@ nf.ControllerService = (function () {
         }
         
         // mark the controller service enabled if appropriate
-        if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
+        if ($('#controller-service-enabled').hasClass('checkbox-unchecked')) {
+            controllerServiceDto['state'] = 'DISABLED';
+        } else if ($('#controller-service-enabled').hasClass('checkbox-checked')) {
             controllerServiceDto['state'] = 'ENABLED';
         }
 
@@ -285,7 +289,7 @@ nf.ControllerService = (function () {
     /**
      * Adds the specified reference for this controller service.
      * 
-     * @argument {jQuery} referenceContainer 
+     * @param {jQuery} referenceContainer 
      * @param {array} referencingComponents
      */
     var createReferencingComponents = function (referenceContainer, referencingComponents) {
@@ -445,11 +449,8 @@ nf.ControllerService = (function () {
         
         // wait unil the polling of each service finished
         return $.Deferred(function(deferred) {
-            updated.done(function(response) {
+            updated.done(function() {
                 var serviceUpdated = pollService(controllerService, function (service) {
-                    // update the service in the table
-                    renderControllerService(service);
-                    
                     // the condition is met once the service is ENABLED/DISABLED
                     if (enabled) {
                         return service.state === 'ENABLED';
@@ -461,9 +462,6 @@ nf.ControllerService = (function () {
                 // once the service has updated, resolve and render the updated service
                 serviceUpdated.done(function () {
                     deferred.resolve();
-                    
-                    // update the service in the table
-                    renderControllerService(response.controllerService);
                 }).fail(function() {
                     deferred.reject();
                 });
@@ -505,9 +503,9 @@ nf.ControllerService = (function () {
      * Updates the scheduled state of the processors/reporting tasks referencing
      * the specified controller service.
      * 
-     * @param {type} controllerService
-     * @param {type} running
-     * @param {type} pollCondition
+     * @param {object} controllerService
+     * @param {boolean} running
+     * @param {function} pollCondition
      */
     var updateReferencingSchedulableComponents = function (controllerService, running, pollCondition) {
         var revision = nf.Client.getRevision();
@@ -549,10 +547,9 @@ nf.ControllerService = (function () {
                     // start polling for each controller service
                     var polling = [];
                     services.forEach(function(controllerServiceId) {
-                        var controllerService = controllerServiceData.getItemById(controllerServiceId);
-                        polling.push(stopReferencingSchedulableComponents(controllerService, pollCondition));
+                        var referencingService = controllerServiceData.getItemById(controllerServiceId);
+                        polling.push(stopReferencingSchedulableComponents(referencingService, pollCondition));
                     });
-
                 }
                 
                 $.when.apply(window, polling).done(function () {
@@ -577,7 +574,7 @@ nf.ControllerService = (function () {
     var pollService = function (controllerService, completeCondition, pollCondition) {
         // we want to keep polling until the condition is met
         return $.Deferred(function(deferred) {
-            var current = 1;
+            var current = 2;
             var getTimeout = function () {
                 var val = current;
                 
@@ -631,9 +628,6 @@ nf.ControllerService = (function () {
         return pollService(controllerService, function (service) {
             var referencingComponents = service.referencingComponents;
             
-            // update the service in the table
-            renderControllerService(service);
-            
             var stillRunning = false;
             $.each(referencingComponents, function(_, referencingComponent) {
                 if (referencingComponent.referenceType === 'Processor' || referencingComponent.referenceType === 'ReportingTask') {
@@ -658,16 +652,13 @@ nf.ControllerService = (function () {
     /**
      * Continues to poll until all referencing services are enabled.
      * 
-     * @param {type} controllerService
-     * @param {type} pollCondition
+     * @param {object} controllerService
+     * @param {function} pollCondition
      */
     var enableReferencingServices = function (controllerService, pollCondition) {
         // continue to poll the service until all referencing services are enabled
         return pollService(controllerService, function (service) {
             var referencingComponents = service.referencingComponents;
-            
-            // update the service in the table
-            renderControllerService(service);
             
             var notEnabled = false;
             $.each(referencingComponents, function(_, referencingComponent) {
@@ -690,16 +681,13 @@ nf.ControllerService = (function () {
     /**
      * Continues to poll until all referencing services are disabled.
      * 
-     * @param {type} controllerService
-     * @param {type} pollCondition
+     * @param {object} controllerService
+     * @param {function} pollCondition
      */
     var disableReferencingServices = function (controllerService, pollCondition) {
         // continue to poll the service until all referencing services are disabled
         return pollService(controllerService, function (service) {
             var referencingComponents = service.referencingComponents;
-            
-            // update the service in the table
-            renderControllerService(service);
             
             var notDisabled = false;
             $.each(referencingComponents, function(_, referencingComponent) {
@@ -760,12 +748,12 @@ nf.ControllerService = (function () {
                 // start polling for each controller service
                 var polling = [];
                 services.forEach(function(controllerServiceId) {
-                    var controllerService = controllerServiceData.getItemById(controllerServiceId);
+                    var referencingService = controllerServiceData.getItemById(controllerServiceId);
                     
                     if (enabled) {
-                        polling.push(enableReferencingServices(controllerService, pollCondition));
+                        polling.push(enableReferencingServices(referencingService, pollCondition));
                     } else {
-                        polling.push(disableReferencingServices(controllerService, pollCondition));
+                        polling.push(disableReferencingServices(referencingService, pollCondition));
                     }
                 });
 
@@ -875,36 +863,41 @@ nf.ControllerService = (function () {
         $('#disable-progress-label').text('Steps to disable ' + controllerService.name);
         var disableReferencingSchedulable = $('#disable-referencing-schedulable').addClass('ajax-loading');
 
-        // stop all referencing schedulable components
-        var stopped = updateReferencingSchedulableComponents(controllerService, false, continuePolling);
+        $.Deferred(function (deferred) {
+            // stop all referencing schedulable components
+            var stopped = updateReferencingSchedulableComponents(controllerService, false, continuePolling);
 
-        // once everything has stopped
-        stopped.done(function () {
-            disableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-complete');
-            var disableReferencingServices = $('#disable-referencing-services').addClass('ajax-loading');
-            
-            // disable all referencing services
-            var disabled = updateReferencingServices(controllerService, false, continuePolling);
+            // once everything has stopped
+            stopped.done(function () {
+                disableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-complete');
+                var disableReferencingServices = $('#disable-referencing-services').addClass('ajax-loading');
 
-            // everything is disabled
-            disabled.done(function () {
-                disableReferencingServices.removeClass('ajax-loading').addClass('ajax-complete');
-                var disableControllerService = $('#disable-controller-service').addClass('ajax-loading');
-                
-                // disable this service
-                setEnabled(controllerService, false, continuePolling).done(function () {
-                    disableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
+                // disable all referencing services
+                var disabled = updateReferencingServices(controllerService, false, continuePolling);
+
+                // everything is disabled
+                disabled.done(function () {
+                    disableReferencingServices.removeClass('ajax-loading').addClass('ajax-complete');
+                    var disableControllerService = $('#disable-controller-service').addClass('ajax-loading');
+
+                    // disable this service
+                    setEnabled(controllerService, false, continuePolling).done(function () {
+                        deferred.resolve();
+                        disableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
+                    }).fail(function () {
+                        deferred.reject();
+                        disableControllerService.removeClass('ajax-loading').addClass('ajax-error');
+                    });
                 }).fail(function () {
-                    disableControllerService.removeClass('ajax-loading').addClass('ajax-error');
-                }).always(function () {
-                    setCloseButton();
+                    deferred.reject();
+                    disableReferencingServices.removeClass('ajax-loading').addClass('ajax-error');
                 });
             }).fail(function () {
-                disableReferencingServices.removeClass('ajax-loading').addClass('ajax-error');
-                setCloseButton();
+                deferred.reject();
+                disableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-error');
             });
-        }).fail(function () {
-            disableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-error');
+        }).always(function () {
+            reloadControllerService(controllerService);
             setCloseButton();
         });
     };
@@ -961,48 +954,53 @@ nf.ControllerService = (function () {
         $('#enable-progress-label').text('Steps to enable ' + controllerService.name);
         var enableControllerService = $('#enable-controller-service').addClass('ajax-loading');
 
-        // enable this controller service
-        var enabled = setEnabled(controllerService, true, continuePolling);
+        $.Deferred(function (deferred) {
+            // enable this controller service
+            var enable = setEnabled(controllerService, true, continuePolling);
 
-        if (scope === config.serviceAndReferencingComponents) {
-            // once the service is enabled, activate all referencing components
-            enabled.done(function() {
-                enableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
-                var enableReferencingServices = $('#enable-referencing-services').addClass('ajax-loading');
-                
-                // enable the referencing services
-                var servicesEnabled = updateReferencingServices(controllerService, true, continuePolling);
+            if (scope === config.serviceAndReferencingComponents) {
+                // once the service is enabled, activate all referencing components
+                enable.done(function() {
+                    enableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
+                    var enableReferencingServices = $('#enable-referencing-services').addClass('ajax-loading');
 
-                // once all the referencing services are enbled
-                servicesEnabled.done(function () {
-                    enableReferencingServices.removeClass('ajax-loading').addClass('ajax-complete');
-                    var enableReferencingSchedulable = $('#enable-referencing-schedulable').addClass('ajax-loading');
-                
-                    // start all referencing schedulable components
-                    updateReferencingSchedulableComponents(controllerService, true, continuePolling).done(function() {
-                        enableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-complete');
+                    // enable the referencing services
+                    var servicesEnabled = updateReferencingServices(controllerService, true, continuePolling);
+
+                    // once all the referencing services are enbled
+                    servicesEnabled.done(function () {
+                        enableReferencingServices.removeClass('ajax-loading').addClass('ajax-complete');
+                        var enableReferencingSchedulable = $('#enable-referencing-schedulable').addClass('ajax-loading');
+
+                        // start all referencing schedulable components
+                        updateReferencingSchedulableComponents(controllerService, true, continuePolling).done(function() {
+                            deferred.resolve();
+                            enableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-complete');
+                        }).fail(function () {
+                            deferred.reject();
+                            enableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-error');
+                        });
                     }).fail(function () {
-                        enableReferencingSchedulable.removeClass('ajax-loading').addClass('ajax-error');
-                    }).always(function () {
-                        setCloseButton();
+                        deferred.reject();
+                        enableReferencingServices.removeClass('ajax-loading').addClass('ajax-error');
                     });
                 }).fail(function () {
-                    enableReferencingServices.removeClass('ajax-loading').addClass('ajax-error');
-                    setCloseButton();
+                    deferred.reject();
+                    enableControllerService.removeClass('ajax-loading').addClass('ajax-error');
                 });
-            }).fail(function () {
-                enableControllerService.removeClass('ajax-loading').addClass('ajax-error');
-                setCloseButton();
-            });
-        } else {
-            enabled.done(function() {
-                enableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
-            }).fail(function () {
-                enableControllerService.removeClass('ajax-loading').addClass('ajax-error');
-            }).always(function () {
-                setCloseButton();
-            });
-        }
+            } else {
+                enable.done(function() {
+                    deferred.resolve();
+                    enableControllerService.removeClass('ajax-loading').addClass('ajax-complete');
+                }).fail(function () {
+                    deferred.reject();
+                    enableControllerService.removeClass('ajax-loading').addClass('ajax-error');
+                });
+            }
+        }).always(function () {
+            reloadControllerService(controllerService);
+            setCloseButton();
+        });
     };
     
     return {
@@ -1204,7 +1202,7 @@ nf.ControllerService = (function () {
         /**
          * Shows the configuration dialog for the specified controller service.
          * 
-         * @argument {controllerService} controllerService      The controller service
+         * @argument {object} controllerService      The controller service
          */
         showConfiguration: function (controllerService) {
             // reload the service in case the property descriptors have changed
@@ -1232,11 +1230,17 @@ nf.ControllerService = (function () {
                 // record the controller service details
                 $('#controller-service-configuration').data('controllerServiceDetails', controllerService);
 
+                // determine if the enabled checkbox is checked or not
+                var controllerServiceEnableStyle = 'checkbox-checked';
+                if (controllerService['state'] === 'DISABLED') {
+                    controllerServiceEnableStyle = 'checkbox-unchecked';
+                }
+
                 // populate the controller service settings
                 $('#controller-service-id').text(controllerService['id']);
                 $('#controller-service-type').text(nf.Common.substringAfterLast(controllerService['type'], '.'));
                 $('#controller-service-name').val(controllerService['name']);
-                $('#controller-service-enabled').removeClass('checkbox-checked checkbox-unchecked').addClass('checkbox-unchecked');
+                $('#controller-service-enabled').removeClass('checkbox-checked checkbox-unchecked').addClass(controllerServiceEnableStyle);
                 $('#controller-service-comments').val(controllerService['comments']);
 
                 // select the availability when appropriate
@@ -1384,7 +1388,9 @@ nf.ControllerService = (function () {
          */
         enable: function(controllerService) {
             if (nf.Common.isEmpty(controllerService.referencingComponents)) {
-                setEnabled(controllerService, true);
+                setEnabled(controllerService, true).always(function () {
+                    reloadControllerService(controllerService);
+                });
             } else {
                 showEnableControllerServiceDialog(controllerService);
             }
@@ -1397,7 +1403,9 @@ nf.ControllerService = (function () {
          */
         disable: function(controllerService) {
             if (nf.Common.isEmpty(controllerService.referencingComponents)) {
-                setEnabled(controllerService, false);
+                setEnabled(controllerService, false).always(function () {
+                    reloadControllerService(controllerService);
+                });
             } else {
                 showDisableControllerServiceDialog(controllerService);
             }

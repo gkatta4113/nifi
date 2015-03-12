@@ -59,8 +59,9 @@ nf.ReportingTask = (function () {
         if ($('#reporting-task-name').val() !== details.name) {
             return true;
         }
-        
-        if ($('#reporting-task-enabled').hasClass('checkbox-checked')) {
+        if ($('#reporting-task-enabled').hasClass('checkbox-checked') && details['state'] === 'DISABLED') {
+            return true;
+        } else if ($('#reporting-task-enabled').hasClass('checkbox-unchecked') && (details['state'] === 'RUNNING' || details['state'] === 'STOPPED')) {
             return true;
         }
         
@@ -79,6 +80,13 @@ nf.ReportingTask = (function () {
         var reportingTaskDto = {};
         reportingTaskDto['id'] = $('#reporting-task-id').text();
         reportingTaskDto['name'] = $('#reporting-task-name').val();
+        
+        // mark the processor disabled if appropriate
+        if ($('#reporting-task-enabled').hasClass('checkbox-unchecked')) {
+            reportingTaskDto['state'] = 'DISABLED';
+        } else if ($('#reporting-task-enabled').hasClass('checkbox-checked')) {
+            reportingTaskDto['state'] = 'STOPPED';
+        }
         
         // set the properties
         if ($.isEmptyObject(properties) === false) {
@@ -246,10 +254,17 @@ nf.ReportingTask = (function () {
                 // record the reporting task details
                 $('#reporting-task-configuration').data('reportingTaskDetails', reportingTask);
 
+                // determine if the enabled checkbox is checked or not
+                var reportingTaskEnableStyle = 'checkbox-checked';
+                if (reportingTask['state'] === 'DISABLED') {
+                    reportingTaskEnableStyle = 'checkbox-unchecked';
+                }
+                
                 // populate the reporting task settings
                 $('#reporting-task-id').text(reportingTask['id']);
                 $('#reporting-task-type').text(nf.Common.substringAfterLast(reportingTask['type'], '.'));
                 $('#reporting-task-name').val(reportingTask['name']);
+                $('#reporting-task-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(reportingTaskEnableStyle);
 
                 // select the availability when appropriate
                 if (nf.Canvas.isClustered()) {

@@ -1315,11 +1315,11 @@ nf.Settings = (function () {
 
                 if (dataContext.state === 'RUNNING') {
                     markup += '<img src="images/iconStop.png" title="Stop" class="pointer stop-reporting-task" style="margin-top: 2px;" />&nbsp;';
-                } else if (dataContext.state === 'STOPPED') {
+                } else if (dataContext.state === 'STOPPED' || dataContext.state === 'DISABLED') {
                     markup += '<img src="images/iconEdit.png" title="Edit" class="pointer edit-reporting-task" style="margin-top: 2px;" />&nbsp;';
                     
-                    // only enable the start icon if the reporting task has no validation errors
-                    if (nf.Common.isEmpty(dataContext.validationErrors)) {
+                    // only enable the start icon if the reporting task is stopped and has no validation errors
+                    if (dataContext.state === 'STOPPED' && nf.Common.isEmpty(dataContext.validationErrors)) {
                         markup += '<img src="images/iconRun.png" title="Start" class="pointer start-reporting-task" style="margin-top: 2px;"/>&nbsp;';
                     }
                     
