@@ -170,4 +170,9 @@ public class StandardProcessContext implements ProcessContext, ControllerService
         return set;
     }
     
+    @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	return controllerServiceProvider.getControllerServiceName(serviceIdentifier);
+    }
+
 }

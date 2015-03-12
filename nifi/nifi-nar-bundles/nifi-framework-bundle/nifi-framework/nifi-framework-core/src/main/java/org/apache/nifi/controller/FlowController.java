@@ -62,6 +62,7 @@ import org.apache.nifi.cluster.protocol.NodeProtocolSender;
 import org.apache.nifi.cluster.protocol.UnknownServiceAddressException;
 import org.apache.nifi.cluster.protocol.message.HeartbeatMessage;
 import org.apache.nifi.cluster.protocol.message.NodeBulletinsMessage;
+import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.connectable.Connectable;
 import org.apache.nifi.connectable.ConnectableType;
 import org.apache.nifi.connectable.Connection;
@@ -77,6 +78,8 @@ import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
 import org.apache.nifi.controller.label.Label;
 import org.apache.nifi.controller.label.StandardLabel;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
+import org.apache.nifi.controller.reporting.ReportingTaskProvider;
+import org.apache.nifi.controller.reporting.StandardReportingInitializationContext;
 import org.apache.nifi.controller.reporting.StandardReportingTaskNode;
 import org.apache.nifi.controller.repository.ContentRepository;
 import org.apache.nifi.controller.repository.CounterRepository;
@@ -129,6 +132,7 @@ import org.apache.nifi.groups.ProcessGroup;
 import org.apache.nifi.groups.RemoteProcessGroup;
 import org.apache.nifi.groups.RemoteProcessGroupPortDescriptor;
 import org.apache.nifi.groups.StandardProcessGroup;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.logging.LogLevel;
 import org.apache.nifi.logging.LogRepository;
 import org.apache.nifi.logging.LogRepositoryFactory;
@@ -161,6 +165,8 @@ import org.apache.nifi.remote.protocol.socket.SocketFlowFileServerProtocol;
 import org.apache.nifi.reporting.Bulletin;
 import org.apache.nifi.reporting.BulletinRepository;
 import org.apache.nifi.reporting.EventAccess;
+import org.apache.nifi.reporting.InitializationException;
+import org.apache.nifi.reporting.ReportingInitializationContext;
 import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.reporting.Severity;
 import org.apache.nifi.scheduling.SchedulingStrategy;
@@ -189,7 +195,7 @@ import org.slf4j.LoggerFactory;
 
 import com.sun.jersey.api.client.ClientHandlerException;
 
-public class FlowController implements EventAccess, ControllerServiceProvider, Heartbeater, QueueProvider {
+public class FlowController implements EventAccess, ControllerServiceProvider, ReportingTaskProvider, Heartbeater, QueueProvider {
 
     // default repository implementations
     public static final String DEFAULT_FLOWFILE_REPO_IMPLEMENTATION = "org.apache.nifi.controller.repository.WriteAheadFlowFileRepository";
@@ -374,7 +380,6 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         this.properties = properties;
         sslContext = SslContextFactory.createSslContext(properties, false);
         extensionManager = new ExtensionManager();
-        controllerServiceProvider = new StandardControllerServiceProvider();
 
         timerDrivenEngineRef = new AtomicReference<>(new FlowEngine(maxTimerDrivenThreads.get(), "Timer-Driven Process"));
         eventDrivenEngineRef = new AtomicReference<>(new FlowEngine(maxEventDrivenThreads.get(), "Event-Driven Process"));
@@ -398,6 +403,7 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
 
         processScheduler = new StandardProcessScheduler(this, this, encryptor);
         eventDrivenWorkerQueue = new EventDrivenWorkerQueue(false, false, processScheduler);
+        controllerServiceProvider = new StandardControllerServiceProvider(processScheduler);
 
         final ProcessContextFactory contextFactory = new ProcessContextFactory(contentRepository, flowFileRepository, flowFileEventRepository, counterRepositoryRef.get(), provenanceEventRepository);
         processScheduler.setSchedulingAgent(SchedulingStrategy.EVENT_DRIVEN, new EventDrivenSchedulingAgent(
@@ -2463,17 +2469,20 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         lookupGroup(groupId).stopProcessing();
     }
 
-    public ReportingTaskNode createReportingTask(final String type, String id) throws ReportingTaskInstantiationException {
-        return createReportingTask(type, id, true);
+    public ReportingTaskNode createReportingTask(final String type) throws ReportingTaskInstantiationException {
+        return createReportingTask(type, true);
     }
     
-    public ReportingTaskNode createReportingTask(final String type, String id, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
-        if (type == null) {
+    public ReportingTaskNode createReportingTask(final String type, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+    	return createReportingTask(type, UUID.randomUUID().toString(), firstTimeAdded);
+    }
+    
+    @Override
+    public ReportingTaskNode createReportingTask(final String type, final String id, final boolean firstTimeAdded) throws ReportingTaskInstantiationException {
+        if (type == null || id == null) {
             throw new NullPointerException();
         }
-
-        id = requireNonNull(id).intern();
-
+        
         ReportingTask task = null;
         final ClassLoader ctxClassLoader = Thread.currentThread().getContextClassLoader();
         try {
@@ -2499,8 +2508,19 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
 
         final ValidationContextFactory validationContextFactory = new StandardValidationContextFactory(controllerServiceProvider);
         final ReportingTaskNode taskNode = new StandardReportingTaskNode(task, id, this, processScheduler, validationContextFactory);
+        taskNode.setName(task.getClass().getSimpleName());
         
         if ( firstTimeAdded ) {
+            final ComponentLog componentLog = new SimpleProcessLogger(id, taskNode.getReportingTask());
+            final ReportingInitializationContext config = new StandardReportingInitializationContext(id, taskNode.getName(), 
+                    SchedulingStrategy.TIMER_DRIVEN, "1 min", componentLog, this);
+            
+            try {
+                task.initialize(config);
+            } catch (final InitializationException ie) {
+                throw new ReportingTaskInstantiationException("Failed to initialize reporting task of type " + type, ie);
+            }
+            
             try (final NarCloseable x = NarCloseable.withNarLoader()) {
                 ReflectionUtils.invokeMethodsWithAnnotation(OnAdded.class, task);
             } catch (final Exception e) {
@@ -2512,30 +2532,33 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         return taskNode;
     }
 
+    @Override
     public ReportingTaskNode getReportingTaskNode(final String taskId) {
         return reportingTasks.get(taskId);
     }
 
+    @Override
     public void startReportingTask(final ReportingTaskNode reportingTaskNode) {
         if (isTerminated()) {
             throw new IllegalStateException("Cannot start reporting task " + reportingTaskNode + " because the controller is terminated");
         }
 
         reportingTaskNode.verifyCanStart();
-        
-        processScheduler.schedule(reportingTaskNode);
+       	processScheduler.schedule(reportingTaskNode);
     }
 
+    
+    @Override
     public void stopReportingTask(final ReportingTaskNode reportingTaskNode) {
         if (isTerminated()) {
             return;
         }
 
         reportingTaskNode.verifyCanStop();
-        
         processScheduler.unschedule(reportingTaskNode);
     }
 
+    @Override
     public void removeReportingTask(final ReportingTaskNode reportingTaskNode) {
         final ReportingTaskNode existing = reportingTasks.get(reportingTaskNode.getIdentifier());
         if ( existing == null || existing != reportingTaskNode ) {
@@ -2548,24 +2571,62 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
             ReflectionUtils.quietlyInvokeMethodsWithAnnotation(OnRemoved.class, reportingTaskNode.getReportingTask(), reportingTaskNode.getConfigurationContext());
         }
         
+        for ( final Map.Entry<PropertyDescriptor, String> entry : reportingTaskNode.getProperties().entrySet() ) {
+            final PropertyDescriptor descriptor = entry.getKey();
+            if (descriptor.getControllerServiceDefinition() != null ) {
+                final String value = entry.getValue() == null ? descriptor.getDefaultValue() : entry.getValue();
+                if ( value != null ) {
+                    final ControllerServiceNode serviceNode = controllerServiceProvider.getControllerServiceNode(value);
+                    if ( serviceNode != null ) {
+                        serviceNode.removeReference(reportingTaskNode);
+                    }
+                }
+            }
+        }
+        
         reportingTasks.remove(reportingTaskNode.getIdentifier());
     }
     
-    Collection<ReportingTaskNode> getReportingTasks() {
-        return reportingTasks.values();
+    @Override
+    public Set<ReportingTaskNode> getAllReportingTasks() {
+        return new HashSet<>(reportingTasks.values());
     }
 
-
+    @Override
+    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
+        return controllerServiceProvider.createControllerService(type, id, firstTimeAdded);
+    }
+    
+    @Override
     public void enableReportingTask(final ReportingTaskNode reportingTaskNode) {
         reportingTaskNode.verifyCanEnable();
-        
         processScheduler.enableReportingTask(reportingTaskNode);
     }
     
+    @Override
     public void disableReportingTask(final ReportingTaskNode reportingTaskNode) {
         reportingTaskNode.verifyCanDisable();
-        
         processScheduler.disableReportingTask(reportingTaskNode);
+    }
+    
+    @Override
+    public void disableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.disableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void enableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.enableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void scheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.scheduleReferencingComponents(serviceNode);
+    }
+    
+    @Override
+    public void unscheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.unscheduleReferencingComponents(serviceNode);
     }
     
     @Override
@@ -2579,10 +2640,15 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
         serviceNode.verifyCanDisable();
         controllerServiceProvider.disableControllerService(serviceNode);
     }
-
+    
     @Override
-    public ControllerServiceNode createControllerService(final String type, final String id, final boolean firstTimeAdded) {
-        return controllerServiceProvider.createControllerService(type, id.intern(), firstTimeAdded);
+    public void verifyCanEnableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanEnableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void verifyCanScheduleReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanScheduleReferencingComponents(serviceNode);
     }
 
     @Override
@@ -2606,8 +2672,17 @@ public class FlowController implements EventAccess, ControllerServiceProvider, H
     }
 
     @Override
+    public String getControllerServiceName(final String serviceIdentifier) {
+    	return controllerServiceProvider.getControllerServiceName(serviceIdentifier);
+    }
+
     public void removeControllerService(final ControllerServiceNode serviceNode) {
         controllerServiceProvider.removeControllerService(serviceNode);
+    }
+    
+    @Override
+    public Set<ControllerServiceNode> getAllControllerServices() {
+    	return controllerServiceProvider.getAllControllerServices();
     }
     
     //

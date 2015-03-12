@@ -443,7 +443,7 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
         return maxId;
     }
 
-    ProgressAwareIterator<? extends StoredProvenanceEvent> selectMatchingEvents(final String query, final AtomicLong lastTimeProgressMade) throws IOException {
+    ProgressAwareIterator<? extends StoredProvenanceEvent> selectMatchingEvents(final String query, final Set<String> referencedFields, final AtomicLong lastTimeProgressMade) throws IOException {
         final Set<EventIndexSearcher> searchers = indexManager.getSearchers();
         final Iterator<EventIndexSearcher> searchItr = searchers.iterator();
         
@@ -484,7 +484,7 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
                     searchersComplete++;
                     
                     try {
-                        eventItr = currentSearcher.select(query);
+                        eventItr = currentSearcher.select(query, referencedFields);
                     } catch (final IOException ioe) {
                         throw new EventNotFoundException("Could not find next event", ioe);
                     }
@@ -525,8 +525,12 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
         final long tenMinsInNanos = TimeUnit.MINUTES.toNanos(10);
         
         try {
-            final ProgressAwareIterator<? extends StoredProvenanceEvent> eventItr = selectMatchingEvents(query, lastTimeProgressMade);
-            final ProvenanceResultSet rs = ProvenanceQuery.compile(query, getSearchableFields(), getSearchableAttributes()).evaluate(eventItr);
+            final ProvenanceQuery provenanceQuery = ProvenanceQuery.compile(query, getSearchableFields(), getSearchableAttributes());
+            
+            final Set<String> referencedFields = provenanceQuery.getReferencedFields();
+//            final Set<String> referencedFields = null;
+            final ProgressAwareIterator<? extends StoredProvenanceEvent> eventItr = selectMatchingEvents(query, referencedFields, lastTimeProgressMade);
+            final ProvenanceResultSet rs = provenanceQuery.evaluate(eventItr);
             
             submission = new JournalingRepoQuerySubmission(query, new ProvenanceQueryResult() {
                 @Override

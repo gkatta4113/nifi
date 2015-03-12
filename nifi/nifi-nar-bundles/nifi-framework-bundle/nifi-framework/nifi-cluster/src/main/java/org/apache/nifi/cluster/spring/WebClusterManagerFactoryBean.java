@@ -16,7 +16,6 @@
  */
 package org.apache.nifi.cluster.spring;
 
-import java.nio.file.Paths;
 import org.apache.nifi.admin.service.AuditService;
 import org.apache.nifi.cluster.event.EventManager;
 import org.apache.nifi.cluster.firewall.ClusterNodeFirewall;
@@ -26,11 +25,11 @@ import org.apache.nifi.cluster.manager.HttpResponseMapper;
 import org.apache.nifi.cluster.manager.impl.WebClusterManager;
 import org.apache.nifi.cluster.protocol.impl.ClusterManagerProtocolSenderListener;
 import org.apache.nifi.cluster.protocol.impl.ClusterServicesBroadcaster;
-import org.apache.nifi.controller.service.ControllerServiceLoader;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.io.socket.multicast.DiscoverableService;
 import org.apache.nifi.io.socket.multicast.DiscoverableServiceImpl;
 import org.apache.nifi.util.NiFiProperties;
+import org.apache.nifi.web.OptimisticLockingManager;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.ApplicationContext;
@@ -50,6 +49,8 @@ public class WebClusterManagerFactoryBean implements FactoryBean, ApplicationCon
     private NiFiProperties properties;
 
     private StringEncryptor encryptor;
+    
+    private OptimisticLockingManager optimisticLockingManager;
 
     @Override
     public Object getObject() throws Exception {
@@ -81,7 +82,8 @@ public class WebClusterManagerFactoryBean implements FactoryBean, ApplicationCon
                     dataFlowService,
                     senderListener,
                     properties,
-                    encryptor
+                    encryptor,
+                    optimisticLockingManager
             );
 
             // set the service broadcaster
@@ -106,10 +108,6 @@ public class WebClusterManagerFactoryBean implements FactoryBean, ApplicationCon
 
             // set the audit service
             clusterManager.setAuditService(applicationContext.getBean("auditService", AuditService.class));
-
-            // load the controller services
-            final ControllerServiceLoader serviceLoader = new ControllerServiceLoader(Paths.get(serviceConfigurationFile));
-            serviceLoader.loadControllerServices(clusterManager);
         }
         return clusterManager;
     }
@@ -135,5 +133,9 @@ public class WebClusterManagerFactoryBean implements FactoryBean, ApplicationCon
 
     public void setEncryptor(final StringEncryptor encryptor) {
         this.encryptor = encryptor;
+    }
+    
+    public void setOptimisticLockingManager(OptimisticLockingManager optimisticLockingManager) {
+        this.optimisticLockingManager = optimisticLockingManager;
     }
 }

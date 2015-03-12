@@ -114,6 +114,7 @@ public class ProvenanceQuery {
 	private final Set<String> searchableAttributes;
 	private long accumulatorIdGenerator = 0L;
 	
+	private final Set<String> referencedFields = new HashSet<>();
 	
 	public static ProvenanceQuery compile(final String pql, final Collection<SearchableField> searchableFields, final Collection<SearchableField> searchableAttributes) {
 		try {
@@ -168,7 +169,7 @@ public class ProvenanceQuery {
 				case GROUP_BY:
 					groupByTree = subTree;
 					break;
-				case LIMIT:	
+				case LIMIT:
 					limitTree = subTree;
 					break;
 				case ORDER_BY:
@@ -182,7 +183,7 @@ public class ProvenanceQuery {
 
 		sourceEvaluator = (fromTree == null) ? null : buildSourceEvaluator(fromTree);
 		
-		final BooleanEvaluator where = (whereTree == null) ? null : buildConditionEvaluator(whereTree.getChild(0));
+		final BooleanEvaluator where = (whereTree == null) ? null : buildConditionEvaluator(whereTree.getChild(0), Clause.WHERE);
 		conditionEvaluator = where;
 		
 		groupEvaluators = (groupByTree == null) ? null : buildGroupEvaluators(groupByTree);
@@ -211,6 +212,10 @@ public class ProvenanceQuery {
 				selectAccumulators = accumulators;
 			}
 		}
+	}
+	
+	public Set<String> getReferencedFields() {
+	    return Collections.unmodifiableSet(referencedFields);
 	}
 	
 	@Override
@@ -264,27 +269,27 @@ public class ProvenanceQuery {
     private Accumulator<?> buildAccumulator(final Tree tree, final boolean distinct) {
     	switch (tree.getType()) {
     		case SUM:
-    			return new SumAccumulator(accumulatorIdGenerator++, toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), "SUM(" + getLabel(tree.getChild(0)) + ")");
+    			return new SumAccumulator(accumulatorIdGenerator++, toLongEvaluator(buildOperandEvaluator(tree.getChild(0), Clause.SELECT), tree), "SUM(" + getLabel(tree.getChild(0)) + ")");
     		case AVG:
-    			return new AverageAccumulator(accumulatorIdGenerator++, toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), "AVG(" + getLabel(tree.getChild(0)) + ")");
+    			return new AverageAccumulator(accumulatorIdGenerator++, toLongEvaluator(buildOperandEvaluator(tree.getChild(0), Clause.SELECT), tree), "AVG(" + getLabel(tree.getChild(0)) + ")");
     		case EVENT:
     			return new EventAccumulator(accumulatorIdGenerator++, getLabel(tree), distinct);
     		case IDENTIFIER:
     			return new EventAccumulator(accumulatorIdGenerator++, getLabel(tree.getChild(0)), distinct);
     		case EVENT_PROPERTY:
     		case ATTRIBUTE:
-    			return new EventAccumulator(accumulatorIdGenerator++, getLabel(tree.getChild(0)), buildOperandEvaluator(tree), distinct);
+    			return new EventAccumulator(accumulatorIdGenerator++, getLabel(tree.getChild(0)), buildOperandEvaluator(tree, Clause.SELECT), distinct);
     		case YEAR:
     		case DAY:
     		case HOUR:
     		case MINUTE:
     		case SECOND:
-    			return new EventAccumulator(accumulatorIdGenerator++, getLabel(tree), buildOperandEvaluator(tree), distinct);
+    			return new EventAccumulator(accumulatorIdGenerator++, getLabel(tree), buildOperandEvaluator(tree, Clause.SELECT), distinct);
     		case COUNT:
     			if ( "Event".equalsIgnoreCase(tree.getChild(0).getText() ) ) {
     				return new CountAccumulator(accumulatorIdGenerator++, null, "COUNT(" + getLabel(tree.getChild(0)) + ")");
     			}
-    			return new CountAccumulator(accumulatorIdGenerator++, buildOperandEvaluator(tree.getChild(0)), "COUNT(" + getLabel(tree.getChild(0)) + ")");
+    			return new CountAccumulator(accumulatorIdGenerator++, buildOperandEvaluator(tree.getChild(0), Clause.SELECT), "COUNT(" + getLabel(tree.getChild(0)) + ")");
     		default:
 				throw new UnsupportedOperationException("Haven't implemented accumulators yet for " + tree);
     	}
@@ -308,7 +313,12 @@ public class ProvenanceQuery {
     	return tree.getText();
     }
     
-    private OperandEvaluator<?> buildOperandEvaluator(final Tree tree) {
+    private OperandEvaluator<?> buildOperandEvaluator(final Tree tree, final Clause clause) {
+        // When events are pulled back from an index, for efficiency purposes, we may want to know which
+        // fields to pull back. The fields in the WHERE clause are irrelevant because they are not shown
+        // to the user, so no need to pull those back.
+        final boolean isReferenceInteresting = clause != Clause.WHERE;
+        
     	switch (tree.getType()) {
     		case EVENT_PROPERTY:
     			switch (tree.getChild(0).getType()) {
@@ -316,34 +326,58 @@ public class ProvenanceQuery {
     				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.FileSize) ) {
     				        throw new ProvenanceQueryLanguageException("Query cannot reference FileSize because this field is not searchable by the repository");
     				    }
+    				    if ( isReferenceInteresting ) {
+    				        referencedFields.add(SearchableFields.FileSize.getSearchableFieldName());
+    				    }
     					return new SizeEvaluator();
     				case TRANSIT_URI:
     				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.TransitURI) ) {
                             throw new ProvenanceQueryLanguageException("Query cannot reference TransitURI because this field is not searchable by the repository");
                         }
+    				    if ( isReferenceInteresting ) {
+    				        referencedFields.add(SearchableFields.TransitURI.getSearchableFieldName());
+    				    }
     					return new TransitUriEvaluator();
     				case TIMESTAMP:
     				    // time is always indexed
+                        if ( isReferenceInteresting ) {
+                            referencedFields.add(SearchableFields.EventTime.getSearchableFieldName());
+                        }
     					return new TimestampEvaluator();
     				case TYPE:
     				    // type is always indexed so no need to check it
+                        if ( isReferenceInteresting ) {
+                            referencedFields.add(SearchableFields.EventType.getSearchableFieldName());
+                        }
     					return new TypeEvaluator();
     				case COMPONENT_ID:
     				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.ComponentID) ) {
                             throw new ProvenanceQueryLanguageException("Query cannot reference Component ID because this field is not searchable by the repository");
                         }
+                        if ( isReferenceInteresting ) {
+                            referencedFields.add(SearchableFields.ComponentID.getSearchableFieldName());
+                        }
+
     					return new ComponentIdEvaluator();
     					// TODO: Allow Component Type to be indexed and searched
     				case RELATIONSHIP:
     				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.Relationship) ) {
                             throw new ProvenanceQueryLanguageException("Query cannot reference Relationship because this field is not searchable by the repository");
                         }
-    					return new RelationshipEvaluator();
+                        if ( isReferenceInteresting ) {
+                            referencedFields.add(SearchableFields.Relationship.getSearchableFieldName());
+                        }
+
+                        return new RelationshipEvaluator();
     				case UUID:
     				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.FlowFileUUID) ) {
                             throw new ProvenanceQueryLanguageException("Query cannot reference FlowFile UUID because this field is not searchable by the repository");
                         }
-    				    return new UuidEvaluator();
+                        if ( isReferenceInteresting ) {
+                            referencedFields.add(SearchableFields.FlowFileUUID.getSearchableFieldName());
+                        }
+                        
+                        return new UuidEvaluator();
     				default:
     					// TODO: IMPLEMENT
     					throw new UnsupportedOperationException("Haven't implemented extraction of property " + tree.getChild(0).getText());
@@ -353,23 +387,28 @@ public class ProvenanceQuery {
     		    if ( searchableAttributes != null && !searchableAttributes.contains(attributeName) ) {
     		        throw new ProvenanceQueryLanguageException("Query cannot attribute '" + attributeName + "' because this attribute is not searchable by the repository");
     		    }
-    			return new AttributeEvaluator(toStringEvaluator(buildOperandEvaluator(tree.getChild(0)), tree));
+    		    
+    		    if ( isReferenceInteresting ) {
+    		        referencedFields.add(attributeName);
+    		    }
+    		    
+    			return new AttributeEvaluator(toStringEvaluator(buildOperandEvaluator(tree.getChild(0), clause), tree));
     		case STRING_LITERAL:
     			return new StringLiteralEvaluator(tree.getText());
     		case NUMBER:
     			return new LongLiteralEvaluator(Long.valueOf(tree.getText()));
             case YEAR:
-                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.YEAR, YEAR);
+                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0), clause), tree), Calendar.YEAR, YEAR);
             case MONTH:
-                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.MONTH, MONTH);
+                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0), clause), tree), Calendar.MONTH, MONTH);
             case DAY:
-                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.DAY_OF_YEAR, DAY);
+                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0), clause), tree), Calendar.DAY_OF_YEAR, DAY);
     		case HOUR:
-    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.HOUR_OF_DAY, HOUR);
+    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0), clause), tree), Calendar.HOUR_OF_DAY, HOUR);
     		case MINUTE:
-    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.MINUTE, MINUTE);
+    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0), clause), tree), Calendar.MINUTE, MINUTE);
     		case SECOND:
-    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.SECOND, SECOND);
+    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0), clause), tree), Calendar.SECOND, SECOND);
     		default:
     			throw new ProvenanceQueryLanguageParsingException("Unable to extract value '" + tree.toString() + "' from event because it is not a valid ");
     	}
@@ -398,35 +437,35 @@ public class ProvenanceQuery {
     }
     
     
-    private BooleanEvaluator buildConditionEvaluator(final Tree tree) {
+    private BooleanEvaluator buildConditionEvaluator(final Tree tree, final Clause clause) {
     	switch (tree.getType()) {
     		case AND:
-    			return new AndEvaluator(buildConditionEvaluator(tree.getChild(0)), buildConditionEvaluator(tree.getChild(1)));
+    			return new AndEvaluator(buildConditionEvaluator(tree.getChild(0), clause), buildConditionEvaluator(tree.getChild(1), clause));
     		case OR:
-    			return new OrEvaluator(buildConditionEvaluator(tree.getChild(0)), buildConditionEvaluator(tree.getChild(1)));
+    			return new OrEvaluator(buildConditionEvaluator(tree.getChild(0), clause), buildConditionEvaluator(tree.getChild(1), clause));
     		case EQUALS:
-    			return new EqualsEvaluator(buildOperandEvaluator(tree.getChild(0)), buildOperandEvaluator(tree.getChild(1)));
+    			return new EqualsEvaluator(buildOperandEvaluator(tree.getChild(0), clause), buildOperandEvaluator(tree.getChild(1), clause));
     		case NOT_EQUALS:
-    			return new EqualsEvaluator(buildOperandEvaluator(tree.getChild(0)), buildOperandEvaluator(tree.getChild(1)), true);
+    			return new EqualsEvaluator(buildOperandEvaluator(tree.getChild(0), clause), buildOperandEvaluator(tree.getChild(1), clause), true);
     		case GT:
-    			return new GreaterThanEvaluator(buildOperandEvaluator(tree.getChild(0)), buildOperandEvaluator(tree.getChild(1)));
+    			return new GreaterThanEvaluator(buildOperandEvaluator(tree.getChild(0), clause), buildOperandEvaluator(tree.getChild(1), clause));
     		case LT:
-    			return new LessThanEvaluator(buildOperandEvaluator(tree.getChild(0)), buildOperandEvaluator(tree.getChild(1)));
+    			return new LessThanEvaluator(buildOperandEvaluator(tree.getChild(0), clause), buildOperandEvaluator(tree.getChild(1), clause));
     		case NOT:
-    			return buildConditionEvaluator(tree.getChild(0)).negate();
+    			return buildConditionEvaluator(tree.getChild(0), clause).negate();
     		case MATCHES: {
-    			final OperandEvaluator<?> rhs = buildOperandEvaluator(tree.getChild(1));
+    			final OperandEvaluator<?> rhs = buildOperandEvaluator(tree.getChild(1), clause);
     			if ( !String.class.equals( rhs.getType() ) ) {
     				throw new ProvenanceQueryLanguageParsingException("Right-hand side of MATCHES operator must be a Regular Expression but found " + rhs);
     			}
-    			return new MatchesEvaluator(buildOperandEvaluator(tree.getChild(0)), rhs);
+    			return new MatchesEvaluator(buildOperandEvaluator(tree.getChild(0), clause), rhs);
     		}
     		case STARTS_WITH: {
-    			final OperandEvaluator<?> rhs = buildOperandEvaluator(tree.getChild(1));
+    			final OperandEvaluator<?> rhs = buildOperandEvaluator(tree.getChild(1), clause);
     			if ( !String.class.equals( rhs.getType() ) ) {
     				throw new ProvenanceQueryLanguageParsingException("Right-hand side of STARTS WITH operator must be a String but found " + rhs);
     			}
-    			return new StartsWithEvaluator(buildOperandEvaluator(tree.getChild(0)), rhs);
+    			return new StartsWithEvaluator(buildOperandEvaluator(tree.getChild(0), clause), rhs);
     		}
     		default:
     			// TODO: Implement
@@ -488,10 +527,10 @@ public class ProvenanceQuery {
     			case HOUR:
     			case MINUTE:
     			case SECOND:
-    				evaluator = buildOperandEvaluator(tree);
+    				evaluator = buildOperandEvaluator(tree, Clause.GROUP);
     				break;
     			default:
-    				evaluator = buildConditionEvaluator(tree);
+    				evaluator = buildConditionEvaluator(tree, Clause.GROUP);
     				break;
     		}
     		
@@ -529,7 +568,7 @@ public class ProvenanceQuery {
 	    	final Map<OperandEvaluator<?>, SortDirection> evaluators = new LinkedHashMap<>(orderByTree.getChildCount());
 	    	for (int i=0; i < orderByTree.getChildCount(); i++) {
 	    		final Tree orderTree = orderByTree.getChild(i);
-	    		final OperandEvaluator<?> evaluator = buildOperandEvaluator(orderTree.getChild(0));
+	    		final OperandEvaluator<?> evaluator = buildOperandEvaluator(orderTree.getChild(0), Clause.ORDER);
 	    		
 	    		final SortDirection sortDir;
 	    		if ( orderTree.getChildCount() > 1 ) {
@@ -619,5 +658,13 @@ public class ProvenanceQuery {
     
     public RecordEvaluator<Boolean> getWhereClause() {
     	return conditionEvaluator;
+    }
+    
+    private static enum Clause {
+        SELECT,
+        FROM,
+        WHERE,
+        GROUP,
+        ORDER;
     }
 }

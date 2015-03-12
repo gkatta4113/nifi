@@ -47,6 +47,9 @@ public abstract class MockControllerServiceLookup implements ControllerServiceLo
         controllerServiceMap.remove(service.getIdentifier());
     }
 
+    protected void addControllerServices(final MockControllerServiceLookup other) {
+        this.controllerServiceMap.putAll(other.controllerServiceMap);
+    }
     
     protected ControllerServiceConfiguration getConfiguration(final String identifier) {
         return controllerServiceMap.get(identifier);
@@ -82,5 +85,11 @@ public abstract class MockControllerServiceLookup implements ControllerServiceLo
             }
         }
         return ids;
+    }
+    
+    @Override
+    public String getControllerServiceName(String serviceIdentifier) {
+    	final ControllerServiceConfiguration status = controllerServiceMap.get(serviceIdentifier);
+    	return status == null ? null : serviceIdentifier;
     }
 }

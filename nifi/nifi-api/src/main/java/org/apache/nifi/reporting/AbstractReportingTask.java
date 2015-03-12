@@ -17,21 +17,29 @@
 package org.apache.nifi.reporting;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.nifi.annotation.lifecycle.OnScheduled;
+import org.apache.nifi.annotation.lifecycle.OnUnscheduled;
 import org.apache.nifi.components.AbstractConfigurableComponent;
 import org.apache.nifi.controller.ControllerServiceLookup;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessorInitializationContext;
 
 public abstract class AbstractReportingTask extends AbstractConfigurableComponent implements ReportingTask {
 
+    private final AtomicBoolean scheduled = new AtomicBoolean(false);
+    
     private String identifier;
     private String name;
     private long schedulingNanos;
     private ControllerServiceLookup serviceLookup;
+    private ComponentLog logger;
 
     @Override
     public final void initialize(final ReportingInitializationContext config) throws InitializationException {
         identifier = config.getIdentifier();
+        logger = config.getLogger();
         name = config.getName();
         schedulingNanos = config.getSchedulingPeriod(TimeUnit.NANOSECONDS);
         serviceLookup = config.getControllerServiceLookup();
@@ -39,6 +47,20 @@ public abstract class AbstractReportingTask extends AbstractConfigurableComponen
         init(config);
     }
 
+    @OnUnscheduled
+    public final void setUnscheduledFlag() {
+        scheduled.set(false);
+    }
+    
+    @OnScheduled
+    public final void setScheduledFlag() {
+        scheduled.set(true);
+    }
+    
+    protected final boolean isScheduled() {
+        return scheduled.get();
+    }
+    
     /**
      * Returns the {@link ControllerServiceLookup} that was passed to the
      * {@link #init(ProcessorInitializationContext)} method
@@ -91,4 +113,11 @@ public abstract class AbstractReportingTask extends AbstractConfigurableComponen
     protected void init(final ReportingInitializationContext config) throws InitializationException {
     }
 
+    /**
+     * Returns the logger that has been provided to the component by the framework in its initialize method.
+     * @return
+     */
+    protected ComponentLog getLogger() {
+        return logger;
+    }
 }

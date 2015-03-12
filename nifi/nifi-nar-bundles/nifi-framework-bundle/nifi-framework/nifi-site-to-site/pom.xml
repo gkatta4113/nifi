@@ -21,7 +21,6 @@
         <version>0.0.2-incubating-SNAPSHOT</version>
     </parent>
     <artifactId>nifi-site-to-site</artifactId>
-    <version>0.0.2-incubating-SNAPSHOT</version>
     <dependencies>
         <dependency> <!-- This can be removed after testing.... -->
             <groupId>org.apache.nifi</groupId>
@@ -58,6 +57,10 @@
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-utils</artifactId>
+        </dependency>
+        <dependency>
+        	<groupId>org.apache.nifi</groupId>
+        	<artifactId>nifi-site-to-site-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

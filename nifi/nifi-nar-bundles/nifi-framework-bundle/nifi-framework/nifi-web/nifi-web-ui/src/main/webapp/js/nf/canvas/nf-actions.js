@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* global nf, d3 */
+
 nf.Actions = (function () {
 
     var config = {
@@ -185,12 +188,17 @@ nf.Actions = (function () {
             if (selection.size() === 1 && nf.CanvasUtils.isConnection(selection)) {
                 var selectionData = selection.datum();
 
-                // if the source is actually in another group
-                if (selectionData.component.source.groupId !== nf.Canvas.getGroupId()) {
-                    nf.CanvasUtils.showComponent(selectionData.component.source.groupId, selectionData.component.source.id);
-                } else {
+                // the source is in the current group
+                if (selectionData.component.source.groupId === nf.Canvas.getGroupId()) {
                     var source = d3.select('#id-' + selectionData.component.source.id);
                     nf.Actions.show(source);
+                } else if (selectionData.component.source.type === 'REMOTE_OUTPUT_PORT') {
+                    // if the source is remote
+                    var remoteSource = d3.select('#id-' + selectionData.component.source.groupId);
+                    nf.Actions.show(remoteSource);
+                } else {
+                    // if the source is local but in a sub group
+                    nf.CanvasUtils.showComponent(selectionData.component.source.groupId, selectionData.component.source.id);
                 }
             }
         },
@@ -204,12 +212,17 @@ nf.Actions = (function () {
             if (selection.size() === 1 && nf.CanvasUtils.isConnection(selection)) {
                 var selectionData = selection.datum();
 
-                // if the destination is actually in another group
-                if (selectionData.component.destination.groupId !== nf.Canvas.getGroupId()) {
-                    nf.CanvasUtils.showComponent(selectionData.component.destination.groupId, selectionData.component.destination.id);
-                } else {
+                // the destination is in the current group or its remote
+                if (selectionData.component.destination.groupId === nf.Canvas.getGroupId()) {
                     var destination = d3.select('#id-' + selectionData.component.destination.id);
                     nf.Actions.show(destination);
+                } else if (selectionData.component.destination.type === 'REMOTE_INPUT_PORT') {
+                    // if the destination is remote
+                    var remoteDestination = d3.select('#id-' + selectionData.component.destination.groupId);
+                    nf.Actions.show(remoteDestination);
+                } else {
+                    // if the destination is local but in a sub group
+                    nf.CanvasUtils.showComponent(selectionData.component.destination.groupId, selectionData.component.destination.id);
                 }
             }
         },
@@ -349,7 +362,12 @@ nf.Actions = (function () {
         enable: function () {
             var components = d3.selectAll('g.component.selected').filter(function (d) {
                 var selected = d3.select(this);
-                return (nf.CanvasUtils.isProcessor(selected) || nf.CanvasUtils.isInputPort(selected) || nf.CanvasUtils.isOutputPort(selected)) && nf.CanvasUtils.supportsModification(selected);
+                var selectedData = selected.datum();
+                
+                // processors and ports that support modification and are not currently stopped
+                return (nf.CanvasUtils.isProcessor(selected) || nf.CanvasUtils.isInputPort(selected) || nf.CanvasUtils.isOutputPort(selected)) && 
+                        nf.CanvasUtils.supportsModification(selected) &&
+                        selectedData.component.state !== 'STOPPED';
             });
             if (components.empty()) {
                 nf.Dialog.showOkDialog({
@@ -379,7 +397,12 @@ nf.Actions = (function () {
         disable: function () {
             var components = d3.selectAll('g.component.selected').filter(function (d) {
                 var selected = d3.select(this);
-                return (nf.CanvasUtils.isProcessor(selected) || nf.CanvasUtils.isInputPort(selected) || nf.CanvasUtils.isOutputPort(selected)) && nf.CanvasUtils.supportsModification(selected);
+                var selectedData = selected.datum();
+                
+                // processors and ports that support modification and are not currently disabled
+                return (nf.CanvasUtils.isProcessor(selected) || nf.CanvasUtils.isInputPort(selected) || nf.CanvasUtils.isOutputPort(selected)) && 
+                        nf.CanvasUtils.supportsModification(selected) &&
+                        selectedData.component.state !== 'DISABLED';
             });
             if (components.empty()) {
                 nf.Dialog.showOkDialog({
@@ -435,7 +458,6 @@ nf.Actions = (function () {
                             data['running'] = true;
                         }
 
-                        // update the resource
                         updateResource(d.component.uri, data).done(function (response) {
                             if (nf.CanvasUtils.isProcessor(selected)) {
                                 nf.Processor.set(response.processor);
@@ -843,20 +865,33 @@ nf.Actions = (function () {
          * @param {type} selection      The selection
          */
         fillColor: function (selection) {
-            if (selection.size() === 1 && (nf.CanvasUtils.isProcessor(selection) || nf.CanvasUtils.isLabel(selection))) {
-                var selectionData = selection.datum();
-                var color = nf[selectionData.type].defaultColor();
-
-                // use the specified color if appropriate
-                if (nf.Common.isDefinedAndNotNull(selectionData.component.style['background-color'])) {
-                    color = selectionData.component.style['background-color'];
+            if (nf.CanvasUtils.isColorable(selection)) {
+                // we know that the entire selection is processors or labels... this
+                // checks if the first item is a processor... if true, all processors
+                var allProcessors = nf.CanvasUtils.isProcessor(selection);
+                
+                var color;
+                if (allProcessors) {
+                    color = nf.Processor.defaultColor();
+                } else {
+                    color = nf.Label.defaultColor();
+                }
+                
+                // if there is only one component selected, get its color otherwise use default
+                if (selection.size() === 1) {
+                    var selectionData = selection.datum();
+                    
+                    // use the specified color if appropriate
+                    if (nf.Common.isDefinedAndNotNull(selectionData.component.style['background-color'])) {
+                        color = selectionData.component.style['background-color'];
+                    }
                 }
 
                 // set the color
-                $('#fill-color-value').minicolors('value', color);
+                $('#fill-color').minicolors('value', color);
 
                 // update the preview visibility
-                if (nf.CanvasUtils.isProcessor(selection)) {
+                if (allProcessors) {
                     $('#fill-color-processor-preview').show();
                     $('#fill-color-label-preview').hide();
                 } else {
@@ -1065,7 +1100,6 @@ nf.Actions = (function () {
 
                             // refresh the birdseye/toolbar
                             nf.Birdseye.refresh();
-                            nf.CanvasToolbar.refresh();
 
                             // remove the original snippet
                             nf.Snippet.remove(snippet.id).fail(reject);
@@ -1078,7 +1112,6 @@ nf.Actions = (function () {
 
                                 // refresh the birdseye/toolbar
                                 nf.Birdseye.refresh();
-                                nf.CanvasToolbar.refresh();
                             });
 
                             // reject the deferred

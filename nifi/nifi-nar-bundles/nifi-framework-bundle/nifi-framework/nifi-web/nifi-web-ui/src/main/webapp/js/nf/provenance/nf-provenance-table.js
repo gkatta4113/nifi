@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* global nf, top, Slick */
+
 nf.ProvenanceTable = (function () {
 
     /**
@@ -584,10 +587,10 @@ nf.ProvenanceTable = (function () {
         // initialize the provenance table
         var provenanceColumns = [
             {id: 'moreDetails', name: '&nbsp;', sortable: false, resizable: false, formatter: moreDetailsFormatter, width: 50, maxWidth: 50},
-            {id: 'eventTime', name: 'Date/Time', field: 'eventTime', sortable: true, resizable: true},
+            {id: 'eventTime', name: 'Date/Time', field: 'eventTime', sortable: true, defaultSortAsc: false, resizable: true},
             {id: 'eventType', name: 'Type', field: 'eventType', sortable: true, resizable: true},
             {id: 'flowFileUuid', name: 'FlowFile Uuid', field: 'flowFileUuid', sortable: true, resizable: true},
-            {id: 'fileSize', name: 'Size', field: 'fileSize', sortable: true, resizable: true},
+            {id: 'fileSize', name: 'Size', field: 'fileSize', sortable: true, defaultSortAsc: false, resizable: true},
             {id: 'componentName', name: 'Component Name', field: 'componentName', sortable: true, resizable: true, formatter: valueFormatter},
             {id: 'componentType', name: 'Component Type', field: 'componentType', sortable: true, resizable: true}
         ];

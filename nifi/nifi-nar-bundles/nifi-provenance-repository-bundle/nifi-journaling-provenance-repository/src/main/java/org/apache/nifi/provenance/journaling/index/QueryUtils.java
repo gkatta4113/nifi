@@ -45,6 +45,10 @@ public class QueryUtils {
     
     public static JournaledStorageLocation createLocation(final Document document) {
         final String containerName = document.get(IndexedFieldNames.CONTAINER_NAME);
+        if ( containerName == null ) {
+            return null;
+        }
+        
         final String sectionName = document.get(IndexedFieldNames.SECTION_NAME);
         final long journalId = document.getField(IndexedFieldNames.JOURNAL_ID).numericValue().longValue();
         final int blockIndex = document.getField(IndexedFieldNames.BLOCK_INDEX).numericValue().intValue();

@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.nifi.events.EventReporter;
 import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QuerySubmission;
 import org.apache.nifi.provenance.search.SearchableField;
@@ -158,5 +159,15 @@ public class MockProvenanceEventRepository implements ProvenanceEventRepository 
             }
         }
         return events;
+    }
+
+    @Override
+    public ProvenanceQuerySubmission submitQuery(final String query) {
+        return null;
+    }
+
+    @Override
+    public ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(final String queryIdentifier) {
+        return null;
     }
 }

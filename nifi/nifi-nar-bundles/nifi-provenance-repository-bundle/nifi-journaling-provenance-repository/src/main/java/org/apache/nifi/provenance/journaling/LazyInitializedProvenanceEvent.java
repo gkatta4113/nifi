@@ -214,13 +214,19 @@ public class LazyInitializedProvenanceEvent implements StoredProvenanceEvent {
 
     @Override
     public String getFlowFileUuid() {
-        return doc.get(SearchableFields.FlowFileUUID.getSearchableFieldName());
+        String uuid = doc.get(SearchableFields.FlowFileUUID.getSearchableFieldName());
+        if ( uuid != null ) {
+            return uuid;
+        }
+
+        ensureFullyLoaded();
+        return fullRecord.getFlowFileUuid();
     }
 
     @Override
     public List<String> getParentUuids() {
         final IndexableField[] uuids = doc.getFields(SearchableFields.FlowFileUUID.getSearchableFieldName());
-        if ( uuids.length < 2 ) {
+        if ( uuids == null || uuids.length < 2 ) {
             return Collections.emptyList();
         }
         
@@ -240,7 +246,7 @@ public class LazyInitializedProvenanceEvent implements StoredProvenanceEvent {
     @Override
     public List<String> getChildUuids() {
         final IndexableField[] uuids = doc.getFields(SearchableFields.FlowFileUUID.getSearchableFieldName());
-        if ( uuids.length < 2 ) {
+        if ( uuids == null || uuids.length < 2 ) {
             return Collections.emptyList();
         }
         

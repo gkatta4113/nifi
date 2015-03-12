@@ -21,7 +21,6 @@
         <version>0.0.2-incubating-SNAPSHOT</version>
     </parent>
     <artifactId>nifi-framework-core-api</artifactId>
-    <version>0.0.2-incubating-SNAPSHOT</version>
     <dependencies>
         <dependency>
             <groupId>org.apache.nifi</groupId>
@@ -42,6 +41,10 @@
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-api</artifactId>
+        </dependency>
+        <dependency>
+        	<groupId>org.apache.nifi</groupId>
+        	<artifactId>nifi-site-to-site-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

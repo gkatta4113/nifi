@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* global nf, d3 */
+
 nf.CanvasHeader = (function () {
 
     var config = {
@@ -58,13 +61,11 @@ nf.CanvasHeader = (function () {
             });
 
             // mouse over for the flow settings link
-            if (nf.Common.isDFM()) {
-                nf.Common.addHoverEffect('#flow-settings-link', 'flow-settings-link', 'flow-settings-link-hover').click(function () {
-                    nf.Settings.showSettings();
+            nf.Common.addHoverEffect('#flow-settings-link', 'flow-settings-link', 'flow-settings-link-hover').click(function () {
+                nf.Settings.showSettings().done(function () {
+                    nf.Settings.resetTableSize();
                 });
-            } else {
-                $('#flow-settings-link').addClass('flow-settings-link-disabled');
-            }
+            });
 
             // mouse over for the users link
             if (nf.Common.isAdmin()) {
@@ -96,29 +97,9 @@ nf.CanvasHeader = (function () {
                 nf.Shell.showPage('bulletin-board');
             });
 
-            // setup the tooltip for the refresh icon
-            $('#refresh-required-icon').qtip($.extend({
-                content: 'This flow has been modified by another user. Please refresh.'
-            }, nf.CanvasUtils.config.systemTooltipConfig));
-
             // setup the refresh link actions
             $('#refresh-required-link').click(function () {
-                nf.Canvas.reload().done(function () {
-                    // update component visibility
-                    nf.Canvas.View.updateVisibility();
-
-                    // refresh the birdseye
-                    nf.Birdseye.refresh();
-
-                    // hide the refresh link
-                    $('#stats-last-refreshed').removeClass('alert');
-                    $('#refresh-required-container').hide();
-                }).fail(function () {
-                    nf.Dialog.showOkDialog({
-                        dialogContent: 'Unable to refresh the current group.',
-                        overlayBackground: true
-                    });
-                });
+                nf.CanvasHeader.reloadAndClearWarnings();
             });
 
             // get the about details
@@ -170,47 +151,53 @@ nf.CanvasHeader = (function () {
                         buttonText: 'Apply',
                         handler: {
                             click: function () {
-                                // close the dialog
-                                $('#fill-color-dialog').modal('hide');
-
-                                // ensure the selection is a processor or label
                                 var selection = nf.CanvasUtils.getSelection();
-                                if (selection.size() === 1 && (nf.CanvasUtils.isProcessor(selection) || nf.CanvasUtils.isLabel(selection))) {
+                                
+                                // color the selected components
+                                selection.each(function (d) {
+                                    var selected = d3.select(this);
+                                    
                                     var revision = nf.Client.getRevision();
-                                    var selectionData = selection.datum();
+                                    var selectedData = selected.datum();
 
                                     // get the color and update the styles
-                                    var color = $('#fill-color-value').val();
+                                    var color = $('#fill-color').minicolors('value');
 
-                                    // update the style for the specified component
-                                    $.ajax({
-                                        type: 'PUT',
-                                        url: selectionData.component.uri,
-                                        data: {
-                                            'version': revision.version,
-                                            'clientId': revision.clientId,
-                                            'style[background-color]': color
-                                        },
-                                        dataType: 'json'
-                                    }).done(function (response) {
-                                        // update the revision
-                                        nf.Client.setRevision(response.revision);
+                                    // ensure the color actually changed
+                                    if (color !== selectedData.component.style['background-color']) {
+                                        // update the style for the specified component
+                                        $.ajax({
+                                            type: 'PUT',
+                                            url: selectedData.component.uri,
+                                            data: {
+                                                'version': revision.version,
+                                                'clientId': revision.clientId,
+                                                'style[background-color]': color
+                                            },
+                                            dataType: 'json'
+                                        }).done(function (response) {
+                                            // update the revision
+                                            nf.Client.setRevision(response.revision);
 
-                                        // update the processor
-                                        if (nf.CanvasUtils.isProcessor(selection)) {
-                                            nf.Processor.set(response.processor);
-                                        } else {
-                                            nf.Label.set(response.label);
-                                        }
-                                    }).fail(function (xhr, status, error) {
-                                        if (xhr.status === 400 || xhr.status === 404 || xhr.status === 409) {
-                                            nf.Dialog.showOkDialog({
-                                                dialogContent: nf.Common.escapeHtml(xhr.responseText),
-                                                overlayBackground: true
-                                            });
-                                        }
-                                    });
-                                }
+                                            // update the processor
+                                            if (nf.CanvasUtils.isProcessor(selected)) {
+                                                nf.Processor.set(response.processor);
+                                            } else {
+                                                nf.Label.set(response.label);
+                                            }
+                                        }).fail(function (xhr, status, error) {
+                                            if (xhr.status === 400 || xhr.status === 404 || xhr.status === 409) {
+                                                nf.Dialog.showOkDialog({
+                                                    dialogContent: nf.Common.escapeHtml(xhr.responseText),
+                                                    overlayBackground: true
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                                
+                                // close the dialog
+                                $('#fill-color-dialog').modal('hide');
                             }
                         }
                     }, {
@@ -221,18 +208,51 @@ nf.CanvasHeader = (function () {
                                 $('#fill-color-dialog').modal('hide');
                             }
                         }
-                    }]
+                    }],
+                handler: {
+                    close: function () {
+                        // clear the current color
+                        $('#fill-color-value').val('');
+                        $('#fill-color').minicolors('value', '');
+                    }
+                }
+            }).draggable({
+                containment: 'parent',
+                handle: '.dialog-header'
             });
 
             // initialize the fill color picker
-            $('#fill-color-value').minicolors({
+            $('#fill-color').minicolors({
                 inline: true,
                 change: function (hex, opacity) {
+                    // update the value
+                    $('#fill-color-value').val(hex);
+
+                    // always update the preview
                     $('#fill-color-processor-preview, #fill-color-label-preview').css({
                         'border-color': hex,
                         'background': 'linear-gradient(to bottom, #ffffff, ' + hex + ')',
                         'filter': 'progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr=#ffffff, endColorstr=' + hex + ')'
                     });
+                }
+            });
+            
+            // updates the color if its a valid hex color string
+            var updateColor = function () {
+                var hex = $('#fill-color-value').val();
+                
+                // only update the fill color when its a valid hex color string
+                // #[six hex characters|three hex characters] case insensitive
+                if (/(^#[0-9A-F]{6}$)|(^#[0-9A-F]{3}$)/i.test(hex)) {
+                    $('#fill-color').minicolors('value', hex);
+                }
+            };
+            
+            // apply fill color from field on blur and enter press
+            $('#fill-color-value').on('blur', updateColor).on('keyup', function(e) {
+                var code = e.keyCode ? e.keyCode : e.which;
+                if (code === $.ui.keyCode.ENTER) {
+                    updateColor();
                 }
             });
 
@@ -263,7 +283,7 @@ nf.CanvasHeader = (function () {
                     var delta = 0;
                     if (nf.Common.isDefinedAndNotNull(evt.originalEvent.detail)) {
                         delta = -evt.originalEvent.detail;
-                    } else if (nf.Common.isDefinedAndNotNull(evnt.originalEvent.wheelDelta)) {
+                    } else if (nf.Common.isDefinedAndNotNull(evt.originalEvent.wheelDelta)) {
                         delta = evt.originalEvent.wheelDelta;
                     }
 
@@ -287,6 +307,32 @@ nf.CanvasHeader = (function () {
                         title.css('left', (titlePosition.left + increment) + 'px');
                     }
                 }
+            });
+        },
+        
+        /**
+         * Reloads and clears any warnings.
+         */
+        reloadAndClearWarnings: function () {
+            nf.Canvas.reload().done(function () {
+                // update component visibility
+                nf.Canvas.View.updateVisibility();
+
+                // refresh the birdseye
+                nf.Birdseye.refresh();
+
+                // hide the refresh link on the canvas
+                $('#stats-last-refreshed').removeClass('alert');
+                $('#refresh-required-container').hide();
+                
+                // hide the refresh link on the settings
+                $('#settings-last-refreshed').removeClass('alert');
+                $('#settings-refresh-required-icon').hide();
+            }).fail(function () {
+                nf.Dialog.showOkDialog({
+                    dialogContent: 'Unable to refresh the current group.',
+                    overlayBackground: true
+                });
             });
         }
     };

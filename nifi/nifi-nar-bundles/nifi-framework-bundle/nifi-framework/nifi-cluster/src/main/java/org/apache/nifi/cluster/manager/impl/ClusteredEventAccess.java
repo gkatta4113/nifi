@@ -30,6 +30,7 @@ import org.apache.nifi.provenance.ProvenanceEventRepository;
 import org.apache.nifi.provenance.StorageLocation;
 import org.apache.nifi.provenance.StoredProvenanceEvent;
 import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QuerySubmission;
 import org.apache.nifi.provenance.search.SearchableField;
@@ -149,6 +150,16 @@ public class ClusteredEventAccess implements EventAccess {
             @Override
             public void registerEvents(final Collection<ProvenanceEventRecord> events) throws IOException {
                 
+            }
+
+            @Override
+            public ProvenanceQuerySubmission submitQuery(String query) {
+                return null;
+            }
+
+            @Override
+            public ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(String queryIdentifier) {
+                return null;
             }
         };
     }

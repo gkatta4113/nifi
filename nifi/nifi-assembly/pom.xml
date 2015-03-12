@@ -21,7 +21,6 @@
         <version>0.0.2-incubating-SNAPSHOT</version>
     </parent>
     <artifactId>nifi-assembly</artifactId>
-    <version>0.0.2-incubating-SNAPSHOT</version>
     <packaging>pom</packaging>
     <description>This is the assembly Apache NiFi (incubating)</description>
     <build>
@@ -157,6 +156,16 @@
             <artifactId>nifi-kafka-nar</artifactId>
             <type>nar</type>
         </dependency>
+		<dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-http-context-map-nar</artifactId>
+            <type>nar</type>
+        </dependency>
+		<dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-kite-nar</artifactId>
+            <type>nar</type>
+        </dependency>
     </dependencies>
     
     <properties>        
@@ -174,6 +183,7 @@
         <nifi.flowcontroller.graceful.shutdown.period>10 sec</nifi.flowcontroller.graceful.shutdown.period>
         <nifi.flowservice.writedelay.interval>500 ms</nifi.flowservice.writedelay.interval>
         <nifi.administrative.yield.duration>30 sec</nifi.administrative.yield.duration>
+        <nifi.bored.yield.duration>10 millis</nifi.bored.yield.duration>
 
         <nifi.flow.configuration.file>./conf/flow.xml.gz</nifi.flow.configuration.file>
         <nifi.flow.configuration.archive.dir>./conf/archive/</nifi.flow.configuration.archive.dir>
@@ -377,16 +387,16 @@
                                             <directory>/opt/nifi/nifi-${project.version}</directory>
                                             <sources>
                                                 <source>
-                                                    <location>../LICENSE</location>
+                                                    <location>./LICENSE</location>
                                                 </source>
                                                 <source>
-                                                    <location>../NOTICE</location>
+                                                    <location>./NOTICE</location>
                                                 </source>
                                                 <source>
                                                     <location>../DISCLAIMER</location>
                                                 </source>
                                                 <source>
-                                                    <location>../README.md</location>
+                                                    <location>./README.md</location>
                                                     <destination>README</destination>
                                                 </source>
                                             </sources>

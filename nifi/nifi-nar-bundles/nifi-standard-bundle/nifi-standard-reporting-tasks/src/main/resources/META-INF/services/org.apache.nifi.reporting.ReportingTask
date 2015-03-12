@@ -12,7 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 org.apache.nifi.controller.ControllerStatusReportingTask
 org.apache.nifi.controller.MonitorDiskUsage
 org.apache.nifi.controller.MonitorMemory
 org.apache.nifi.reporting.ganglia.StandardGangliaReporter
+org.apache.nifi.provenance.GenerateProvenanceReport

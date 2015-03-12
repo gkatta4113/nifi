@@ -79,4 +79,13 @@ public interface ValidationContext {
      * @return
      */
     String getAnnotationData();
+    
+    /**
+     * There are times when the framework needs to consider a component valid, even if it
+     * references an invalid ControllerService. This method will return <code>false</code>
+     * if the component is to be considered valid even if the given Controller Service is referenced
+     * and is invalid.
+     * @param service
+     */
+    boolean isValidationRequired(ControllerService service);
 }

@@ -20,9 +20,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -61,6 +63,20 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
     private final FSDirectory fsDirectory;
     
     private final String description;
+    
+    private static final Set<String> REQUIRED_FIELDS;
+    
+    static {
+        final Set<String> fields = new HashSet<>();
+        fields.add(IndexedFieldNames.BLOCK_INDEX);
+        fields.add(IndexedFieldNames.CONTAINER_NAME);
+        fields.add(IndexedFieldNames.EVENT_ID);
+        fields.add(IndexedFieldNames.JOURNAL_ID);
+        fields.add(IndexedFieldNames.SECTION_NAME);
+        fields.add(SearchableFields.EventTime.getSearchableFieldName());
+        fields.add(SearchableFields.EventType.getSearchableFieldName());
+        REQUIRED_FIELDS = fields;
+    }
     
     public LuceneIndexSearcher(final ProvenanceEventRepository repo, final File indexDirectory) throws IOException {
         this.repo = repo;
@@ -196,9 +212,17 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
     }
     
     
-    private <T> Iterator<T> select(final String query, final DocumentTransformer<T> transformer) throws IOException {
+    private <T> Iterator<T> select(final String query, final Set<String> referencedFields, final DocumentTransformer<T> transformer) throws IOException {
         final org.apache.lucene.search.Query luceneQuery = LuceneTranslator.toLuceneQuery(ProvenanceQuery.compile(query, repo.getSearchableFields(), repo.getSearchableAttributes()).getWhereClause());
-        final int batchSize = 1000;
+        final int batchSize = 1000000;
+        
+        final Set<String> fieldsToLoad;
+        if ( referencedFields == null ) {
+            fieldsToLoad = null;
+        } else {
+            fieldsToLoad = new HashSet<>(REQUIRED_FIELDS);
+            fieldsToLoad.addAll(referencedFields);
+        }
         
         final ObjectHolder<TopDocs> topDocsHolder = new ObjectHolder<>(null);
         return new Iterator<T>() {
@@ -239,7 +263,7 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
                 ScoreDoc[] scoreDocs = topDocs.scoreDocs;
                 if ( scoreDocIndex >= scoreDocs.length ) {
                     try {
-                        topDocs = searcher.searchAfter(scoreDocs[scoreDocs.length - 1], luceneQuery, batchSize);
+                        topDocs = getTopDocs(scoreDocs[scoreDocs.length - 1], luceneQuery, batchSize);
                         topDocsHolder.set(topDocs);
                         scoreDocs = topDocs.scoreDocs;
                         scoreDocIndex = 0;
@@ -251,7 +275,7 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
                 final ScoreDoc scoreDoc = scoreDocs[scoreDocIndex++];
                 final Document document;
                 try {
-                    document = searcher.doc(scoreDoc.doc);
+                    document = getDocument(scoreDoc.doc, fieldsToLoad);
                 } catch (final IOException ioe) {
                     throw new EventNotFoundException("Unable to obtain next record from " + LuceneIndexSearcher.this, ioe);
                 }
@@ -260,6 +284,22 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
                 return transformer.transform(document);
             }
 
+            // this method exists solely for the use of a profiler so that I can see which methods are taking the longest when
+            // profiling only org.apache.nifi.*
+            private TopDocs getTopDocs(final ScoreDoc start, final org.apache.lucene.search.Query luceneQuery, final int batchSize) throws IOException {
+                return searcher.searchAfter(start, luceneQuery, batchSize);
+            }
+            
+            // this method exists solely for the use of a profiler so that I can see which methods are taking the longest when
+            // profiling only org.apache.nifi.*
+            private Document getDocument(final int docId, final Set<String> referencedFields) throws IOException {
+                if ( referencedFields == null || referencedFields.isEmpty() ) {
+                    return searcher.doc(docId);
+                } else {
+                    return searcher.doc(docId, referencedFields);
+                }
+            }
+            
             @Override
             public void remove() {
                 throw new UnsupportedOperationException();
@@ -268,8 +308,8 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
     }
 
     @Override
-    public Iterator<LazyInitializedProvenanceEvent> select(final String query) throws IOException {
-        return select(query, new DocumentTransformer<LazyInitializedProvenanceEvent>() {
+    public Iterator<LazyInitializedProvenanceEvent> select(final String query, final Set<String> referencedFields) throws IOException {
+        return select(query, referencedFields, new DocumentTransformer<LazyInitializedProvenanceEvent>() {
             @Override
             public LazyInitializedProvenanceEvent transform(final Document document) {
                 return new LazyInitializedProvenanceEvent(repo, QueryUtils.createLocation(document), document);
@@ -279,7 +319,7 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
 
     @Override
     public Iterator<JournaledStorageLocation> selectLocations(final String query) throws IOException {
-        return select(query, new DocumentTransformer<JournaledStorageLocation>() {
+        return select(query, REQUIRED_FIELDS, new DocumentTransformer<JournaledStorageLocation>() {
             @Override
             public JournaledStorageLocation transform(final Document document) {
                 return QueryUtils.createLocation(document);

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.nifi.provenance.journaling.JournaledStorageLocation;
 import org.apache.nifi.provenance.journaling.LazyInitializedProvenanceEvent;
@@ -89,9 +90,10 @@ public interface EventIndexSearcher extends Closeable {
      * Evaluates the given query against the index, returning an iterator of lazily initialized provenance events
      * 
      * @param query
+     * @param referencedFields the set of fields that are referenced in the query
      * @throws IOException
      */
-    Iterator<LazyInitializedProvenanceEvent> select(String query) throws IOException;
+    Iterator<LazyInitializedProvenanceEvent> select(String query, Set<String> referencedFields) throws IOException;
     
     /**
      * Evaluates the given query against the index, returning an iterator of locations from which the matching

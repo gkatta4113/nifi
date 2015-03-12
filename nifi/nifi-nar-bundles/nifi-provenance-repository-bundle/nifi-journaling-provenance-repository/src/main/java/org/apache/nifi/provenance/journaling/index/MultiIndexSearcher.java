@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.nifi.provenance.journaling.JournaledStorageLocation;
 import org.apache.nifi.provenance.journaling.LazyInitializedProvenanceEvent;
@@ -166,11 +167,11 @@ public class MultiIndexSearcher implements EventIndexSearcher {
     }
 
     @Override
-    public Iterator<LazyInitializedProvenanceEvent> select(final String query) throws IOException {
+    public Iterator<LazyInitializedProvenanceEvent> select(final String query, final Set<String> referencedFields) throws IOException {
         final List<Iterator<LazyInitializedProvenanceEvent>> iterators = new ArrayList<>(searchers.size());
         
         for ( final EventIndexSearcher searcher : searchers ) {
-            final Iterator<LazyInitializedProvenanceEvent> itr = searcher.select(query);
+            final Iterator<LazyInitializedProvenanceEvent> itr = searcher.select(query, referencedFields);
             iterators.add(itr);
         }
 

@@ -370,6 +370,10 @@ public class RemoteProcessGroupResource extends ApplicationResource {
         if (uri.getScheme() == null || uri.getHost() == null) {
             throw new IllegalArgumentException("The specified remote process group URL is malformed: " + requestProcessGroupDTO.getTargetUri());
         }
+        
+        if (!(uri.getScheme().equalsIgnoreCase("http") || uri.getScheme().equalsIgnoreCase("https"))) {
+            throw new IllegalArgumentException("The specified remote process group URL is invalid because it is not http or https: " + requestProcessGroupDTO.getTargetUri());
+        }
 
         // normalize the uri to the other controller
         String controllerUri = uri.toString();
@@ -392,7 +396,7 @@ public class RemoteProcessGroupResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(revision.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // build the response entity
         final RemoteProcessGroupEntity entity = new RemoteProcessGroupEntity();
@@ -448,7 +452,7 @@ public class RemoteProcessGroupResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO revision = new RevisionDTO();
         revision.setClientId(clientId.getClientId());
-        revision.setVersion(controllerResponse.getRevision());
+        revision.setVersion(controllerResponse.getVersion());
 
         // create the response entity
         final RemoteProcessGroupEntity entity = new RemoteProcessGroupEntity();
@@ -582,7 +586,7 @@ public class RemoteProcessGroupResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(revision.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // build the response entity
         final RemoteProcessGroupPortEntity entity = new RemoteProcessGroupPortEntity();
@@ -716,7 +720,7 @@ public class RemoteProcessGroupResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(revision.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // build the response entity
         RemoteProcessGroupPortEntity entity = new RemoteProcessGroupPortEntity();
@@ -860,6 +864,10 @@ public class RemoteProcessGroupResource extends ApplicationResource {
             if (uri.getScheme() == null || uri.getHost() == null) {
                 throw new IllegalArgumentException("The specified remote process group URL is malformed: " + requestRemoteProcessGroup.getTargetUri());
             }
+            
+            if (!(uri.getScheme().equalsIgnoreCase("http") || uri.getScheme().equalsIgnoreCase("https"))) {
+                throw new IllegalArgumentException("The specified remote process group URL is invalid because it is not http or https: " + requestRemoteProcessGroup.getTargetUri());
+            }
 
             // normalize the uri to the other controller
             String controllerUri = uri.toString();
@@ -882,7 +890,7 @@ public class RemoteProcessGroupResource extends ApplicationResource {
         // get the updated revision
         final RevisionDTO updatedRevision = new RevisionDTO();
         updatedRevision.setClientId(revision.getClientId());
-        updatedRevision.setVersion(controllerResponse.getRevision());
+        updatedRevision.setVersion(controllerResponse.getVersion());
 
         // build the response entity
         final RemoteProcessGroupEntity entity = new RemoteProcessGroupEntity();

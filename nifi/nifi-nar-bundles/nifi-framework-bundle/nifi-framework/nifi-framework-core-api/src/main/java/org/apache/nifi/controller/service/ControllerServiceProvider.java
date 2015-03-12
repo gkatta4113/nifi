@@ -16,6 +16,8 @@
  */
 package org.apache.nifi.controller.service;
 
+import java.util.Set;
+
 import org.apache.nifi.annotation.lifecycle.OnAdded;
 import org.apache.nifi.controller.ControllerServiceLookup;
 
@@ -25,7 +27,7 @@ import org.apache.nifi.controller.ControllerServiceLookup;
 public interface ControllerServiceProvider extends ControllerServiceLookup {
 
     /**
-     * Creates a new Controller Service of the given type and assigns it the given id. If <code>firstTimeadded</code>
+     * Creates a new Controller Service of the specified type and assigns it the given id. If <code>firstTimeadded</code>
      * is true, calls any methods that are annotated with {@link OnAdded}
      *
      * @param type
@@ -66,4 +68,54 @@ public interface ControllerServiceProvider extends ControllerServiceLookup {
      * @param serviceNode
      */
     void disableControllerService(ControllerServiceNode serviceNode);
+    
+    /**
+     * Returns a Set of all Controller Services that exist for this service provider.
+     * @return
+     */
+    Set<ControllerServiceNode> getAllControllerServices();
+    
+    
+    /**
+     * Recursively unschedules all schedulable components (Processors and Reporting Tasks) that reference the given
+     * Controller Service. For any Controller services that reference this one, its schedulable referencing components will also
+     * be unscheduled.
+     * @param serviceNode
+     */
+    void unscheduleReferencingComponents(ControllerServiceNode serviceNode);
+    
+    /**
+     * Disables any Controller Service that references the provided Controller Service. This action is performed recursively
+     * so that if service A references B and B references C, disabling references for C will first disable A, then B.
+     * @param serviceNode
+     */
+    void disableReferencingServices(ControllerServiceNode serviceNode);
+    
+    /**
+     * Verifies that all Controller Services referencing the provided ControllerService can be enabled.
+     * @param serviceNode
+     */
+    void verifyCanEnableReferencingServices(ControllerServiceNode serviceNode);
+    
+    /**
+     * Verifies that all enabled Processors referencing the ControllerService (or a service that depends on 
+     * the provided service) can be scheduled to run.
+     * @param serviceNode
+     */
+    void verifyCanScheduleReferencingComponents(ControllerServiceNode serviceNode);
+    
+    /**
+     * Enables all Controller Services that are referencing the given service. If Service A references Service B and Service
+     * B references serviceNode, Service A and B will both be enabled.
+     * @param serviceNode
+     */
+    void enableReferencingServices(ControllerServiceNode serviceNode);
+    
+    /**
+     * Schedules any schedulable component (Processor, ReportingTask) that is referencing the given Controller Service
+     * to run. This is performed recursively, so if a Processor is referencing Service A, which is referencing serviceNode,
+     * then the Processor will also be started.
+     * @param serviceNode
+     */
+    void scheduleReferencingComponents(ControllerServiceNode serviceNode);
 }

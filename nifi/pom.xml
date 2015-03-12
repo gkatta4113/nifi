@@ -25,10 +25,10 @@
     <artifactId>nifi</artifactId>
     <version>0.0.2-incubating-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <description>Apache NiFi is a dataflow system based on the concepts of flow-based programming. It is currently a part of the Apache Incubator.</description>
+    <description>Apache NiFi(incubating) is an easy to use, powerful, and reliable system to process and distribute data.</description>
     <url>http://nifi.incubator.apache.org</url>
     <organization>
-        <name>Apache NiFi (incubating)</name>
+        <name>Apache NiFi(incubating) Project</name>
         <url>http://nifi.incubator.apache.org/</url>
     </organization>
     <licenses>
@@ -65,6 +65,7 @@
         <module>nifi-assembly</module>
         <module>nifi-docs</module>
         <module>nifi-maven-archetypes</module>
+		<module>nifi-external</module>
     </modules>
     <scm>
         <connection>scm:git:git://git.apache.org/incubator-nifi.git</connection>
@@ -88,6 +89,8 @@
         <spring.version>4.1.4.RELEASE</spring.version>
         <spring.security.version>3.2.5.RELEASE</spring.security.version>
         <jersey.version>1.18.3</jersey.version>
+        <hadoop.version>2.6.0</hadoop.version>
+        <inceptionYear>2014</inceptionYear>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -506,13 +509,40 @@
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-common</artifactId>
-                <version>2.5.2</version>
+                <version>${hadoop.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-hdfs</artifactId>
-                <version>2.5.2</version>
+                <version>${hadoop.version}</version>
             </dependency>
+            
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-yarn-api</artifactId>
+                <version>${hadoop.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-mapreduce-client-core</artifactId>
+                <version>${hadoop.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-annotations</artifactId>
+                <version>${hadoop.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client</artifactId>
+                <version>${hadoop.version}</version>
+            </dependency>
+            <dependency>
+	        	<groupId>org.apache.avro</groupId>
+	        	<artifactId>avro</artifactId>
+	        	<version>1.7.6</version>
+	        </dependency>
+            
             <dependency>
                 <groupId>com.sun.jersey</groupId>
                 <artifactId>jersey-server</artifactId>
@@ -624,6 +654,11 @@
                 <artifactId>nifi-utils</artifactId>
                 <version>0.0.2-incubating-SNAPSHOT</version>
             </dependency>
+			<dependency>
+				<groupId>org.apache.nifi</groupId>
+				<artifactId>nifi-site-to-site-client</artifactId>
+				<version>0.0.2-incubating-SNAPSHOT</version>
+			</dependency>
             <dependency>
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-web-utils</artifactId>
@@ -740,9 +775,21 @@
                 <version>0.0.2-incubating-SNAPSHOT</version>
                 <type>nar</type>
             </dependency>
+			<dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-kite-nar</artifactId>
+                <version>0.0.2-incubating-SNAPSHOT</version>
+                <type>nar</type>
+            </dependency>
             <dependency>
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-kafka-nar</artifactId>
+                <version>0.0.2-incubating-SNAPSHOT</version>
+                <type>nar</type>
+            </dependency>
+			<dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-http-context-map-nar</artifactId>
                 <version>0.0.2-incubating-SNAPSHOT</version>
                 <type>nar</type>
             </dependency>
@@ -781,6 +828,11 @@
                 <groupId>org.apache.nifi</groupId>
                 <artifactId>nifi-write-ahead-log</artifactId>
                 <version>0.0.2-incubating-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jayway.jsonpath</groupId>
+                <artifactId>json-path</artifactId>
+                <version>1.2.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

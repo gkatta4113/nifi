@@ -28,9 +28,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -46,6 +48,7 @@ import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
 import org.apache.nifi.provenance.lineage.LineageNode;
 import org.apache.nifi.provenance.lineage.LineageNodeType;
 import org.apache.nifi.provenance.lineage.ProvenanceEventLineageNode;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.query.ProvenanceResultSet;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QueryResult;
@@ -370,7 +373,10 @@ public class TestJournalingProvenanceRepository {
             
             // Ensure that we get the Events, even though we are querying for Event.Time because selectMatchingEvents
             // only takes into account the WHERE clause
-            final Iterator<? extends StoredProvenanceEvent> itr = repo.selectMatchingEvents("SELECT Event.Time WHERE Event.uuid = '00000000-0000-0000-0000-000000000005'", new AtomicLong(0L));
+            final Set<String> fieldsToLoad = new HashSet<>();
+            fieldsToLoad.add(SearchableFields.EventTime.getSearchableFieldName());
+            
+            final Iterator<? extends StoredProvenanceEvent> itr = repo.selectMatchingEvents("SELECT Event WHERE Event.uuid = '00000000-0000-0000-0000-000000000005'", fieldsToLoad, new AtomicLong(0L));
             assertTrue(itr.hasNext());
             final StoredProvenanceEvent event = itr.next();
             assertNotNull(event);
@@ -417,6 +423,12 @@ public class TestJournalingProvenanceRepository {
             }
             final long registerFinish = System.nanoTime();
             
+            final ProvenanceQuerySubmission submission = repo.submitQuery("SELECT Event.uuid WHERE Event.uuid = '00000000-0000-0000-0000-000000000005'");
+            while ( !submission.getResult().isFinished() ) {
+                Thread.sleep(100L);
+                System.out.println(submission.getResult().getPercentComplete() + "% complete");
+            }
+            
             final ProvenanceResultSet rs = repo.query("SELECT Event.uuid WHERE Event.uuid = '00000000-0000-0000-0000-000000000005'");
             assertTrue(rs.hasNext());
             final List<?> cols = rs.next();
@@ -429,6 +441,9 @@ public class TestJournalingProvenanceRepository {
             final long searchFinish = System.nanoTime();
             System.out.println("Register records: " + TimeUnit.NANOSECONDS.toMillis(registerFinish - start) + " millis");
             System.out.println("Query records: " + TimeUnit.NANOSECONDS.toMillis(searchFinish - registerFinish) + " millis");
+        } catch (final Exception e) {
+            e.printStackTrace();
+            Assert.fail(e.toString());
         } finally {
             for ( final File file : containers.values() ) {
                 FileUtils.deleteFile(file, true);
@@ -491,10 +506,18 @@ public class TestJournalingProvenanceRepository {
         containers.put("container1", new File("target/" + UUID.randomUUID().toString()));
         containers.put("container2", new File("target/" + UUID.randomUUID().toString()));
         config.setContainers(containers);
+        config.setCompressOnRollover(false);
         
-        config.setPartitionCount(3);
+        config.setPartitionCount(16);
         config.setSearchableFields(Arrays.asList(new SearchableField[] {
-                SearchableFields.FlowFileUUID
+                SearchableFields.FlowFileUUID,
+                SearchableFields.FileSize,
+                SearchableFields.AlternateIdentifierURI,
+                SearchableFields.ComponentID,
+                SearchableFields.EventTime,
+                SearchableFields.EventType,
+                SearchableFields.Details,
+                SearchableFields.TransitURI
         }));
         
         try (final JournalingProvenanceRepository repo = new JournalingProvenanceRepository(config)) {
@@ -504,7 +527,7 @@ public class TestJournalingProvenanceRepository {
             
             final long start = System.nanoTime();
             final List<ProvenanceEventRecord> events = new ArrayList<>(1000);
-            for (int i=0; i < 100000; i++) {
+            for (int i=0; i < 1000000; i++) {
                 attributes.put("i", String.valueOf(i));
                 final ProvenanceEventRecord event = TestUtil.generateEvent(i, attributes);
                 events.add(event);
@@ -515,18 +538,28 @@ public class TestJournalingProvenanceRepository {
             }
             final long registerFinish = System.nanoTime();
             
-            final ProvenanceResultSet rs = repo.query("SELECT Event WHERE Event.uuid = '00000000-0000-0000-0000-000000000005'");
-            assertTrue(rs.hasNext());
-            final List<?> cols = rs.next();
-            assertEquals(1, cols.size());
-            assertTrue(ProvenanceEventRecord.class.isAssignableFrom(rs.getReturnType().get(0)));
-            final ProvenanceEventRecord firstCol = (ProvenanceEventRecord) cols.get(0);
-            assertEquals("00000000-0000-0000-0000-000000000005", firstCol.getFlowFileUuid());
-            assertFalse(rs.hasNext());
+            System.out.println("Inserted 1 million events. Waiting for profiler...");
+//            try { Thread.sleep(25000L); } catch (final InterruptedException ie) {}
+            System.out.println("Running query");
+            
+            final long searchStart = System.nanoTime();
+            for (int i=0; i < 1; i++) {
+                final ProvenanceResultSet rs = repo.query("SELECT SUM(Event.Size)");
+                assertTrue(rs.hasNext());
+                final List<?> cols = rs.next();
+                assertEquals(1, cols.size());
+//              assertTrue(ProvenanceEventRecord.class.isAssignableFrom(rs.getReturnType().get(0)));
+//              final ProvenanceEventRecord firstCol = (ProvenanceEventRecord) cols.get(0);
+//              assertEquals("00000000-0000-0000-0000-000000000005", firstCol.getFlowFileUuid());
+                assertFalse(rs.hasNext());
+            }
             
             final long searchFinish = System.nanoTime();
             System.out.println("Register records: " + TimeUnit.NANOSECONDS.toMillis(registerFinish - start) + " millis");
-            System.out.println("Query records: " + TimeUnit.NANOSECONDS.toMillis(searchFinish - registerFinish) + " millis");
+            System.out.println("Query records: " + TimeUnit.NANOSECONDS.toMillis(searchFinish - searchStart) + " millis");
+        } catch (final Exception e) {
+            e.printStackTrace();
+            Assert.fail(e.toString());
         } finally {
             for ( final File file : containers.values() ) {
                 FileUtils.deleteFile(file, true);
