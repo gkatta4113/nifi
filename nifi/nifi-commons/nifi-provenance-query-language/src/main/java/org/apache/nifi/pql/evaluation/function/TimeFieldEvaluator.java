@@ -18,9 +18,13 @@ public class TimeFieldEvaluator implements OperandEvaluator<Long> {
 		this.timeExtractor = timeExtractor;
 		this.evaluatorType = evaluatorType;
 		
+		// note the case statements below are designed to "bleed through."
+		// I.e., if time field is YEAR, we want to clear all of the fields starting with month.
 		switch (timeField) {
 			case Calendar.YEAR:
 				fieldsToClear.add(Calendar.MONTH);
+			case Calendar.MONTH:
+			    fieldsToClear.add(Calendar.DAY_OF_MONTH);
 			case Calendar.DAY_OF_MONTH:
 				fieldsToClear.add(Calendar.HOUR);
 			case Calendar.HOUR:

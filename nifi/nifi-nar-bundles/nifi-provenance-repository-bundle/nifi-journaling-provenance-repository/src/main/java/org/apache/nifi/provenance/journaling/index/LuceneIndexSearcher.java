@@ -197,7 +197,7 @@ public class LuceneIndexSearcher implements EventIndexSearcher {
     
     
     private <T> Iterator<T> select(final String query, final DocumentTransformer<T> transformer) throws IOException {
-        final org.apache.lucene.search.Query luceneQuery = LuceneTranslator.toLuceneQuery(ProvenanceQuery.compile(query).getWhereClause());
+        final org.apache.lucene.search.Query luceneQuery = LuceneTranslator.toLuceneQuery(ProvenanceQuery.compile(query, repo.getSearchableFields(), repo.getSearchableAttributes()).getWhereClause());
         final int batchSize = 1000;
         
         final ObjectHolder<TopDocs> topDocsHolder = new ObjectHolder<>(null);

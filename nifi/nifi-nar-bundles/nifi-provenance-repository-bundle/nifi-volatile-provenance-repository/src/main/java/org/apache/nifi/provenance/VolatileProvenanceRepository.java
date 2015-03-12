@@ -43,6 +43,7 @@ import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
 import org.apache.nifi.provenance.lineage.FlowFileLineage;
 import org.apache.nifi.provenance.lineage.Lineage;
 import org.apache.nifi.provenance.lineage.LineageComputationType;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QueryResult;
 import org.apache.nifi.provenance.search.QuerySubmission;
@@ -56,7 +57,8 @@ import org.apache.nifi.util.RingBuffer.ForEachEvaluator;
 import org.apache.nifi.util.RingBuffer.IterationDirection;
 
 public class VolatileProvenanceRepository implements ProvenanceEventRepository {
-
+    private static final int MAX_CONCURRENT_QUERIES = 10;
+    
     // properties
     public static final String BUFFER_SIZE = "nifi.provenance.repository.buffer.size";
 
@@ -71,6 +73,7 @@ public class VolatileProvenanceRepository implements ProvenanceEventRepository {
 
     private final ConcurrentMap<String, AsyncQuerySubmission> querySubmissionMap = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, AsyncLineageSubmission> lineageSubmissionMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ProvenanceQuerySubmission> provQuerySubmissionMap = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(0L);
     private final AtomicBoolean initialized = new AtomicBoolean(false);
 
@@ -613,4 +616,109 @@ public class VolatileProvenanceRepository implements ProvenanceEventRepository {
         }
     }
 
+    
+    
+    
+    @Override
+    public ProvenanceQuerySubmission submitQuery(final String query) {
+        throw new UnsupportedOperationException();
+        /*
+        if ( provQuerySubmissionMap.size() > MAX_CONCURRENT_QUERIES ) {
+            final List<String> toRemove = new ArrayList<>();
+            final Date now = new Date();
+            
+            for ( final Map.Entry<String, ProvenanceQuerySubmission> entry : provQuerySubmissionMap.entrySet() ) {
+                if ( entry.getValue().getResult().getExpiration().after(now) ) {
+                    toRemove.add(entry.getKey());
+                }
+            }
+            
+            for ( final String id : toRemove ) {
+                provQuerySubmissionMap.remove(id);
+            }
+            
+            if ( provQuerySubmissionMap.size() > MAX_CONCURRENT_QUERIES ) {
+                throw new IllegalStateException("There are already " + MAX_CONCURRENT_QUERIES + " outstanding queries for this Provenance Repository; cannot perform any more queries until the existing queries are expired or canceled");
+            }
+        }
+        
+        final Iterator<StoredProvenanceEvent> eventItr = ringBuffer.asList().iterator();
+        final ProvenanceResultSet rs = ProvenanceQuery.compile(query, getSearchableFields(), getSearchableAttributes()).evaluate(eventItr);
+        
+        final Date submissionTime = new Date();
+        final String queryId = UUID.randomUUID().toString();
+        final Date expiration = new Date(System.currentTimeMillis() + TimeUnit.MINUTES.toNanos(10));
+        final ProvenanceQuerySubmission submission = new ProvenanceQuerySubmission() {
+            private final AtomicBoolean canceled = new AtomicBoolean(false);
+            
+            @Override
+            public String getQuery() {
+                return query;
+            }
+
+            @Override
+            public ProvenanceQueryResult getResult() {
+                return new ProvenanceQueryResult() {
+                    @Override
+                    public ProvenanceResultSet getResultSet() {
+                        return rs;
+                    }
+
+                    @Override
+                    public Date getExpiration() {
+                        return expiration;
+                    }
+
+                    @Override
+                    public String getError() {
+                        return null;
+                    }
+
+                    @Override
+                    public int getPercentComplete() {
+                        return 100;
+                    }
+
+                    @Override
+                    public boolean isFinished() {
+                        return true;
+                    }
+                };
+            }
+
+            @Override
+            public Date getSubmissionTime() {
+                return submissionTime;
+            }
+
+            @Override
+            public String getQueryIdentifier() {
+                return queryId;
+            }
+
+            @Override
+            public void cancel() {
+                canceled.set(true);
+                provQuerySubmissionMap.remove(queryId);
+            }
+
+            @Override
+            public boolean isCanceled() {
+                return canceled.get();
+            }
+        };
+        
+        provQuerySubmissionMap.putIfAbsent(queryId, submission);
+        return submission;
+        */
+    }
+
+    
+    @Override
+    public ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(final String queryIdentifier) {
+        throw new UnsupportedOperationException();
+        /*
+        return provQuerySubmissionMap.get(queryIdentifier);
+        */
+    }
 }

@@ -518,6 +518,7 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
         return queryManager.retrieveProvenanceQuerySubmission(queryIdentifier);
     }
     
+    @Override
     public ProvenanceQuerySubmission submitQuery(final String query) {
         ProvenanceQuerySubmission submission;
         final AtomicLong lastTimeProgressMade = new AtomicLong(System.nanoTime());
@@ -525,7 +526,7 @@ public class JournalingProvenanceRepository implements ProvenanceEventRepository
         
         try {
             final ProgressAwareIterator<? extends StoredProvenanceEvent> eventItr = selectMatchingEvents(query, lastTimeProgressMade);
-            final ProvenanceResultSet rs = ProvenanceQuery.compile(query).evaluate(eventItr);
+            final ProvenanceResultSet rs = ProvenanceQuery.compile(query, getSearchableFields(), getSearchableAttributes()).evaluate(eventItr);
             
             submission = new JournalingRepoQuerySubmission(query, new ProvenanceQueryResult() {
                 @Override

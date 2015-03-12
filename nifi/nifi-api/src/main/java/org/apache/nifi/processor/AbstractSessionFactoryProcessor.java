@@ -53,6 +53,8 @@ public abstract class AbstractSessionFactoryProcessor extends AbstractConfigurab
 
     @Override
     public final void initialize(final ProcessorInitializationContext context) {
+        super.initialize(context);
+        
         identifier = context.getIdentifier();
         logger = context.getLogger();
         serviceLookup = context.getControllerServiceLookup();

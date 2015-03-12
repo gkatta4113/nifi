@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.nifi.events.EventReporter;
 import org.apache.nifi.provenance.lineage.ComputeLineageSubmission;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.search.Query;
 import org.apache.nifi.provenance.search.QuerySubmission;
 import org.apache.nifi.provenance.search.SearchableField;
@@ -103,6 +104,26 @@ public interface ProvenanceEventRepository extends Closeable {
      */
     Long getMaxEventId() throws IOException;
 
+    
+    /**
+     * Submits an asynchronous request to process the given Provenance Query Language query,
+     * returning an identifier that can be used to fetch the results at a later time
+     * 
+     * @param query
+     * @return
+     */
+    ProvenanceQuerySubmission submitQuery(String query);
+
+    /**
+     * Returns the ProvenanceQuerySubmission associated with the given identifier, or <code>null</code>
+     * if no query exists with the given identifier.
+     *
+     * @param queryIdentifier
+     *
+     * @return
+     */
+    ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(String queryIdentifier);
+    
     /**
      * Submits an asynchronous request to process the given query, returning an
      * identifier that can be used to fetch the results at a later time
@@ -111,11 +132,11 @@ public interface ProvenanceEventRepository extends Closeable {
      * @return
      */
     QuerySubmission submitQuery(Query query);
-
+    
+    
     /**
-     * Returns the QueryResult associated with the given identifier, if the
-     * query has finished processing. If the query has not yet finished running,
-     * returns <code>null</code>.
+     * Returns the QuerySubmission associated with the given identifier, or <code>null</code>
+     * if no query exists with the provided identifier
      *
      * @param queryIdentifier
      *

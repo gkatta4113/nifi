@@ -352,7 +352,8 @@ public class TestJournalingProvenanceRepository {
         
         config.setPartitionCount(1);
         config.setSearchableFields(Arrays.asList(new SearchableField[] {
-                SearchableFields.FlowFileUUID
+                SearchableFields.FlowFileUUID,
+                SearchableFields.EventTime
         }));
         
         try (final JournalingProvenanceRepository repo = new JournalingProvenanceRepository(config)) {
@@ -596,7 +597,8 @@ public class TestJournalingProvenanceRepository {
         
         config.setPartitionCount(3);
         config.setSearchableFields(Arrays.asList(new SearchableField[] {
-                SearchableFields.FlowFileUUID
+                SearchableFields.FlowFileUUID,
+                SearchableFields.FileSize
         }));
         
         try (final JournalingProvenanceRepository repo = new JournalingProvenanceRepository(config)) {
@@ -638,6 +640,72 @@ public class TestJournalingProvenanceRepository {
             }
         }
     }
+    
+    
+    
+    @Test()
+    public void testAggregateQuery2AgainstMany() throws IOException, InterruptedException {
+        final JournalingRepositoryConfig config = new JournalingRepositoryConfig();
+        config.setEventExpiration(10, TimeUnit.MINUTES);
+        config.setJournalRolloverPeriod(10, TimeUnit.MINUTES);
+        config.setJournalCapacity(1024 * 1024 * 1024);
+        
+        final Map<String, File> containers = new HashMap<>();
+        containers.put("container1", new File("target/" + UUID.randomUUID().toString()));
+        config.setContainers(containers);
+        
+        config.setPartitionCount(1);
+        config.setSearchableFields(Arrays.asList(new SearchableField[] {
+                SearchableFields.FlowFileUUID
+        }));
+        config.setSearchableAttributes(Arrays.asList(new SearchableField[] {
+                SearchableFields.newSearchableAttribute("i"),
+                SearchableFields.newSearchableAttribute("j")
+        }));
+        
+        try (final JournalingProvenanceRepository repo = new JournalingProvenanceRepository(config)) {
+            repo.initialize(null);
+            
+            final Map<String, String> attributes = new HashMap<>();
+            
+            final long start = System.nanoTime();
+            final List<ProvenanceEventRecord> events = new ArrayList<>(1000);
+            for (int j=0; j < 100; j++) {
+                attributes.put("j", String.valueOf(j));
+                for (int i=0; i < 100; i++) {
+                    attributes.put("i", String.valueOf(i));
+                    final ProvenanceEventRecord event = TestUtil.generateEvent(i, attributes);
+                    events.add(event);
+                    if ( events.size() % 100 == 0 ) {
+                        repo.registerEvents(events);
+                        events.clear();
+                    }
+                }
+            }
+            final long registerFinish = System.nanoTime();
+            
+            final ProvenanceResultSet rs = repo.query("SELECT Event['j'], COUNT(Event['i']), SUM(Event['i']) GROUP BY Event['j']");
+            System.out.println(rs.getLabels());
+            while ( rs.hasNext() ) {
+                final List<?> cols = rs.next();
+                System.out.println(cols);
+            }
+            
+            final long searchFinish = System.nanoTime();
+            System.out.println("Register records: " + TimeUnit.NANOSECONDS.toMillis(registerFinish - start) + " millis");
+            System.out.println("Query records: " + TimeUnit.NANOSECONDS.toMillis(searchFinish - registerFinish) + " millis");
+            
+        } catch (final Exception e) {
+            e.printStackTrace();
+            Assert.fail(e.toString());
+        } finally {
+            for ( final File file : containers.values() ) {
+                FileUtils.deleteFile(file, true);
+            }
+        }
+    }
+    
+    
     
     
     @Test(timeout=10000)

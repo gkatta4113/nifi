@@ -92,13 +92,13 @@ public class TestQuery {
 	
 	@Test
 	public void testCompilationManually() {
-		System.out.println(ProvenanceQuery.compile("SELECT R.TransitUri FROM *"));
-		System.out.println(ProvenanceQuery.compile("SELECT R['filename'] FROM RECEIVE, SEND;"));
-		System.out.println(ProvenanceQuery.compile("SELECT Event FROM RECEIVE ORDER BY Event['filename'];"));
+		System.out.println(ProvenanceQuery.compile("SELECT R.TransitUri FROM *", null, null));
+		System.out.println(ProvenanceQuery.compile("SELECT R['filename'] FROM RECEIVE, SEND;", null, null));
+		System.out.println(ProvenanceQuery.compile("SELECT Event FROM RECEIVE ORDER BY Event['filename'];", null, null));
 		
 //		System.out.println(Query.compile("SELECT Event FROM RECEIVE WHERE ((Event.TransitUri <> 'http') OR (Event['filename'] = '1.txt')) and (Event.Size > 1000 or Event.Size between 1 AND 4);"));
 		
-		System.out.println(ProvenanceQuery.compile("SELECT SUM(Event.size) FROM RECEIVE"));
+		System.out.println(ProvenanceQuery.compile("SELECT SUM(Event.size) FROM RECEIVE", null, null));
 	}
 	
 	
@@ -107,7 +107,7 @@ public class TestQuery {
 		createRecords();
 		dump(ProvenanceQuery.execute("SELECT Event", repo));
 		
-		final ProvenanceQuery query = ProvenanceQuery.compile("SELECT SUM(Event.Size), AVG(Event.Size) FROM RECEIVE WHERE Event.TransitUri = 'https://localhost:80/nifi'");
+		final ProvenanceQuery query = ProvenanceQuery.compile("SELECT SUM(Event.Size), AVG(Event.Size) FROM RECEIVE WHERE Event.TransitUri = 'https://localhost:80/nifi'", null, null);
 		
 		final ProvenanceResultSet rs = query.execute(repo);
 		dump(rs);
@@ -302,7 +302,7 @@ public class TestQuery {
 				+ ")";
 		System.out.println(queryString);
 		
-		final ProvenanceQuery query = ProvenanceQuery.compile(queryString);
+		final ProvenanceQuery query = ProvenanceQuery.compile(queryString, null, null);
 		
 		System.out.println(query.getWhereClause());
 		

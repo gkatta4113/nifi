@@ -39,6 +39,11 @@
             <artifactId>nifi-processor-utils</artifactId>
         </dependency>
         <dependency>
+        	<groupId>org.apache.nifi</groupId>
+        	<artifactId>nifi-provenance-query-language</artifactId>
+        	<version>0.0.2-incubating-SNAPSHOT</version>
+        </dependency>
+        <dependency>
             <groupId>com.yammer.metrics</groupId>
             <artifactId>metrics-ganglia</artifactId>
         </dependency>

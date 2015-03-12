@@ -22,8 +22,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public abstract class AbstractConfigurableComponent implements ConfigurableComponent {
+import org.apache.nifi.logging.ProcessorLog;
+import org.apache.nifi.processor.ProcessorInitializationContext;
 
+public abstract class AbstractConfigurableComponent implements ConfigurableComponent {
+    private ComponentLogger loger;
+    
+    @Override
+    public void initialize(final ProcessorInitializationContext context) {
+        logger = context.getLogger();
+    }
+    
     /**
      * Allows subclasses to perform their own validation on the already set
      * properties. Since each property is validated as it is set this allows
@@ -45,6 +54,10 @@ public abstract class AbstractConfigurableComponent implements ConfigurableCompo
         return Collections.emptySet();
     }
 
+    protected ComponentLog getLogger() {
+        return logger;
+    }
+    
     /**
      * Returns a PropertyDescriptor for the name specified that is fully
      * populated

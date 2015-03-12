@@ -71,6 +71,7 @@ import org.apache.nifi.provenance.lucene.IndexSearch;
 import org.apache.nifi.provenance.lucene.IndexingAction;
 import org.apache.nifi.provenance.lucene.LineageQuery;
 import org.apache.nifi.provenance.lucene.LuceneUtil;
+import org.apache.nifi.provenance.query.ProvenanceQuerySubmission;
 import org.apache.nifi.provenance.rollover.CompressionAction;
 import org.apache.nifi.provenance.rollover.RolloverAction;
 import org.apache.nifi.provenance.search.Query;
@@ -1926,5 +1927,15 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
         }
         
         return firstEvents.get(0).getEventTime();
+    }
+
+    @Override
+    public ProvenanceQuerySubmission submitQuery(final String query) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ProvenanceQuerySubmission retrieveProvenanceQuerySubmission(final String queryIdentifier) {
+        throw new UnsupportedOperationException();
     }
 }

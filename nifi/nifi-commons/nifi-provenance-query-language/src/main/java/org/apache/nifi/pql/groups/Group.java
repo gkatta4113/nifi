@@ -19,7 +19,7 @@ public class Group {
 		int prime = 23497;
 		int hc = 1;
 		for ( final Object o : values ) {
-			hc = prime * hc + o.hashCode();
+			hc = prime * hc + (o == null ? 0 : o.hashCode());
 		}
 		
 		this.hashCode = hc;

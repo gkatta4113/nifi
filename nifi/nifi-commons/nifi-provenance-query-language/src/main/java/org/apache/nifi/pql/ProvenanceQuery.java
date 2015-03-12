@@ -20,6 +20,7 @@ import static org.apache.nifi.pql.ProvenanceQueryParser.LIMIT;
 import static org.apache.nifi.pql.ProvenanceQueryParser.LT;
 import static org.apache.nifi.pql.ProvenanceQueryParser.MATCHES;
 import static org.apache.nifi.pql.ProvenanceQueryParser.MINUTE;
+import static org.apache.nifi.pql.ProvenanceQueryParser.MONTH;
 import static org.apache.nifi.pql.ProvenanceQueryParser.NOT;
 import static org.apache.nifi.pql.ProvenanceQueryParser.NOT_EQUALS;
 import static org.apache.nifi.pql.ProvenanceQueryParser.NUMBER;
@@ -40,6 +41,8 @@ import static org.apache.nifi.pql.ProvenanceQueryParser.YEAR;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -66,6 +69,7 @@ import org.apache.nifi.pql.evaluation.comparison.LessThanEvaluator;
 import org.apache.nifi.pql.evaluation.comparison.MatchesEvaluator;
 import org.apache.nifi.pql.evaluation.comparison.RecordTypeEvaluator;
 import org.apache.nifi.pql.evaluation.comparison.StartsWithEvaluator;
+import org.apache.nifi.pql.evaluation.conversion.StringToLongEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.AttributeEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.ComponentIdEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.RelationshipEvaluator;
@@ -84,14 +88,17 @@ import org.apache.nifi.pql.evaluation.order.GroupedSorter;
 import org.apache.nifi.pql.evaluation.order.RowSorter;
 import org.apache.nifi.pql.evaluation.order.SortDirection;
 import org.apache.nifi.pql.evaluation.repository.SelectAllRecords;
+import org.apache.nifi.pql.exception.ProvenanceQueryLanguageException;
 import org.apache.nifi.pql.exception.ProvenanceQueryLanguageParsingException;
 import org.apache.nifi.pql.results.GroupingResultSet;
 import org.apache.nifi.pql.results.StandardOrderedResultSet;
 import org.apache.nifi.pql.results.StandardUnorderedResultSet;
 import org.apache.nifi.provenance.ProvenanceEventRepository;
 import org.apache.nifi.provenance.ProvenanceEventType;
+import org.apache.nifi.provenance.SearchableFields;
 import org.apache.nifi.provenance.StoredProvenanceEvent;
 import org.apache.nifi.provenance.query.ProvenanceResultSet;
+import org.apache.nifi.provenance.search.SearchableField;
 
 public class ProvenanceQuery {
 	private final Tree tree;
@@ -103,16 +110,19 @@ public class ProvenanceQuery {
 	private final RowSorter sorter;
 	private final Long limit;
 	
+	private final Set<SearchableField> searchableFields;
+	private final Set<String> searchableAttributes;
 	private long accumulatorIdGenerator = 0L;
 	
-	public static ProvenanceQuery compile(final String pql) {
+	
+	public static ProvenanceQuery compile(final String pql, final Collection<SearchableField> searchableFields, final Collection<SearchableField> searchableAttributes) {
 		try {
             final CommonTokenStream lexerTokenStream = createTokenStream(pql);
             final ProvenanceQueryParser parser = new ProvenanceQueryParser(lexerTokenStream);
             final Tree ast = (Tree) parser.pql().getTree();
             final Tree tree = ast.getChild(0);
             
-            return new ProvenanceQuery(tree, pql);
+            return new ProvenanceQuery(tree, pql, searchableFields, searchableAttributes);
         } catch (final ProvenanceQueryLanguageParsingException e) {
             throw e;
         } catch (final Exception e) {
@@ -126,9 +136,19 @@ public class ProvenanceQuery {
         return new CommonTokenStream(lexer);
     }
 	
-	private ProvenanceQuery(final Tree tree, final String pql) {
+	private ProvenanceQuery(final Tree tree, final String pql, final Collection<SearchableField> searchableFields, final Collection<SearchableField> searchableAttributes) {
 		this.tree = tree;
 		this.pql = pql;
+		this.searchableFields = searchableFields == null ? null : Collections.unmodifiableSet(new HashSet<>(searchableFields));
+		if (searchableAttributes == null) {
+		    this.searchableAttributes = null;
+		} else {
+    		final Set<String> attributes = new HashSet<>();
+    		for ( final SearchableField attr : searchableAttributes ) {
+    		    attributes.add(attr.getSearchableFieldName());
+    		}
+    		this.searchableAttributes = Collections.unmodifiableSet(attributes);
+		}
 		
 		Tree fromTree = null;
 		Tree whereTree = null;
@@ -162,7 +182,6 @@ public class ProvenanceQuery {
 
 		sourceEvaluator = (fromTree == null) ? null : buildSourceEvaluator(fromTree);
 		
-		// Distribute AND's over OR's.
 		final BooleanEvaluator where = (whereTree == null) ? null : buildConditionEvaluator(whereTree.getChild(0));
 		conditionEvaluator = where;
 		
@@ -192,10 +211,6 @@ public class ProvenanceQuery {
 				selectAccumulators = accumulators;
 			}
 		}
-		
-		
-		//repoEvaluator = new SelectAllRecords();
-		//repoEvaluator = new SelectFromLucene(LuceneTranslator.toLuceneQuery(where));
 	}
 	
 	@Override
@@ -298,35 +313,59 @@ public class ProvenanceQuery {
     		case EVENT_PROPERTY:
     			switch (tree.getChild(0).getType()) {
     				case FILESIZE:
+    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.FileSize) ) {
+    				        throw new ProvenanceQueryLanguageException("Query cannot reference FileSize because this field is not searchable by the repository");
+    				    }
     					return new SizeEvaluator();
     				case TRANSIT_URI:
+    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.TransitURI) ) {
+                            throw new ProvenanceQueryLanguageException("Query cannot reference TransitURI because this field is not searchable by the repository");
+                        }
     					return new TransitUriEvaluator();
     				case TIMESTAMP:
+    				    // time is always indexed
     					return new TimestampEvaluator();
     				case TYPE:
+    				    // type is always indexed so no need to check it
     					return new TypeEvaluator();
     				case COMPONENT_ID:
+    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.ComponentID) ) {
+                            throw new ProvenanceQueryLanguageException("Query cannot reference Component ID because this field is not searchable by the repository");
+                        }
     					return new ComponentIdEvaluator();
+    					// TODO: Allow Component Type to be indexed and searched
     				case RELATIONSHIP:
+    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.Relationship) ) {
+                            throw new ProvenanceQueryLanguageException("Query cannot reference Relationship because this field is not searchable by the repository");
+                        }
     					return new RelationshipEvaluator();
     				case UUID:
+    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.FlowFileUUID) ) {
+                            throw new ProvenanceQueryLanguageException("Query cannot reference FlowFile UUID because this field is not searchable by the repository");
+                        }
     				    return new UuidEvaluator();
     				default:
     					// TODO: IMPLEMENT
     					throw new UnsupportedOperationException("Haven't implemented extraction of property " + tree.getChild(0).getText());
     			}
     		case ATTRIBUTE:
+    		    final String attributeName = tree.getChild(0).getText();
+    		    if ( searchableAttributes != null && !searchableAttributes.contains(attributeName) ) {
+    		        throw new ProvenanceQueryLanguageException("Query cannot attribute '" + attributeName + "' because this attribute is not searchable by the repository");
+    		    }
     			return new AttributeEvaluator(toStringEvaluator(buildOperandEvaluator(tree.getChild(0)), tree));
     		case STRING_LITERAL:
     			return new StringLiteralEvaluator(tree.getText());
     		case NUMBER:
     			return new LongLiteralEvaluator(Long.valueOf(tree.getText()));
+            case YEAR:
+                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.YEAR, YEAR);
+            case MONTH:
+                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.MONTH, MONTH);
+            case DAY:
+                return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.DAY_OF_YEAR, DAY);
     		case HOUR:
     			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.HOUR_OF_DAY, HOUR);
-    		case DAY:
-    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.DAY_OF_YEAR, DAY);
-    		case YEAR:
-    			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.YEAR, YEAR);
     		case MINUTE:
     			return new TimeFieldEvaluator(toLongEvaluator(buildOperandEvaluator(tree.getChild(0)), tree), Calendar.MINUTE, MINUTE);
     		case SECOND:
@@ -412,6 +451,16 @@ public class ProvenanceQuery {
     }
     
     private OperandEvaluator<Long> toLongEvaluator(final OperandEvaluator<?> eval, final Tree tree) {
+        if ( eval.getType() == Long.class ) {
+            @SuppressWarnings("unchecked")
+            final OperandEvaluator<Long> retEvaluator = ((OperandEvaluator<Long>) eval);
+            return retEvaluator;
+        } else if ( eval.getType() == String.class ) {
+            @SuppressWarnings("unchecked")
+            final OperandEvaluator<String> stringEval = ((OperandEvaluator<String>) eval);
+            return new StringToLongEvaluator(stringEval);
+        }
+        
     	return castEvaluator(eval, tree, Long.class);
     }
     
@@ -499,7 +548,7 @@ public class ProvenanceQuery {
     
     
     public static ProvenanceResultSet execute(final String query, final ProvenanceEventRepository repo) throws IOException {
-    	return ProvenanceQuery.compile(query).execute(repo);
+    	return ProvenanceQuery.compile(query, null, null).execute(repo);
     }
     
     
