@@ -16,11 +16,14 @@
  */
 package org.apache.nifi.web.dao.impl;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.regex.Matcher;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
@@ -28,10 +31,13 @@ import org.apache.nifi.controller.exception.ProcessorLifeCycleException;
 import org.apache.nifi.controller.exception.ValidationException;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
 import org.apache.nifi.controller.reporting.ReportingTaskProvider;
+import org.apache.nifi.scheduling.SchedulingStrategy;
+import org.apache.nifi.util.FormatUtils;
 import org.apache.nifi.web.NiFiCoreException;
 import org.apache.nifi.web.ResourceNotFoundException;
 import org.apache.nifi.web.api.dto.ReportingTaskDTO;
 import org.apache.nifi.web.dao.ReportingTaskDAO;
+import org.quartz.CronExpression;
 
 public class StandardReportingTaskDAO extends ComponentDAO implements ReportingTaskDAO {
 
@@ -121,10 +127,10 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
     public ReportingTaskNode updateReportingTask(final ReportingTaskDTO reportingTaskDTO) {
         // get the reporting task
         final ReportingTaskNode reportingTask = locateReportingTask(reportingTaskDTO.getId());
-        
+
         // ensure we can perform the update 
         verifyUpdate(reportingTask, reportingTaskDTO);
-        
+
         // perform the update
         configureReportingTask(reportingTask, reportingTaskDTO);
 
@@ -166,22 +172,57 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
                 }
             }
         }
-        
+
         return reportingTask;
     }
 
     /**
      * Validates the specified configuration for the specified reporting task.
-     * 
+     *
      * @param reportingTask
      * @param reportingTaskDTO
-     * @return 
+     * @return
      */
     private List<String> validateProposedConfiguration(final ReportingTaskNode reportingTask, final ReportingTaskDTO reportingTaskDTO) {
         final List<String> validationErrors = new ArrayList<>();
+
+        // get the current scheduling strategy
+        SchedulingStrategy schedulingStrategy = reportingTask.getSchedulingStrategy();
+
+        // validate the new scheduling strategy if appropriate
+        if (isNotNull(reportingTaskDTO.getSchedulingStrategy())) {
+            try {
+                // this will be the new scheduling strategy so use it
+                schedulingStrategy = SchedulingStrategy.valueOf(reportingTaskDTO.getSchedulingStrategy());
+            } catch (IllegalArgumentException iae) {
+                validationErrors.add(String.format("Scheduling strategy: Value must be one of [%s]", StringUtils.join(SchedulingStrategy.values(), ", ")));
+            }
+        }
+
+        // validate the scheduling period based on the scheduling strategy
+        if (isNotNull(reportingTaskDTO.getSchedulingPeriod())) {
+            switch (schedulingStrategy) {
+                case TIMER_DRIVEN:
+                    final Matcher schedulingMatcher = FormatUtils.TIME_DURATION_PATTERN.matcher(reportingTaskDTO.getSchedulingPeriod());
+                    if (!schedulingMatcher.matches()) {
+                        validationErrors.add("Scheduling period is not a valid time duration (ie 30 sec, 5 min)");
+                    }
+                    break;
+                case CRON_DRIVEN:
+                    try {
+                        new CronExpression(reportingTaskDTO.getSchedulingPeriod());
+                    } catch (final ParseException pe) {
+                        throw new IllegalArgumentException(String.format("Scheduling Period '%s' is not a valid cron expression: %s", reportingTaskDTO.getSchedulingPeriod(), pe.getMessage()));
+                    } catch (final Exception e) {
+                        throw new IllegalArgumentException("Scheduling Period is not a valid cron expression: " + reportingTaskDTO.getSchedulingPeriod());
+                    }
+                    break;
+            }
+        }
+
         return validationErrors;
     }
-    
+
     @Override
     public void verifyDelete(final String reportingTaskId) {
         final ReportingTaskNode reportingTask = locateReportingTask(reportingTaskId);
@@ -193,12 +234,12 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
         final ReportingTaskNode reportingTask = locateReportingTask(reportingTaskDTO.getId());
         verifyUpdate(reportingTask, reportingTaskDTO);
     }
-    
+
     /**
      * Verifies the reporting task can be updated.
-     * 
+     *
      * @param reportingTask
-     * @param reportingTaskDTO 
+     * @param reportingTaskDTO
      */
     private void verifyUpdate(final ReportingTaskNode reportingTask, final ReportingTaskDTO reportingTaskDTO) {
         // ensure the state, if specified, is valid
@@ -234,13 +275,15 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
                         reportingTaskDTO.getState()));
             }
         }
-        
+
         boolean modificationRequest = false;
         if (isAnyNotNull(reportingTaskDTO.getName(),
+                reportingTaskDTO.getSchedulingStrategy(),
+                reportingTaskDTO.getSchedulingPeriod(),
                 reportingTaskDTO.getAnnotationData(),
                 reportingTaskDTO.getProperties())) {
             modificationRequest = true;
-            
+
             // validate the request
             final List<String> requestValidation = validateProposedConfiguration(reportingTask, reportingTaskDTO);
 
@@ -249,25 +292,35 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
                 throw new ValidationException(requestValidation);
             }
         }
-        
+
         if (modificationRequest) {
             reportingTask.verifyCanUpdate();
         }
     }
-    
+
     /**
      * Configures the specified reporting task.
-     * 
+     *
      * @param reportingTask
-     * @param reportingTaskDTO 
+     * @param reportingTaskDTO
      */
     private void configureReportingTask(final ReportingTaskNode reportingTask, final ReportingTaskDTO reportingTaskDTO) {
         final String name = reportingTaskDTO.getName();
+        final String schedulingStrategy = reportingTaskDTO.getSchedulingStrategy();
+        final String schedulingPeriod = reportingTaskDTO.getSchedulingPeriod();
         final String annotationData = reportingTaskDTO.getAnnotationData();
         final Map<String, String> properties = reportingTaskDTO.getProperties();
+
+        // ensure scheduling strategy is set first
+        if (isNotNull(schedulingStrategy)) {
+            reportingTask.setSchedulingStrategy(SchedulingStrategy.valueOf(schedulingStrategy));
+        }
         
         if (isNotNull(name)) {
             reportingTask.setName(name);
+        }
+        if (isNotNull(schedulingPeriod)) {
+            reportingTask.setScheduldingPeriod(schedulingPeriod);
         }
         if (isNotNull(annotationData)) {
             reportingTask.setAnnotationData(annotationData);
@@ -284,7 +337,7 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
             }
         }
     }
-    
+
     /**
      * Deletes the specified reporting task.
      *
@@ -297,7 +350,6 @@ public class StandardReportingTaskDAO extends ComponentDAO implements ReportingT
     }
 
     /* setters */
-    
     public void setReportingTaskProvider(ReportingTaskProvider reportingTaskProvider) {
         this.reportingTaskProvider = reportingTaskProvider;
     }

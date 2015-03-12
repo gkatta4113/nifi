@@ -1039,7 +1039,7 @@ nf.ControllerService = (function () {
             
             // we clustered we need to show the controls for editing the availability
             if (nf.Canvas.isClustered()) {
-                $('#availability-setting-container').show();
+                $('#controller-service-availability-setting-container').show();
             }
 
             // initialize the conroller service configuration dialog

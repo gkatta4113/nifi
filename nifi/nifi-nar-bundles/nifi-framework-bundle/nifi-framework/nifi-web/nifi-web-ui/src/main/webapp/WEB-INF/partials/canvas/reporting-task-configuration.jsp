@@ -20,40 +20,68 @@
         <div id="reporting-task-configuration-tabs"></div>
         <div id="reporting-task-configuration-tabs-content">
             <div id="reporting-task-standard-settings-tab-content" class="configuration-tab">
-                <div class="setting">
-                    <div class="setting-name">Name</div>
-                    <div class="setting-field">
-                        <input type="text" id="reporting-task-name" name="reporting-task-name"/>
-                        <div class="reporting-task-enabled-container">
-                            <div id="reporting-task-enabled" class="nf-checkbox checkbox-unchecked"></div>
-                            <span> Enabled</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="setting">
-                    <div class="setting-name">Id</div>
-                    <div class="setting-field">
-                        <span id="reporting-task-id"></span>
-                    </div>
-                </div>
-                <div class="setting">
-                    <div class="setting-name">Type</div>
-                    <div class="setting-field">
-                        <span id="reporting-task-type"></span>
-                    </div>
-                </div>
-                <div id="availability-setting-container" class="setting hidden">
-                    <div class="availability-setting">
-                        <div class="setting-name">
-                            Availability
-                            <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Where this controller service is available."/>
-                        </div>
+                <div class="settings-left">
+                    <div class="setting">
+                        <div class="setting-name">Name</div>
                         <div class="setting-field">
-                            <div id="availability"></div>
+                            <input type="text" id="reporting-task-name" name="reporting-task-name"/>
+                            <div class="reporting-task-enabled-container">
+                                <div id="reporting-task-enabled" class="nf-checkbox checkbox-unchecked"></div>
+                                <span> Enabled</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="clear"></div>
+                    <div class="setting">
+                        <div class="setting-name">Id</div>
+                        <div class="setting-field">
+                            <span id="reporting-task-id"></span>
+                        </div>
+                    </div>
+                    <div class="setting">
+                        <div class="setting-name">Type</div>
+                        <div class="setting-field">
+                            <span id="reporting-task-type"></span>
+                        </div>
+                    </div>
+                    <div id="reporting-task-availability-setting-container" class="setting hidden">
+                        <div class="availability-setting">
+                            <div class="setting-name">
+                                Availability
+                                <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="Where this controller service is available."/>
+                            </div>
+                            <div class="setting-field">
+                                <div id="availability"></div>
+                            </div>
+                        </div>
+                        <div class="clear"></div>
+                    </div>
                 </div>
+                <div class="spacer">&nbsp;</div>
+                <div class="settings-right">
+                    <div class="setting">
+                        <div class="reporting-task-scheduling-strategy-container">
+                            <div class="setting-name">
+                                Scheduling strategy
+                                <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="The strategy used to schedule this reporting task."/>
+                            </div>
+                            <div class="setting-field">
+                                <div type="text" id="reporting-task-scheduling-strategy-combo"></div>
+                            </div>
+                        </div>
+                        <div class="reporting-task-scheduling-period-container">
+                            <div class="setting-name">
+                                Run schedule
+                                <img class="setting-icon icon-info" src="images/iconInfo.png" alt="Info" title="The amount of time that should elapse between task executions."/>
+                            </div>
+                            <div class="setting-field">
+                                <input type="text" id="reporting-task-timer-driven-scheduling-period" class="reporting-task-scheduling-period small-setting-input"/>
+                                <input type="text" id="reporting-task-cron-driven-scheduling-period" class="reporting-task-scheduling-period small-setting-input"/>
+                            </div>
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                </div>
+                <div class="clear"></div>
             </div>
             <div id="reporting-task-properties-tab-content" class="configuration-tab">
                 <div id="reporting-task-properties"></div>

@@ -34,6 +34,8 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
 	private String schedulingStrategy;
 	private String availability;
 	
+    private Map<String, String> defaultSchedulingPeriod;
+    
 	private Map<String, String> properties;
     private Map<String, PropertyDescriptorDTO> descriptors;
  
@@ -180,4 +182,18 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
     public void setValidationErrors(Collection<String> validationErrors) {
         this.validationErrors = validationErrors;
     }
+
+    /**
+     * The default scheduling period for the different scheduling strategies.
+     * 
+     * @return 
+     */
+    public Map<String, String> getDefaultSchedulingPeriod() {
+        return defaultSchedulingPeriod;
+    }
+
+    public void setDefaultSchedulingPeriod(Map<String, String> defaultSchedulingPeriod) {
+        this.defaultSchedulingPeriod = defaultSchedulingPeriod;
+    }
+    
 }

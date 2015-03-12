@@ -345,6 +345,8 @@ public class ReportingTaskResource extends ApplicationResource {
      * @param annotationData The annotation data for the reporting task
      * @param markedForDeletion Array of property names whose value should be removed.
      * @param state The updated scheduled state
+     * @param schedulingStrategy The scheduling strategy for this reporting task
+     * @param schedulingPeriod The scheduling period for this reporting task
      * @param formParams Additionally, the processor properties and styles are
      * specified in the form parameters. Because the property names and styles
      * differ from processor to processor they are specified in a map-like
@@ -373,7 +375,8 @@ public class ReportingTaskResource extends ApplicationResource {
             @FormParam(CLIENT_ID) @DefaultValue(StringUtils.EMPTY) ClientIdParameter clientId,
             @PathParam("availability") String availability, @PathParam("id") String id, @FormParam("name") String name,
             @FormParam("annotationData") String annotationData, @FormParam("markedForDeletion[]") List<String> markedForDeletion,
-            @FormParam("state") String state, MultivaluedMap<String, String> formParams) {
+            @FormParam("state") String state, @FormParam("schedulingStrategy") String schedulingStrategy,
+            @FormParam("schedulingPeriod") String schedulingPeriod, MultivaluedMap<String, String> formParams) {
 
         // create collections for holding the reporting task properties
         final Map<String, String> updatedProperties = new LinkedHashMap<>();
@@ -404,6 +407,8 @@ public class ReportingTaskResource extends ApplicationResource {
         reportingTaskDTO.setId(id);
         reportingTaskDTO.setName(name);
         reportingTaskDTO.setState(state);
+        reportingTaskDTO.setSchedulingStrategy(schedulingStrategy);
+        reportingTaskDTO.setSchedulingPeriod(schedulingPeriod);
         reportingTaskDTO.setAnnotationData(annotationData);
 
         // only set the properties when appropriate
