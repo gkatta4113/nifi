@@ -2638,6 +2638,16 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
     }
 
     @Override
+    public void verifyCanDisableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanDisableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void verifyCanStopReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanStopReferencingComponents(serviceNode);
+    }
+    
+    @Override
     public ControllerService getControllerService(final String serviceIdentifier) {
         return controllerServiceProvider.getControllerService(serviceIdentifier);
     }

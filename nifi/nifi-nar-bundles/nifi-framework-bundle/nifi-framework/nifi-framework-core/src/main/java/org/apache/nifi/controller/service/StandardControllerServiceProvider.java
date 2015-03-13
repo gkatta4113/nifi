@@ -458,4 +458,24 @@ public class StandardControllerServiceProvider implements ControllerServiceProvi
         }
     }
     
+    @Override
+    public void verifyCanDisableReferencingServices(final ControllerServiceNode serviceNode) {
+        // Get a list of all Controller Services that need to be disabled, in the order that they need to be
+        // disabled.
+        final List<ControllerServiceNode> toDisable = findRecursiveReferences(serviceNode, ControllerServiceNode.class);
+        final Set<ControllerServiceNode> serviceSet = new HashSet<>(toDisable);
+        
+        for ( final ControllerServiceNode nodeToDisable : toDisable ) {
+            final ControllerServiceState state = nodeToDisable.getState();
+            
+            if ( state != ControllerServiceState.DISABLED && state != ControllerServiceState.DISABLING ) {
+                nodeToDisable.verifyCanDisable(serviceSet);
+            }
+        }
+    }
+    
+    @Override
+    public void verifyCanStopReferencingComponents(final ControllerServiceNode serviceNode) {
+        // we can always stop referencing components
+    }
 }
