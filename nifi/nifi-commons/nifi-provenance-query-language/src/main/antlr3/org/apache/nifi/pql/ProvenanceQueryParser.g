@@ -75,7 +75,7 @@ query : selectClause
 selectClause : SELECT^ selectable (COMMA! selectable)*;
 
 
-selectable : function | (selectableSource ( (DOT! eventProperty^) | (LBRACKET! attribute^ RBRACKET!) )?);
+selectable : (function^ | (selectableSource ( (DOT! eventProperty^) | (LBRACKET! attribute^ RBRACKET!) )?)^) (AS IDENTIFIER)?;
 
 selectableSource : EVENT | IDENTIFIER;
 

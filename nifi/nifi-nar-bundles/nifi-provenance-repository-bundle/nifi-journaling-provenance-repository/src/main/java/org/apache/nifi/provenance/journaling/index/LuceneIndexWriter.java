@@ -147,6 +147,7 @@ public class LuceneIndexWriter implements EventIndexWriter {
             addField(doc, SearchableFields.FlowFileUUID, event.getFlowFileUuid(), STORE_FIELDS);
             addField(doc, SearchableFields.Filename, attributes.get(CoreAttributes.FILENAME.key()), STORE_FIELDS);
             addField(doc, SearchableFields.ComponentID, event.getComponentId(), STORE_FIELDS);
+            addField(doc, SearchableFields.ComponentType, event.getComponentType(), STORE_FIELDS);
             addField(doc, SearchableFields.AlternateIdentifierURI, event.getAlternateIdentifierUri(), STORE_FIELDS);
             addField(doc, SearchableFields.EventType, event.getEventType().name(), STORE_FIELDS);
             addField(doc, SearchableFields.Relationship, event.getRelationship(), STORE_FIELDS);
@@ -176,8 +177,10 @@ public class LuceneIndexWriter implements EventIndexWriter {
             doc.add(new LongField(IndexedFieldNames.BLOCK_INDEX, location.getBlockIndex(), Store.YES));
             doc.add(new LongField(IndexedFieldNames.EVENT_ID, location.getEventId(), Store.YES));
 
-            for (final String lineageIdentifier : event.getLineageIdentifiers()) {
-                addField(doc, SearchableFields.LineageIdentifier, lineageIdentifier, STORE_FIELDS);
+            if ( nonAttributeSearchableFields.contains(SearchableFields.LineageIdentifier) ) {
+                for (final String lineageIdentifier : event.getLineageIdentifiers()) {
+                    addField(doc, SearchableFields.LineageIdentifier, lineageIdentifier, STORE_FIELDS);
+                }
             }
 
             // If it's event is a FORK, or JOIN, add the FlowFileUUID for all child/parent UUIDs.

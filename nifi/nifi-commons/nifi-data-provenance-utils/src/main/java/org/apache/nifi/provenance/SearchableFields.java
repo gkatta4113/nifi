@@ -36,6 +36,7 @@ public class SearchableFields {
     public static final SearchableField EventType = new NamedSearchableField("EventType", "eventType", "Event Type", false);
     public static final SearchableField TransitURI = new NamedSearchableField("TransitURI", "transitUri", "Transit URI", false);
     public static final SearchableField ComponentID = new NamedSearchableField("ProcessorID", "processorId", "Component ID", false);
+    public static final SearchableField ComponentType = new NamedSearchableField("ComponentType", "componentType", "Component Type", false);
     public static final SearchableField AlternateIdentifierURI = new NamedSearchableField("AlternateIdentifierURI", "alternateIdentifierUri", "Alternate Identifier URI", false);
     public static final SearchableField FileSize = new NamedSearchableField("FileSize", "fileSize", "File Size", false, SearchableFieldType.DATA_SIZE);
     public static final SearchableField Details = new NamedSearchableField("Details", "details", "Details", false, SearchableFieldType.STRING);
@@ -55,7 +56,7 @@ public class SearchableFields {
     static {
         final SearchableField[] searchableFields = new SearchableField[]{
             EventTime, FlowFileUUID, Filename, EventType, TransitURI,
-            ComponentID, AlternateIdentifierURI, FileSize, Relationship, Details,
+            ComponentID, ComponentType, AlternateIdentifierURI, FileSize, Relationship, Details,
             LineageStartDate, LineageIdentifier, ContentClaimSection, ContentClaimContainer, ContentClaimIdentifier,
             ContentClaimOffset, SourceQueueIdentifier};
 

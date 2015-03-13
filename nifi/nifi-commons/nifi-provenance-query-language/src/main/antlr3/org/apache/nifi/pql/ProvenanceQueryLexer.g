@@ -81,7 +81,6 @@ ASC : 'ASC' | 'asc' | 'Asc';
 DESC : 'DESC' | 'desc' | 'Desc';
 GROUP_BY : 'GROUP BY' | 'group by' | 'Group By';
 EVENT : 'EVENT' | 'event' | 'Event';
-RELATIONSHIP : 'RELATIONSHIP' | 'relationship' | 'Relationship';
 
 
 // Operators
@@ -118,7 +117,11 @@ TIMESTAMP : 'TIME' | 'time' | 'Time';
 FILESIZE : 'SIZE' | 'size' | 'Size';
 TYPE : 'TYPE' | 'type' | 'Type';
 COMPONENT_ID : 'COMPONENTID' | 'componentid' | 'ComponentId' | 'componentId' | 'componentID' | 'ComponentID';
+COMPONENT_TYPE : 'COMPONENTTYPE' | 'componenttype' | 'ComponentType' | 'componentType';
 UUID : 'UUID' | 'uuid' | 'Uuid';
+RELATIONSHIP : 'RELATIONSHIP' | 'relationship' | 'Relationship';
+DETAILS : 'DETAILS' | 'details' | 'Details';
+
 
 // Event Types
 RECEIVE : 'RECEIVE' | 'receive' | 'Receive';

@@ -19,6 +19,7 @@ import org.apache.nifi.provenance.query.ProvenanceResultSet;
 import org.apache.nifi.util.NiFiProperties;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestQuery {
@@ -117,6 +118,19 @@ public class TestQuery {
 		dump(ProvenanceQuery.execute("SELECT Event['filename'], SUM(Event.size) GROUP BY Event['filename']", repo));
 	}
 	
+	@Test
+	@Ignore("Not entirely implemented yet")
+    public void testAlias() throws IOException {
+        createRecords();
+        final ProvenanceQuery query = ProvenanceQuery.compile("SELECT SUM(Event.Size) AS TotalSize, COUNT(Event) AS NumEvents", null, null);
+
+        final ProvenanceResultSet rs = query.execute(repo);
+        dump(rs);
+
+        assertEquals(2, rs.getLabels().size());
+        assertEquals("TotalSize", rs.getLabels().get(0));
+        assertEquals("NumEvents", rs.getLabels().get(1));
+    }
 	
 	@Test
 	public void testGroupBy() throws IOException {

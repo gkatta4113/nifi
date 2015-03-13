@@ -1,42 +1,6 @@
 package org.apache.nifi.pql;
 
-import static org.apache.nifi.pql.ProvenanceQueryParser.AND;
-import static org.apache.nifi.pql.ProvenanceQueryParser.ASC;
-import static org.apache.nifi.pql.ProvenanceQueryParser.ATTRIBUTE;
-import static org.apache.nifi.pql.ProvenanceQueryParser.AVG;
-import static org.apache.nifi.pql.ProvenanceQueryParser.COMPONENT_ID;
-import static org.apache.nifi.pql.ProvenanceQueryParser.COUNT;
-import static org.apache.nifi.pql.ProvenanceQueryParser.DAY;
-import static org.apache.nifi.pql.ProvenanceQueryParser.EQUALS;
-import static org.apache.nifi.pql.ProvenanceQueryParser.EVENT;
-import static org.apache.nifi.pql.ProvenanceQueryParser.EVENT_PROPERTY;
-import static org.apache.nifi.pql.ProvenanceQueryParser.FILESIZE;
-import static org.apache.nifi.pql.ProvenanceQueryParser.FROM;
-import static org.apache.nifi.pql.ProvenanceQueryParser.GROUP_BY;
-import static org.apache.nifi.pql.ProvenanceQueryParser.GT;
-import static org.apache.nifi.pql.ProvenanceQueryParser.HOUR;
-import static org.apache.nifi.pql.ProvenanceQueryParser.IDENTIFIER;
-import static org.apache.nifi.pql.ProvenanceQueryParser.LIMIT;
-import static org.apache.nifi.pql.ProvenanceQueryParser.LT;
-import static org.apache.nifi.pql.ProvenanceQueryParser.MATCHES;
-import static org.apache.nifi.pql.ProvenanceQueryParser.MINUTE;
-import static org.apache.nifi.pql.ProvenanceQueryParser.MONTH;
-import static org.apache.nifi.pql.ProvenanceQueryParser.NOT;
-import static org.apache.nifi.pql.ProvenanceQueryParser.NOT_EQUALS;
-import static org.apache.nifi.pql.ProvenanceQueryParser.NUMBER;
-import static org.apache.nifi.pql.ProvenanceQueryParser.OR;
-import static org.apache.nifi.pql.ProvenanceQueryParser.ORDER_BY;
-import static org.apache.nifi.pql.ProvenanceQueryParser.RELATIONSHIP;
-import static org.apache.nifi.pql.ProvenanceQueryParser.SECOND;
-import static org.apache.nifi.pql.ProvenanceQueryParser.STARTS_WITH;
-import static org.apache.nifi.pql.ProvenanceQueryParser.STRING_LITERAL;
-import static org.apache.nifi.pql.ProvenanceQueryParser.SUM;
-import static org.apache.nifi.pql.ProvenanceQueryParser.TIMESTAMP;
-import static org.apache.nifi.pql.ProvenanceQueryParser.TRANSIT_URI;
-import static org.apache.nifi.pql.ProvenanceQueryParser.TYPE;
-import static org.apache.nifi.pql.ProvenanceQueryParser.UUID;
-import static org.apache.nifi.pql.ProvenanceQueryParser.WHERE;
-import static org.apache.nifi.pql.ProvenanceQueryParser.YEAR;
+import static org.apache.nifi.pql.ProvenanceQueryParser.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -72,6 +36,8 @@ import org.apache.nifi.pql.evaluation.comparison.StartsWithEvaluator;
 import org.apache.nifi.pql.evaluation.conversion.StringToLongEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.AttributeEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.ComponentIdEvaluator;
+import org.apache.nifi.pql.evaluation.extraction.ComponentTypeEvaluator;
+import org.apache.nifi.pql.evaluation.extraction.DetailsEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.RelationshipEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.SizeEvaluator;
 import org.apache.nifi.pql.evaluation.extraction.TimestampEvaluator;
@@ -140,7 +106,16 @@ public class ProvenanceQuery {
 	private ProvenanceQuery(final Tree tree, final String pql, final Collection<SearchableField> searchableFields, final Collection<SearchableField> searchableAttributes) {
 		this.tree = tree;
 		this.pql = pql;
-		this.searchableFields = searchableFields == null ? null : Collections.unmodifiableSet(new HashSet<>(searchableFields));
+
+		if ( searchableFields == null ) {
+		    this.searchableFields = null;
+		} else {
+		    final Set<SearchableField> addressableFields = new HashSet<>(searchableFields);
+		    addressableFields.add(SearchableFields.EventTime);
+		    addressableFields.add(SearchableFields.EventType);
+		    this.searchableFields = Collections.unmodifiableSet(addressableFields);
+		}
+		
 		if (searchableAttributes == null) {
 		    this.searchableAttributes = null;
 		} else {
@@ -296,6 +271,13 @@ public class ProvenanceQuery {
     }
     
     private String getLabel(final Tree tree) {
+        if ( tree.getChildCount() > 0 ) {
+            final Tree childTree = tree.getChild(tree.getChildCount() - 1);
+            if ( childTree.getType() == AS ) {
+                return childTree.getChild(0).getText();
+            }
+        }
+        
     	final int type = tree.getType();
     	
     	switch (type) {
@@ -313,6 +295,17 @@ public class ProvenanceQuery {
     	return tree.getText();
     }
     
+    
+    private void ensureSearchable(final SearchableField field, final boolean addToReferencedFields) {
+        if ( searchableFields != null && !searchableFields.contains(field) ) {
+            throw new ProvenanceQueryLanguageException("Query cannot reference " + field.getFriendlyName() + " because this field is not searchable by the repository");
+        }
+        if ( addToReferencedFields ) {
+            referencedFields.add(field.getSearchableFieldName());
+        }
+    }
+    
+    
     private OperandEvaluator<?> buildOperandEvaluator(final Tree tree, final Clause clause) {
         // When events are pulled back from an index, for efficiency purposes, we may want to know which
         // fields to pull back. The fields in the WHERE clause are irrelevant because they are not shown
@@ -323,61 +316,32 @@ public class ProvenanceQuery {
     		case EVENT_PROPERTY:
     			switch (tree.getChild(0).getType()) {
     				case FILESIZE:
-    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.FileSize) ) {
-    				        throw new ProvenanceQueryLanguageException("Query cannot reference FileSize because this field is not searchable by the repository");
-    				    }
-    				    if ( isReferenceInteresting ) {
-    				        referencedFields.add(SearchableFields.FileSize.getSearchableFieldName());
-    				    }
+    				    ensureSearchable(SearchableFields.FileSize, isReferenceInteresting);
     					return new SizeEvaluator();
     				case TRANSIT_URI:
-    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.TransitURI) ) {
-                            throw new ProvenanceQueryLanguageException("Query cannot reference TransitURI because this field is not searchable by the repository");
-                        }
-    				    if ( isReferenceInteresting ) {
-    				        referencedFields.add(SearchableFields.TransitURI.getSearchableFieldName());
-    				    }
+                        ensureSearchable(SearchableFields.TransitURI, isReferenceInteresting);
     					return new TransitUriEvaluator();
     				case TIMESTAMP:
-    				    // time is always indexed
-                        if ( isReferenceInteresting ) {
-                            referencedFields.add(SearchableFields.EventTime.getSearchableFieldName());
-                        }
+    				    ensureSearchable(SearchableFields.EventTime, isReferenceInteresting);
     					return new TimestampEvaluator();
     				case TYPE:
-    				    // type is always indexed so no need to check it
-                        if ( isReferenceInteresting ) {
-                            referencedFields.add(SearchableFields.EventType.getSearchableFieldName());
-                        }
-    					return new TypeEvaluator();
+    				    ensureSearchable(SearchableFields.EventType, isReferenceInteresting);
+    				    return new TypeEvaluator();
     				case COMPONENT_ID:
-    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.ComponentID) ) {
-                            throw new ProvenanceQueryLanguageException("Query cannot reference Component ID because this field is not searchable by the repository");
-                        }
-                        if ( isReferenceInteresting ) {
-                            referencedFields.add(SearchableFields.ComponentID.getSearchableFieldName());
-                        }
-
+    				    ensureSearchable(SearchableFields.ComponentID, isReferenceInteresting);
     					return new ComponentIdEvaluator();
-    					// TODO: Allow Component Type to be indexed and searched
+    				case COMPONENT_TYPE:
+    				    ensureSearchable(SearchableFields.ComponentType, isReferenceInteresting);
+    				    return new ComponentTypeEvaluator();
     				case RELATIONSHIP:
-    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.Relationship) ) {
-                            throw new ProvenanceQueryLanguageException("Query cannot reference Relationship because this field is not searchable by the repository");
-                        }
-                        if ( isReferenceInteresting ) {
-                            referencedFields.add(SearchableFields.Relationship.getSearchableFieldName());
-                        }
-
+    				    ensureSearchable(SearchableFields.Relationship, isReferenceInteresting);
                         return new RelationshipEvaluator();
     				case UUID:
-    				    if ( searchableFields != null && !searchableFields.contains(SearchableFields.FlowFileUUID) ) {
-                            throw new ProvenanceQueryLanguageException("Query cannot reference FlowFile UUID because this field is not searchable by the repository");
-                        }
-                        if ( isReferenceInteresting ) {
-                            referencedFields.add(SearchableFields.FlowFileUUID.getSearchableFieldName());
-                        }
-                        
+    				    ensureSearchable(SearchableFields.FlowFileUUID, isReferenceInteresting);
                         return new UuidEvaluator();
+    				case DETAILS:
+    				    ensureSearchable(SearchableFields.Details, isReferenceInteresting);
+    				    return new DetailsEvaluator();
     				default:
     					// TODO: IMPLEMENT
     					throw new UnsupportedOperationException("Haven't implemented extraction of property " + tree.getChild(0).getText());
