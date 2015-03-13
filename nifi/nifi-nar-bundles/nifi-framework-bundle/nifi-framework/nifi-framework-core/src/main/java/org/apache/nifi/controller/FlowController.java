@@ -79,6 +79,7 @@ import org.apache.nifi.controller.label.Label;
 import org.apache.nifi.controller.label.StandardLabel;
 import org.apache.nifi.controller.reporting.ReportingTaskInstantiationException;
 import org.apache.nifi.controller.reporting.ReportingTaskProvider;
+import org.apache.nifi.controller.reporting.StandardReportingInitializationContext;
 import org.apache.nifi.controller.reporting.StandardReportingTaskNode;
 import org.apache.nifi.controller.repository.ContentRepository;
 import org.apache.nifi.controller.repository.CounterRepository;
@@ -131,6 +132,7 @@ import org.apache.nifi.groups.ProcessGroup;
 import org.apache.nifi.groups.RemoteProcessGroup;
 import org.apache.nifi.groups.RemoteProcessGroupPortDescriptor;
 import org.apache.nifi.groups.StandardProcessGroup;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.logging.LogLevel;
 import org.apache.nifi.logging.LogRepository;
 import org.apache.nifi.logging.LogRepositoryFactory;
@@ -163,6 +165,8 @@ import org.apache.nifi.remote.protocol.socket.SocketFlowFileServerProtocol;
 import org.apache.nifi.reporting.Bulletin;
 import org.apache.nifi.reporting.BulletinRepository;
 import org.apache.nifi.reporting.EventAccess;
+import org.apache.nifi.reporting.InitializationException;
+import org.apache.nifi.reporting.ReportingInitializationContext;
 import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.reporting.Severity;
 import org.apache.nifi.scheduling.SchedulingStrategy;
@@ -2507,6 +2511,16 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
         taskNode.setName(task.getClass().getSimpleName());
         
         if ( firstTimeAdded ) {
+            final ComponentLog componentLog = new SimpleProcessLogger(id, taskNode.getReportingTask());
+            final ReportingInitializationContext config = new StandardReportingInitializationContext(id, taskNode.getName(),
+                    SchedulingStrategy.TIMER_DRIVEN, "1 min", componentLog, this);
+
+            try {
+                task.initialize(config);
+            } catch (final InitializationException ie) {
+                throw new ReportingTaskInstantiationException("Failed to initialize reporting task of type " + type, ie);
+            }
+                    
             try (final NarCloseable x = NarCloseable.withNarLoader()) {
                 ReflectionUtils.invokeMethodsWithAnnotation(OnAdded.class, task);
             } catch (final Exception e) {
