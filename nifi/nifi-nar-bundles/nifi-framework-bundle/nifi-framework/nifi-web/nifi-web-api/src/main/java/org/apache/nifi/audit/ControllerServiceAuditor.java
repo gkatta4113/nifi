@@ -32,12 +32,14 @@ import org.apache.nifi.action.details.ConfigureDetails;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ConfiguredComponent;
 import org.apache.nifi.controller.ProcessorNode;
+import org.apache.nifi.controller.ReportingTaskNode;
 import org.apache.nifi.controller.ScheduledState;
 import org.apache.nifi.web.security.user.NiFiUserUtils;
 import org.apache.nifi.user.NiFiUser;
 import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.controller.service.ControllerServiceReference;
 import org.apache.nifi.controller.service.ControllerServiceState;
+import org.apache.nifi.reporting.ReportingTask;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.dao.ControllerServiceDAO;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -219,6 +221,7 @@ public class ControllerServiceAuditor extends NiFiAuditor {
      * Audits the update of a component referencing a controller service.
      *
      * @param proceedingJoinPoint
+     * @param controllerServiceId
      * @return
      * @throws Throwable
      */
@@ -233,49 +236,11 @@ public class ControllerServiceAuditor extends NiFiAuditor {
         
         if (user != null) {
             final Collection<Action> actions = new ArrayList<>();
+            final Collection<String> visitedServices = new ArrayList<>();
+            visitedServices.add(controllerServiceReference.getReferencedComponent().getIdentifier());
             
-            // consider each component updates
-            for (final ConfiguredComponent component : controllerServiceReference.getReferencingComponents()) {
-                if (component instanceof ProcessorNode) {
-                    final ProcessorNode processor = ((ProcessorNode) component);
-
-                    // create the processor details
-                    ExtensionDetails processorDetails = new ExtensionDetails();
-                    processorDetails.setType(processor.getProcessor().getClass().getSimpleName());
-
-                    // create a processor action
-                    Action processorAction = new Action();
-                    processorAction.setUserDn(user.getDn());
-                    processorAction.setUserName(user.getUserName());
-                    processorAction.setTimestamp(new Date());
-                    processorAction.setSourceId(processor.getIdentifier());
-                    processorAction.setSourceName(processor.getName());
-                    processorAction.setSourceType(Component.Processor);
-                    processorAction.setComponentDetails(processorDetails);
-                    processorAction.setOperation(ScheduledState.RUNNING.equals(processor.getScheduledState()) ? Operation.Start : Operation.Stop);
-                    actions.add(processorAction);
-                } else if (component instanceof ControllerServiceNode) {
-                    final ControllerServiceNode controllerService = ((ControllerServiceNode) component);
-                    
-                    // create the processor details
-                    ExtensionDetails serviceDetails = new ExtensionDetails();
-                    serviceDetails.setType(controllerService.getControllerServiceImplementation().getClass().getSimpleName());
-                    
-                    // create a controller service action
-                    Action serviceAction = new Action();
-                    serviceAction.setUserDn(user.getDn());
-                    serviceAction.setUserName(user.getUserName());
-                    serviceAction.setTimestamp(new Date());
-                    serviceAction.setSourceId(controllerService.getIdentifier());
-                    serviceAction.setSourceName(controllerService.getName());
-                    serviceAction.setSourceType(Component.ControllerService);
-                    serviceAction.setComponentDetails(serviceDetails);
-                    serviceAction.setOperation(isDisabled(controllerService) ? Operation.Disable : Operation.Enable);
-                    actions.add(serviceAction);
-                    
-                    // need to consider components referencing this controller service (transitive)
-                }
-            }
+            // get all applicable actions
+            getUpdateActionsForReferencingComponents(user, actions, visitedServices, controllerServiceReference.getReferencingComponents());
             
             // ensure there are actions to record
             if (!actions.isEmpty()) {
@@ -285,6 +250,80 @@ public class ControllerServiceAuditor extends NiFiAuditor {
         }
         
         return controllerServiceReference;
+    }
+    
+    /**
+     * Gets the update actions for all specified referencing components.
+     * 
+     * @param user
+     * @param actions
+     * @param visitedServices
+     * @param referencingComponents 
+     */
+    private void getUpdateActionsForReferencingComponents(final NiFiUser user, final Collection<Action> actions, final Collection<String> visitedServices, final Set<ConfiguredComponent> referencingComponents) {
+        // consider each component updates
+        for (final ConfiguredComponent component : referencingComponents) {
+            if (component instanceof ProcessorNode) {
+                final ProcessorNode processor = ((ProcessorNode) component);
+
+                // create the processor details
+                ExtensionDetails processorDetails = new ExtensionDetails();
+                processorDetails.setType(processor.getProcessor().getClass().getSimpleName());
+
+                // create a processor action
+                Action processorAction = new Action();
+                processorAction.setUserDn(user.getDn());
+                processorAction.setUserName(user.getUserName());
+                processorAction.setTimestamp(new Date());
+                processorAction.setSourceId(processor.getIdentifier());
+                processorAction.setSourceName(processor.getName());
+                processorAction.setSourceType(Component.Processor);
+                processorAction.setComponentDetails(processorDetails);
+                processorAction.setOperation(ScheduledState.RUNNING.equals(processor.getScheduledState()) ? Operation.Start : Operation.Stop);
+                actions.add(processorAction);
+            } else if (component instanceof ReportingTask) {
+                final ReportingTaskNode reportingTask = ((ReportingTaskNode) component);
+
+                // create the reporting task details
+                ExtensionDetails processorDetails = new ExtensionDetails();
+                processorDetails.setType(reportingTask.getReportingTask().getClass().getSimpleName());
+
+                // create a reporting task action
+                Action reportingTaskAction = new Action();
+                reportingTaskAction.setUserDn(user.getDn());
+                reportingTaskAction.setUserName(user.getUserName());
+                reportingTaskAction.setTimestamp(new Date());
+                reportingTaskAction.setSourceId(reportingTask.getIdentifier());
+                reportingTaskAction.setSourceName(reportingTask.getName());
+                reportingTaskAction.setSourceType(Component.ReportingTask);
+                reportingTaskAction.setComponentDetails(processorDetails);
+                reportingTaskAction.setOperation(ScheduledState.RUNNING.equals(reportingTask.getScheduledState()) ? Operation.Start : Operation.Stop);
+                actions.add(reportingTaskAction);
+            } else if (component instanceof ControllerServiceNode) {
+                final ControllerServiceNode controllerService = ((ControllerServiceNode) component);
+
+                // create the controller service details
+                ExtensionDetails serviceDetails = new ExtensionDetails();
+                serviceDetails.setType(controllerService.getControllerServiceImplementation().getClass().getSimpleName());
+
+                // create a controller service action
+                Action serviceAction = new Action();
+                serviceAction.setUserDn(user.getDn());
+                serviceAction.setUserName(user.getUserName());
+                serviceAction.setTimestamp(new Date());
+                serviceAction.setSourceId(controllerService.getIdentifier());
+                serviceAction.setSourceName(controllerService.getName());
+                serviceAction.setSourceType(Component.ControllerService);
+                serviceAction.setComponentDetails(serviceDetails);
+                serviceAction.setOperation(isDisabled(controllerService) ? Operation.Disable : Operation.Enable);
+                actions.add(serviceAction);
+
+                // need to consider components referencing this controller service (transitive)
+                if (!visitedServices.contains(controllerService.getIdentifier())) {
+                    getUpdateActionsForReferencingComponents(user, actions, visitedServices, controllerService.getReferences().getReferencingComponents());
+                }
+            }
+        }
     }
     
     /**

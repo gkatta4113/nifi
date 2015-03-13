@@ -390,7 +390,7 @@ public class StandardFlowSynchronizer implements FlowSynchronizer {
         }
         
         final ComponentLog componentLog = new SimpleProcessLogger(dto.getId(), reportingTask.getReportingTask());
-        final ReportingInitializationContext config = new StandardReportingInitializationContext(dto.getId(), dto.getName(), 
+        final ReportingInitializationContext config = new StandardReportingInitializationContext(dto.getId(), dto.getName(),
                 SchedulingStrategy.valueOf(dto.getSchedulingStrategy()), dto.getSchedulingPeriod(), componentLog, controller);
         
         try {

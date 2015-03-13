@@ -59,8 +59,28 @@ nf.ReportingTask = (function () {
         if ($('#reporting-task-name').val() !== details.name) {
             return true;
         }
+        if ($('#reporting-task-enabled').hasClass('checkbox-checked') && details['state'] === 'DISABLED') {
+            return true;
+        } else if ($('#reporting-task-enabled').hasClass('checkbox-unchecked') && (details['state'] === 'RUNNING' || details['state'] === 'STOPPED')) {
+            return true;
+        }
         
-        if ($('#reporting-task-enabled').hasClass('checkbox-checked')) {
+        // consider the scheduling strategy
+        var schedulingStrategy = $('#reporting-task-scheduling-strategy-combo').combo('getSelectedOption').value;
+        if (schedulingStrategy !== (details['schedulingStrategy'] + '')) {
+            return true;
+        }
+        
+        // get the appropriate scheduling period field
+        var schedulingPeriod;
+        if (schedulingStrategy === 'CRON_DRIVEN') {
+            schedulingPeriod = $('#reporting-task-cron-driven-scheduling-period');
+        } else {
+            schedulingPeriod = $('#reporting-task-timer-driven-scheduling-period');
+        }
+        
+        // check the scheduling period
+        if (nf.Common.isDefinedAndNotNull(schedulingPeriod) && schedulingPeriod.val() !== (details['schedulingPeriod'] + '')) {
             return true;
         }
         
@@ -75,10 +95,30 @@ nf.ReportingTask = (function () {
         // properties
         var properties = $('#reporting-task-properties').propertytable('marshalProperties');
 
+        // get the scheduling strategy
+        var schedulingStrategy = $('#reporting-task-scheduling-strategy-combo').combo('getSelectedOption').value;
+
+        // get the appropriate scheduling period field
+        var schedulingPeriod;
+        if (schedulingStrategy === 'CRON_DRIVEN') {
+            schedulingPeriod = $('#reporting-task-cron-driven-scheduling-period');
+        } else {
+            schedulingPeriod = $('#reporting-task-timer-driven-scheduling-period');
+        }
+
         // create the reporting task dto
         var reportingTaskDto = {};
         reportingTaskDto['id'] = $('#reporting-task-id').text();
         reportingTaskDto['name'] = $('#reporting-task-name').val();
+        reportingTaskDto['schedulingStrategy'] = schedulingStrategy;
+        reportingTaskDto['schedulingPeriod'] = schedulingPeriod.val();
+        
+        // mark the processor disabled if appropriate
+        if ($('#reporting-task-enabled').hasClass('checkbox-unchecked')) {
+            reportingTaskDto['state'] = 'DISABLED';
+        } else if ($('#reporting-task-enabled').hasClass('checkbox-checked')) {
+            reportingTaskDto['state'] = 'STOPPED';
+        }
         
         // set the properties
         if ($.isEmptyObject(properties) === false) {
@@ -100,7 +140,23 @@ nf.ReportingTask = (function () {
      * @argument {object} details       The details to validate
      */
     var validateDetails = function (details) {
-        return true;
+        var errors = [];
+        var reportingTask = details['reportingTask'];
+        
+        if (nf.Common.isBlank(reportingTask['schedulingPeriod'])) {
+            errors.push('Run schedule must be specified');
+        }
+        
+        if (errors.length > 0) {
+            nf.Dialog.showOkDialog({
+                dialogContent: nf.Common.formatUnorderedList(errors),
+                overlayBackground: false,
+                headerText: 'Configuration Error'
+            });
+            return false;
+        } else {
+            return true;
+        }
     };
     
     /**
@@ -184,7 +240,7 @@ nf.ReportingTask = (function () {
             
             // we clustered we need to show the controls for editing the availability
             if (nf.Canvas.isClustered()) {
-                $('#availability-setting-container').show();
+                $('#reporting-task-availability-setting-container').show();
             }
 
             // initialize the reporting task configuration dialog
@@ -246,10 +302,17 @@ nf.ReportingTask = (function () {
                 // record the reporting task details
                 $('#reporting-task-configuration').data('reportingTaskDetails', reportingTask);
 
+                // determine if the enabled checkbox is checked or not
+                var reportingTaskEnableStyle = 'checkbox-checked';
+                if (reportingTask['state'] === 'DISABLED') {
+                    reportingTaskEnableStyle = 'checkbox-unchecked';
+                }
+                
                 // populate the reporting task settings
                 $('#reporting-task-id').text(reportingTask['id']);
                 $('#reporting-task-type').text(nf.Common.substringAfterLast(reportingTask['type'], '.'));
                 $('#reporting-task-name').val(reportingTask['name']);
+                $('#reporting-task-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(reportingTaskEnableStyle);
 
                 // select the availability when appropriate
                 if (nf.Canvas.isClustered()) {
@@ -259,6 +322,43 @@ nf.ReportingTask = (function () {
                         $('#availability').text('Cluster Manager');
                     }
                 }
+                
+                // get the default schedule period
+                var defaultSchedulingPeriod = reportingTask['defaultSchedulingPeriod'];
+                var cronSchedulingPeriod = $('#reporting-task-cron-driven-scheduling-period').val(defaultSchedulingPeriod['CRON_DRIVEN']);
+                var timerSchedulingPeriod = $('#reporting-task-timer-driven-scheduling-period').val(defaultSchedulingPeriod['TIMER_DRIVEN']);
+                
+                // set the scheduling period as appropriate
+                if (reportingTask['schedulingStrategy'] === 'CRON_DRIVEN') {
+                    cronSchedulingPeriod.val(reportingTask['schedulingPeriod']);
+                } else {
+                    timerSchedulingPeriod.val(reportingTask['schedulingPeriod']);
+                }
+                
+                // initialize the scheduling strategy
+                $('#reporting-task-scheduling-strategy-combo').combo({
+                        options: [{
+                        text: 'Timer driven',
+                        value: 'TIMER_DRIVEN',
+                        description: 'Reporting task will be scheduled to run on an interval defined by the run schedule.'
+                    }, {
+                        text: 'CRON driven',
+                        value: 'CRON_DRIVEN',
+                        description: 'Reporting task will be scheduled to run on at specific times based on the specified CRON string.'
+                    }],
+                    selectedOption: {
+                        value: reportingTask['schedulingStrategy']
+                    },
+                    select: function (selectedOption) {
+                        if (selectedOption.value === 'CRON_DRIVEN') {
+                            timerSchedulingPeriod.hide();
+                            cronSchedulingPeriod.show();
+                        } else {
+                            timerSchedulingPeriod.show();
+                            cronSchedulingPeriod.hide();
+                        }
+                    }
+                });
                 
                 var buttons = [{
                         buttonText: 'Apply',

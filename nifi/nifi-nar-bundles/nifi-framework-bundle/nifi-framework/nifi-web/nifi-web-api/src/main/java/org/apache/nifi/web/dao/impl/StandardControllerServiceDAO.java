@@ -189,15 +189,15 @@ public class StandardControllerServiceDAO extends ComponentDAO implements Contro
         
         if (controllerServiceState != null) {
             if (ControllerServiceState.ENABLED.equals(controllerServiceState)) {
-//                serviceProvider.enableReferencingServices(controllerService);
+                serviceProvider.verifyCanEnableReferencingServices(controllerService);
             } else {
-//                serviceProvider.disableReferencingServices(controllerService);
+                serviceProvider.verifyCanDisableReferencingServices(controllerService);
             }
         } else if (scheduledState != null) {
             if (ScheduledState.RUNNING.equals(scheduledState)) {
-//                serviceProvider.scheduleReferencingComponents(controllerService);
+                serviceProvider.verifyCanScheduleReferencingComponents(controllerService);
             } else {
-//                serviceProvider.unscheduleReferencingComponents(controllerService);
+                serviceProvider.verifyCanStopReferencingComponents(controllerService);
             }
         }
     }

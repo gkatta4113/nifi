@@ -43,7 +43,7 @@
                             <span id="controller-service-type"></span>
                         </div>
                     </div>
-                    <div id="availability-setting-container" class="setting hidden">
+                    <div id="controller-service-availability-setting-container" class="setting hidden">
                         <div class="availability-setting">
                             <div class="setting-name">
                                 Availability

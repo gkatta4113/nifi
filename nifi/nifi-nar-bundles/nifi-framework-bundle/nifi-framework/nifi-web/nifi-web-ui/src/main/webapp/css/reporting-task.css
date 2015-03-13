@@ -55,6 +55,21 @@ div.reporting-task-configuration-tab-container {
 
 /* reporting-task settings */
 
+#reporting-task-configuration div.settings-left {
+    float: left;
+    width: 356px;
+}
+
+#reporting-task-configuration div.settings-right {
+    float: left;
+    width: 356px;
+}
+
+#reporting-task-configuration div.spacer {
+    float: left;
+    margin-right: 40px;
+}
+
 #reporting-task-name {
     font-size: 11px !important;
     width: 250px;
@@ -77,4 +92,19 @@ div.reporting-task-enabled-container {
 div.availability-setting {
     float: left;
     width: 140px;
+}
+
+div.reporting-task-scheduling-strategy-container, div.reporting-task-scheduling-period-container {
+    float: left;
+    width: 175px;
+}
+
+#reporting-task-scheduling-strategy-combo {
+    width: 145px;
+    height: 18px;
+    line-height: 18px;
+}
+
+input.reporting-task-scheduling-period {
+    font-size: 11px !important;
 }

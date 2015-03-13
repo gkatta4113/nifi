@@ -2512,15 +2512,15 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
         
         if ( firstTimeAdded ) {
             final ComponentLog componentLog = new SimpleProcessLogger(id, taskNode.getReportingTask());
-            final ReportingInitializationContext config = new StandardReportingInitializationContext(id, taskNode.getName(), 
+            final ReportingInitializationContext config = new StandardReportingInitializationContext(id, taskNode.getName(),
                     SchedulingStrategy.TIMER_DRIVEN, "1 min", componentLog, this);
-            
+
             try {
                 task.initialize(config);
             } catch (final InitializationException ie) {
                 throw new ReportingTaskInstantiationException("Failed to initialize reporting task of type " + type, ie);
             }
-            
+
             try (final NarCloseable x = NarCloseable.withNarLoader()) {
                 ReflectionUtils.invokeMethodsWithAnnotation(OnAdded.class, task);
             } catch (final Exception e) {
@@ -2651,6 +2651,16 @@ public class FlowController implements EventAccess, ControllerServiceProvider, R
         controllerServiceProvider.verifyCanScheduleReferencingComponents(serviceNode);
     }
 
+    @Override
+    public void verifyCanDisableReferencingServices(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanDisableReferencingServices(serviceNode);
+    }
+    
+    @Override
+    public void verifyCanStopReferencingComponents(final ControllerServiceNode serviceNode) {
+        controllerServiceProvider.verifyCanStopReferencingComponents(serviceNode);
+    }
+    
     @Override
     public ControllerService getControllerService(final String serviceIdentifier) {
         return controllerServiceProvider.getControllerService(serviceIdentifier);
