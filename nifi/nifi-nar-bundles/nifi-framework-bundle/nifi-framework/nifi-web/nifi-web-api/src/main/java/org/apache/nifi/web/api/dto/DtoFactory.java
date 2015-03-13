@@ -843,11 +843,12 @@ public final class DtoFactory {
         dto.setId(reportingTaskNode.getIdentifier());
         dto.setName(reportingTaskNode.getName());
         dto.setType(reportingTaskNode.getReportingTask().getClass().getName());
-        dto.setState(reportingTaskNode.getScheduledState().name());
         dto.setSchedulingStrategy(reportingTaskNode.getSchedulingStrategy().name());
         dto.setSchedulingPeriod(reportingTaskNode.getSchedulingPeriod());
+        dto.setState(reportingTaskNode.getScheduledState().name());
+        dto.setActiveThreadCount(reportingTaskNode.getActiveThreadCount());
 //        dto.setComments(reportingTaskNode.getComments());
-        
+
         final Map<String, String> defaultSchedulingPeriod = new HashMap<>();
         defaultSchedulingPeriod.put(SchedulingStrategy.TIMER_DRIVEN.name(), SchedulingStrategy.TIMER_DRIVEN.getDefaultSchedulingPeriod());
         defaultSchedulingPeriod.put(SchedulingStrategy.CRON_DRIVEN.name(), SchedulingStrategy.CRON_DRIVEN.getDefaultSchedulingPeriod());

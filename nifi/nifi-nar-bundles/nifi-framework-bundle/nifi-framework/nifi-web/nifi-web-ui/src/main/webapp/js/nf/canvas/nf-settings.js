@@ -1300,6 +1300,32 @@ nf.Settings = (function () {
             return markup;
         };
         
+        var reportingTaskRunStatusFormatter = function (row, cell, value, columnDef, dataContext) {
+            // determine the appropriate label
+            var label;
+            if (!nf.Common.isEmpty(dataContext.validationErrors)) {
+                label = 'Invalid';
+            } else {
+                if (value === 'STOPPED') {
+                    label = 'Stopped';
+                } else if (value === 'RUNNING') {
+                    label = 'Running';
+                } else {
+                    label = 'Disabled';
+                }
+            }
+            
+            // include the active thread count if appropriate
+            var activeThreadCount = '';
+            if (nf.Common.isDefinedAndNotNull(dataContext.activeThreadCount) && dataContext.activeThreadCount > 0) {
+                activeThreadCount = '(' + dataContext.activeThreadCount + ')';
+            }
+            
+            // format the markup
+            var formattedValue = '<div class="' + nf.Common.escapeHtml(label.toLowerCase()) + '" style="margin-top: 3px;"></div>';
+            return formattedValue + '<div class="status-text" style="margin-top: 2px; margin-left: 4px; float: left;">' + nf.Common.escapeHtml(label) + '</div><div style="float: left; margin-left: 4px;">' + nf.Common.escapeHtml(activeThreadCount) + '</div>';
+        };
+        
         var reportingTaskActionFormatter = function (row, cell, value, columnDef, dataContext) {
             var markup = '';
 
@@ -1325,7 +1351,7 @@ nf.Settings = (function () {
             {id: 'moreDetails', field: 'moreDetails', name: '&nbsp;', resizable: false, formatter: moreReportingTaskDetails, sortable: true, width: 50, maxWidth: 50},
             {id: 'name', field: 'name', name: 'Name', sortable: true, resizable: true},
             {id: 'type', field: 'type', name: 'Type', sortable: true, resizable: true, formatter: typeFormatter},
-            {id: 'state', field: 'state', name: 'State', sortable: true, resizeable: true},
+            {id: 'state', field: 'state', name: 'State', sortable: true, resizeable: true, formatter: reportingTaskRunStatusFormatter},
             {id: 'actions', name: '&nbsp;', resizable: false, formatter: reportingTaskActionFormatter, sortable: false, width: 90, maxWidth: 90}
         ];
 
