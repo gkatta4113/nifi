@@ -29,11 +29,11 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
 	private String name;
 	private String comment;
 	private String type;
-	private String schedulingPeriod;
 	private String state;
-	private String schedulingStrategy;
 	private String availability;
 	
+	private String schedulingPeriod;
+	private String schedulingStrategy;
     private Map<String, String> defaultSchedulingPeriod;
     
 	private Map<String, String> properties;
@@ -42,7 +42,8 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
     private String annotationData;
     
     private Collection<String> validationErrors;
-
+    private Integer activeThreadCount;
+    
     /**
      * The user-defined name of the reporting task
      * @return
@@ -195,5 +196,18 @@ public class ReportingTaskDTO extends NiFiComponentDTO {
     public void setDefaultSchedulingPeriod(Map<String, String> defaultSchedulingPeriod) {
         this.defaultSchedulingPeriod = defaultSchedulingPeriod;
     }
-    
+
+    /**
+     * The number of active threads for this reporting task.
+     * 
+     * @return 
+     */
+    public Integer getActiveThreadCount() {
+        return activeThreadCount;
+    }
+
+    public void setActiveThreadCount(Integer activeThreadCount) {
+        this.activeThreadCount = activeThreadCount;
+    }
+
 }
