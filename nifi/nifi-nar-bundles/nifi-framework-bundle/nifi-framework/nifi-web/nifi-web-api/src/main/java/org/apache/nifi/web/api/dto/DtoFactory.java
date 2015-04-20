@@ -506,13 +506,21 @@ public final class DtoFactory {
         processGroupStatusDto.setId(processGroupStatus.getId());
         processGroupStatusDto.setName(processGroupStatus.getName());
         processGroupStatusDto.setStatsLastRefreshed(new Date(processGroupStatus.getCreationTimestamp()));
-        processGroupStatusDto.setQueued(formatCount(processGroupStatus.getQueuedCount()) + " / " + formatDataSize(processGroupStatus.getQueuedContentSize()));
         processGroupStatusDto.setRead(formatDataSize(processGroupStatus.getBytesRead()));
         processGroupStatusDto.setWritten(formatDataSize(processGroupStatus.getBytesWritten()));
         processGroupStatusDto.setInput(formatCount(processGroupStatus.getInputCount()) + " / " + formatDataSize(processGroupStatus.getInputContentSize()));
         processGroupStatusDto.setOutput(formatCount(processGroupStatus.getOutputCount()) + " / " + formatDataSize(processGroupStatus.getOutputContentSize()));
+        processGroupStatusDto.setTransferred(formatCount(processGroupStatus.getFlowFilesTransferred()) + " / " + formatDataSize(processGroupStatus.getBytesTransferred()));
+        processGroupStatusDto.setSent(formatCount(processGroupStatus.getFlowFilesSent()) + " / " + formatDataSize(processGroupStatus.getBytesSent()));
+        processGroupStatusDto.setReceived(formatCount(processGroupStatus.getFlowFilesReceived()) + " / " + formatDataSize(processGroupStatus.getBytesReceived()));
         processGroupStatusDto.setActiveThreadCount(processGroupStatus.getActiveThreadCount());
 
+        final String queuedCount = FormatUtils.formatCount(processGroupStatus.getQueuedCount());
+        final String queuedSize = FormatUtils.formatDataSize(processGroupStatus.getQueuedContentSize());
+        processGroupStatusDto.setQueuedCount(queuedCount);
+        processGroupStatusDto.setQueuedSize(queuedSize);
+        processGroupStatusDto.setQueued(queuedCount + " / " + queuedSize);
+        
         final Map<String, StatusDTO> componentStatusDtoMap = new HashMap<>();
 
         // processor status
