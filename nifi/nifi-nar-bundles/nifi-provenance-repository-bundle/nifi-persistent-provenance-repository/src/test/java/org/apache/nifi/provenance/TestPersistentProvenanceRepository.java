@@ -32,6 +32,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
@@ -964,6 +966,70 @@ public class TestPersistentProvenanceRepository {
         storageDirFiles = config.getStorageDirectories().get(0).listFiles(indexFileFilter);
         assertEquals(0, storageDirFiles.length);
     }
+    
+    
+    @Test
+    public void testBackPressure() throws IOException, InterruptedException {
+        final RepositoryConfiguration config = createConfiguration();
+        config.setMaxEventFileCapacity(1L);	// force rollover on each record.
+        config.setJournalCount(1);
+        
+        final AtomicInteger journalCountRef = new AtomicInteger(0);
+        
+    	repo = new PersistentProvenanceRepository(config, DEFAULT_ROLLOVER_MILLIS) {
+    		@Override
+    		protected int getJournalCount() {
+    			return journalCountRef.get();
+    		}
+    	};
+        repo.initialize(getEventReporter());
+
+    	final Map<String, String> attributes = new HashMap<>();
+    	final ProvenanceEventBuilder builder = new StandardProvenanceEventRecord.Builder();
+        builder.setEventTime(System.currentTimeMillis());
+        builder.setEventType(ProvenanceEventType.RECEIVE);
+        builder.setTransitUri("nifi://unit-test");
+        attributes.put("uuid", UUID.randomUUID().toString());
+        builder.fromFlowFile(createFlowFile(3L, 3000L, attributes));
+        builder.setComponentId("1234");
+        builder.setComponentType("dummy processor");
+
+        // ensure that we can register the events.
+        for (int i = 0; i < 10; i++) {
+            builder.fromFlowFile(createFlowFile(i, 3000L, attributes));
+            attributes.put("uuid", "00000000-0000-0000-0000-00000000000" + i);
+            repo.registerEvent(builder.build());
+        }
+
+        // set number of journals to 6 so that we will block.
+        journalCountRef.set(6);
+
+        final AtomicLong threadNanos = new AtomicLong(0L);
+        final Thread t = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				final long start = System.nanoTime();
+		        builder.fromFlowFile(createFlowFile(13, 3000L, attributes));
+		        attributes.put("uuid", "00000000-0000-0000-0000-00000000000" + 13);
+		        repo.registerEvent(builder.build());
+		        threadNanos.set(System.nanoTime() - start);
+			}
+        });
+        t.start();
+
+        Thread.sleep(1500L);
+        
+        journalCountRef.set(1);
+        t.join();
+        
+        final int threadMillis = (int) TimeUnit.NANOSECONDS.toMillis(threadNanos.get());
+        assertTrue(threadMillis > 1200);	// use 1200 to account for the fact that the timing is not exact
+        
+        builder.fromFlowFile(createFlowFile(15, 3000L, attributes));
+        attributes.put("uuid", "00000000-0000-0000-0000-00000000000" + 15);
+        repo.registerEvent(builder.build());
+    }
+    
     
     // TODO: test EOF on merge
     // TODO: Test journal with no records

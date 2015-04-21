@@ -608,8 +608,10 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
 
             indexManager.close();
             
-            for (final RecordWriter writer : writers) {
-                writer.close();
+            if ( writers != null ) {
+	            for (final RecordWriter writer : writers) {
+	                writer.close();
+	            }
             }
         } finally {
             writeLock.unlock();
@@ -905,8 +907,8 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
         }
     }
 
-    
-    private int getJournalCount() {
+    // made protected for testing purposes
+    protected int getJournalCount() {
     	// determine how many 'journals' we have in the journals directories
         int journalFileCount = 0;
         for ( final File storageDir : configuration.getStorageDirectories() ) {
