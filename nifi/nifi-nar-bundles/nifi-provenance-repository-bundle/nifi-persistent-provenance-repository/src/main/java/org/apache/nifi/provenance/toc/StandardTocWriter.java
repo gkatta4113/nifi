@@ -16,18 +16,12 @@
  */
 package org.apache.nifi.provenance.toc;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 
 import org.slf4j.Logger;
@@ -61,27 +55,6 @@ public class StandardTocWriter implements TocWriter {
      * @throws FileNotFoundException 
      */
     public StandardTocWriter(final File file, final boolean compressionFlag, final boolean alwaysSync) throws IOException {
-        if ( file.exists() ) {
-            // Check if the header actually exists. If so, throw FileAlreadyExistsException
-            // If no data is in the file, we will just overwrite it.
-            try (final InputStream fis = new FileInputStream(file);
-                 final InputStream bis = new BufferedInputStream(fis);
-                 final DataInputStream dis = new DataInputStream(bis)) {
-                dis.read();
-                dis.read();
-
-                // we always add the first offset when the writer is created so we allow this to exist.
-                dis.readLong();
-                final int nextByte = dis.read();
-                
-                if ( nextByte > -1 ) {
-                    throw new FileAlreadyExistsException(file.getAbsolutePath());
-                }
-            } catch (final EOFException eof) {
-                // no real data. overwrite file.
-            }
-        }
-        
         final File tocDir = file.getParentFile();
         if ( !tocDir.exists() ) {
         	Files.createDirectories(tocDir.toPath());

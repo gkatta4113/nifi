@@ -50,12 +50,14 @@ public class DeleteIndexAction implements ExpirationAction {
         long maxEventId = -1L;
         try (final RecordReader reader = RecordReaders.newRecordReader(expiredFile, repository.getAllLogFiles())) {
         	maxEventId = reader.getMaxEventId();
+        } catch (final IOException ioe) {
+        	logger.warn("Failed to obtain max ID present in journal file {}", expiredFile.getAbsolutePath());
         }
 
         // remove the records from the index
         final List<File> indexDirs = indexConfiguration.getIndexDirectories(expiredFile);
         for (final File indexingDirectory : indexDirs) {
-            Term term = new Term(FieldNames.STORAGE_FILENAME, LuceneUtil.substringBefore(expiredFile.getName(), "."));
+            final Term term = new Term(FieldNames.STORAGE_FILENAME, LuceneUtil.substringBefore(expiredFile.getName(), "."));
 
             boolean deleteDir = false;
             final IndexWriter writer = indexManager.borrowIndexWriter(indexingDirectory);
@@ -71,8 +73,8 @@ public class DeleteIndexAction implements ExpirationAction {
 
             // we've confirmed that all documents have been removed. Delete the index directory.
             if (deleteDir) {
+            	indexManager.removeIndex(indexingDirectory);
                 indexConfiguration.removeIndexDirectory(indexingDirectory);
-                indexManager.removeIndex(indexingDirectory);
                 
                 deleteDirectory(indexingDirectory);
                 logger.info("Removed empty index directory {}", indexingDirectory);

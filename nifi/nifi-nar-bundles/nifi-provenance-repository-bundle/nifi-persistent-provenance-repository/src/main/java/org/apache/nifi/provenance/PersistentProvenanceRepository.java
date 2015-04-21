@@ -181,7 +181,7 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
         this.maxPartitionMillis = configuration.getMaxEventFileLife(TimeUnit.MILLISECONDS);
         this.maxPartitionBytes = configuration.getMaxEventFileCapacity();
         this.indexConfig = new IndexConfiguration(configuration);
-        this.indexManager = new IndexManager(indexConfig);
+        this.indexManager = new IndexManager();
         this.alwaysSync = configuration.isAlwaysSync();
         this.rolloverCheckMillis = rolloverCheckMillis;
         
@@ -192,7 +192,7 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
             indexingAction = null;
         }
 
-        scheduledExecService = Executors.newScheduledThreadPool(3);
+        scheduledExecService = Executors.newScheduledThreadPool(3, new NamedThreadFactory("Provenance Maintenance Thread"));
         queryExecService = Executors.newFixedThreadPool(configuration.getQueryThreadPoolSize(), new NamedThreadFactory("Provenance Query Thread"));
 
         // The number of rollover threads is a little bit arbitrary but comes from the idea that multiple storage directories generally
@@ -905,6 +905,21 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
         }
     }
 
+    
+    private int getJournalCount() {
+    	// determine how many 'journals' we have in the journals directories
+        int journalFileCount = 0;
+        for ( final File storageDir : configuration.getStorageDirectories() ) {
+        	final File journalsDir = new File(storageDir, "journals");
+        	final File[] journalFiles = journalsDir.listFiles();
+        	if ( journalFiles != null ) {
+        		journalFileCount += journalFiles.length;
+        	}
+        }
+        
+        return journalFileCount;
+    }
+    
     /**
      * MUST be called with the write lock held
      *
@@ -936,6 +951,32 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
             	logger.debug("Going to merge {} files for journals starting with ID {}", journalsToMerge.size(), LuceneUtil.substringBefore(journalsToMerge.get(0).getName(), "."));
             }
 
+            int journalFileCount = getJournalCount();
+            final int journalCountThreshold = configuration.getJournalCount() * 5;
+            if ( journalFileCount > journalCountThreshold ) {
+            	logger.warn("The rate of the dataflow is exceeding the provenance recording rate. "
+            			+ "Slowing down flow to accomodate. Currently, there are {} journal files and "
+            			+ "threshold for blocking is {}", journalFileCount, journalCountThreshold);
+            	eventReporter.reportEvent(Severity.WARNING, "Provenance Repository", "The rate of the dataflow is "
+            			+ "exceeding the provenance recording rate. Slowing down flow to accomodate");
+            	
+            	while (journalFileCount > journalCountThreshold) {
+            		try {
+            			Thread.sleep(1000L);
+            		} catch (final InterruptedException ie) {
+            		}
+            		
+                	logger.debug("Provenance Repository is still behind. Keeping flow slowed down "
+                			+ "to accomodate. Currently, there are {} journal files and "
+                			+ "threshold for blocking is {}", journalFileCount, journalCountThreshold);
+
+            		journalFileCount = getJournalCount();
+            	}
+            	
+            	logger.info("Provenance Repository has no caught up with rolling over journal files. Current number of "
+            			+ "journal files to be rolled over is {}", journalFileCount);
+            }
+            
             writers = createWriters(configuration, idGenerator.get());
             streamStartTime.set(System.currentTimeMillis());
             recordsWrittenSinceRollover.getAndSet(0);
@@ -1205,7 +1246,8 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
 
                 final IndexingAction indexingAction = new IndexingAction(this, indexConfig);
                 
-                final IndexWriter indexWriter = indexManager.borrowIndexWriter(writerFile);
+                final File indexingDirectory = indexConfig.getWritableIndexDirectory(writerFile);
+                final IndexWriter indexWriter = indexManager.borrowIndexWriter(indexingDirectory);
                 try {
 	                while (!recordToReaderMap.isEmpty()) {
 	                    final Map.Entry<StandardProvenanceEventRecord, RecordReader> entry = recordToReaderMap.entrySet().iterator().next();
@@ -1240,7 +1282,7 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
 	                
 	                indexWriter.commit();
                 } finally {
-                	indexManager.returnIndexWriter(writerFile, indexWriter);
+                	indexManager.returnIndexWriter(indexingDirectory, indexWriter);
                 }
             }
         } finally {
@@ -1784,7 +1826,7 @@ public class PersistentProvenanceRepository implements ProvenanceEventRepository
                             query, indexDir, queryResult.getQueryTime(), queryResult.getTotalHitCount());
                 }
             } catch (final Throwable t) {
-                logger.error("Failed to query provenance repository due to {}", t.toString());
+                logger.error("Failed to query Provenance Repository Index {} due to {}", indexDir, t.toString());
                 if (logger.isDebugEnabled()) {
                     logger.error("", t);
                 }

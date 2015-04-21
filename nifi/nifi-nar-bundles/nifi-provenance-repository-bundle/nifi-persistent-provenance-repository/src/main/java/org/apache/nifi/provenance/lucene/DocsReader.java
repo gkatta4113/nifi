@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -118,9 +119,15 @@ public class DocsReader {
 
         final long start = System.nanoTime();
         int logFileCount = 0;
+        
+        final Set<String> storageFilesToSkip = new HashSet<>();
+        
         try {
             for (final Document d : docs) {
                 final String storageFilename = d.getField(FieldNames.STORAGE_FILENAME).stringValue();
+                if ( storageFilesToSkip.contains(storageFilename) ) {
+                	continue;
+                }
                 
                 try {
                     if (reader != null && storageFilename.equals(lastStorageFilename)) {
@@ -135,20 +142,23 @@ public class DocsReader {
 
                         List<File> potentialFiles = LuceneUtil.getProvenanceLogFiles(storageFilename, allProvenanceLogFiles);
                         if (potentialFiles.isEmpty()) {
-                            throw new FileNotFoundException("Could not find Provenance Log File with basename " + storageFilename + " in the Provenance Repository");
+                            logger.warn("Could not find Provenance Log File with basename {} in the "
+                            		+ "Provenance Repository; assuming file has expired and continuing without it", storageFilename);
+                            storageFilesToSkip.add(storageFilename);
+                            continue;
                         }
 
                         if (potentialFiles.size() > 1) {
-                            throw new FileNotFoundException("Found multiple Provenance Log Files with basename " + storageFilename + " in the Provenance Repository");
+                            throw new FileNotFoundException("Found multiple Provenance Log Files with basename " + 
+                            		storageFilename + " in the Provenance Repository");
                         }
 
                         for (final File file : potentialFiles) {
-                            reader = RecordReaders.newRecordReader(file, allProvenanceLogFiles);
-
                             try {
+                            	reader = RecordReaders.newRecordReader(file, allProvenanceLogFiles);
                                	matchingRecords.add(getRecord(d, reader));
                             } catch (final IOException e) {
-                                throw new IOException("Failed to retrieve record from Provenance File " + file + " due to " + e, e);
+                                throw new IOException("Failed to retrieve record " + d + " from Provenance File " + file + " due to " + e, e);
                             }
                         }
                     }

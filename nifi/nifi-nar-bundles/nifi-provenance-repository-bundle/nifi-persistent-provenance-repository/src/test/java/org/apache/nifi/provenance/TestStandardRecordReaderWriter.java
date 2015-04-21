@@ -33,6 +33,7 @@ import org.apache.nifi.provenance.toc.StandardTocWriter;
 import org.apache.nifi.provenance.toc.TocReader;
 import org.apache.nifi.provenance.toc.TocUtil;
 import org.apache.nifi.provenance.toc.TocWriter;
+import org.apache.nifi.util.file.FileUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -82,6 +83,8 @@ public class TestStandardRecordReaderWriter {
         	assertEquals("nifi://unit-test", recovered.getTransitUri());
         	assertNull(reader.nextRecord());
         }
+        
+        FileUtils.deleteFile(journalFile.getParentFile(), true);
 	}
 	
 	
@@ -108,6 +111,8 @@ public class TestStandardRecordReaderWriter {
         	assertEquals("nifi://unit-test", recovered.getTransitUri());
         	assertNull(reader.nextRecord());
         }
+        
+        FileUtils.deleteFile(journalFile.getParentFile(), true);
 	}
 	
 	
@@ -145,6 +150,8 @@ public class TestStandardRecordReaderWriter {
         	
         	assertNull(reader.nextRecord());
         }
+        
+        FileUtils.deleteFile(journalFile.getParentFile(), true);
 	}
 	
 	
@@ -176,5 +183,7 @@ public class TestStandardRecordReaderWriter {
         	
         	assertNull(reader.nextRecord());
         }
+        
+        FileUtils.deleteFile(journalFile.getParentFile(), true);
 	}
 }

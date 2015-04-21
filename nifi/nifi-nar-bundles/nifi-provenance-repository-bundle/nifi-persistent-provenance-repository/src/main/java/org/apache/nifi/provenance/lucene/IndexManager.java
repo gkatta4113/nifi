@@ -21,9 +21,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -35,25 +37,21 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.nifi.provenance.IndexConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IndexManager implements Closeable {
 	private static final Logger logger = LoggerFactory.getLogger(IndexManager.class);
-	private final IndexConfiguration indexConfig;
 	
 	private final Lock lock = new ReentrantLock();
 	private final Map<File, IndexWriterCount> writerCounts = new HashMap<>();
 	private final Map<File, List<ActiveIndexSearcher>> activeSearchers = new HashMap<>();
 	
-	public IndexManager(final IndexConfiguration indexConfig) {
-		this.indexConfig = indexConfig;
-	}
 	
 	public void removeIndex(final File indexDirectory) {
 		final File absoluteFile = indexDirectory.getAbsoluteFile();
-
+		logger.info("Removing index {}", indexDirectory);
+		
 		lock.lock();
 		try {
 			final IndexWriterCount count = writerCounts.remove(absoluteFile);
@@ -86,15 +84,14 @@ public class IndexManager implements Closeable {
 		}
 	}
 	
-	public IndexWriter borrowIndexWriter(final File journalFile) throws IOException {
-		final File indexingDirectory = indexConfig.getWritableIndexDirectory(journalFile);
+	public IndexWriter borrowIndexWriter(final File indexingDirectory) throws IOException {
 		final File absoluteFile = indexingDirectory.getAbsoluteFile();
-
+		logger.debug("Borrowing index writer for {}", indexingDirectory);
+		
 		lock.lock();
 		try {
 			IndexWriterCount writerCount = writerCounts.remove(absoluteFile);
 			if ( writerCount == null ) {
-				
 				final List<Closeable> closeables = new ArrayList<>();
                 final Directory directory = FSDirectory.open(indexingDirectory);
                 closeables.add(directory);
@@ -108,6 +105,7 @@ public class IndexManager implements Closeable {
 
                     final IndexWriter indexWriter = new IndexWriter(directory, config);
                     writerCount = new IndexWriterCount(indexWriter, analyzer, directory, 1);
+                    logger.debug("Providing new index writer for {}", indexingDirectory);
                 } catch (final IOException ioe) {
                 	for ( final Closeable closeable : closeables ) {
                 		try {
@@ -122,6 +120,7 @@ public class IndexManager implements Closeable {
                 
                 writerCounts.put(absoluteFile, writerCount);
 			} else {
+				logger.debug("Providing existing index writer for {} and incrementing count to {}", indexingDirectory, writerCount.getCount() + 1);
 				writerCounts.put(absoluteFile, new IndexWriterCount(writerCount.getWriter(),
 						writerCount.getAnalyzer(), writerCount.getDirectory(), writerCount.getCount() + 1));
 			}
@@ -132,9 +131,9 @@ public class IndexManager implements Closeable {
 		}
 	}
 	
-	public void returnIndexWriter(final File journalFile, final IndexWriter writer) {
-		final File indexingDirectory = indexConfig.getWritableIndexDirectory(journalFile);
+	public void returnIndexWriter(final File indexingDirectory, final IndexWriter writer) {
 		final File absoluteFile = indexingDirectory.getAbsoluteFile();
+		logger.debug("Returning Index Writer for {} to IndexManager", indexingDirectory);
 		
 		lock.lock();
 		try {
@@ -142,13 +141,15 @@ public class IndexManager implements Closeable {
 			
 			try {
 				if ( count == null ) {
-					logger.warn("Index Writer {} was returned to IndexManager for Jornal File {}, but this writer is not known. This could potentially lead to a resource leak", writer, journalFile);
+					logger.warn("Index Writer {} was returned to IndexManager for {}, but this writer is not known. This could potentially lead to a resource leak", writer, indexingDirectory);
 					writer.close();
 				} else if ( count.getCount() <= 1 ) {
 					// we are finished with this writer.
+					logger.debug("Closing Index Writer for {}", indexingDirectory);
 					count.close();
 				} else {
 					// decrement the count.
+					logger.debug("Decrementing count for Index Writer for {} to {}", indexingDirectory, count.getCount() - 1);
 					writerCounts.put(absoluteFile, new IndexWriterCount(count.getWriter(), count.getAnalyzer(), count.getDirectory(), count.getCount() - 1));
 				}
 			} catch (final IOException ioe) {
@@ -165,6 +166,7 @@ public class IndexManager implements Closeable {
 	
 	public IndexSearcher borrowIndexSearcher(final File indexDir) throws IOException {
 		final File absoluteFile = indexDir.getAbsoluteFile();
+		logger.debug("Borrowing index searcher for {}", indexDir);
 		
 		lock.lock();
 		try {
@@ -174,9 +176,38 @@ public class IndexManager implements Closeable {
 				currentlyCached = new ArrayList<>();
 				activeSearchers.put(absoluteFile, currentlyCached);
 			} else {
-				for ( final ActiveIndexSearcher searcher : currentlyCached ) {
-					if ( searcher.isCache() ) {
-						return searcher.getSearcher();
+				// keep track of any searchers that have been closed so that we can remove them
+				// from our cache later.
+				final Set<ActiveIndexSearcher> expired = new HashSet<>();
+				
+				try {
+					for ( final ActiveIndexSearcher searcher : currentlyCached ) {
+						if ( searcher.isCache() ) {
+							final int refCount = searcher.getSearcher().getIndexReader().getRefCount();
+							if ( refCount <= 0 ) {
+								// if refCount == 0, then the reader has been closed, so we need to discard the
+								// searcher.
+								logger.debug("Reference count for cached Index Searcher {} is currently {}; "
+									+ "removing cached searcher", searcher.getSearcher().getIndexReader(), refCount);
+								expired.add(searcher);
+								continue;
+							}
+							
+							logger.debug("Providing previously cached index searcher for {}", indexDir);
+							return searcher.getSearcher();
+						}
+					}
+				} finally {
+					// if we have any expired index searchers, we need to close them and remove them
+					// from the cache so that we don't try to use them again later.
+					for ( final ActiveIndexSearcher searcher : expired ) {
+						try {
+							searcher.close();
+						} catch (final Exception e) {
+							logger.debug("Failed to close 'expired' IndexSearcher {}", searcher);
+						}
+						
+						currentlyCached.remove(searcher);
 					}
 				}
 			}
@@ -184,6 +215,7 @@ public class IndexManager implements Closeable {
 			IndexWriterCount writerCount = writerCounts.remove(absoluteFile);
 			if ( writerCount == null ) {
 				final Directory directory = FSDirectory.open(absoluteFile);
+				logger.debug("No Index Writer currently exists for {}; creating a cachable reader", indexDir);
 				
 				try {
 					final DirectoryReader directoryReader = DirectoryReader.open(directory);
@@ -204,6 +236,9 @@ public class IndexManager implements Closeable {
 					throw e;
 				}
 			} else {
+				logger.debug("Index Writer currently exists for {}; creating a non-cachable reader and incrementing "
+						+ "counter to {}", indexDir, writerCount.getCount() + 1);
+
 				// increment the writer count to ensure that it's kept open.
 				writerCounts.put(absoluteFile, new IndexWriterCount(writerCount.getWriter(),
 						writerCount.getAnalyzer(), writerCount.getDirectory(), writerCount.getCount() + 1));
@@ -230,6 +265,7 @@ public class IndexManager implements Closeable {
 	
 	public void returnIndexSearcher(final File indexDirectory, final IndexSearcher searcher) {
 		final File absoluteFile = indexDirectory.getAbsoluteFile();
+		logger.debug("Returning index searcher for {} to IndexManager", indexDirectory);
 		
 		lock.lock();
 		try {
@@ -247,6 +283,7 @@ public class IndexManager implements Closeable {
 				if ( activeSearcher.getSearcher().equals(searcher) ) {
 					if ( activeSearcher.isCache() ) {
 						// the searcher is cached. Just leave it open.
+						logger.debug("Index searcher for {} is cached; leaving open", indexDirectory);
 						return;
 					} else {
 						// searcher is not cached. It was created from a writer, and we want
@@ -259,6 +296,9 @@ public class IndexManager implements Closeable {
 						if ( writerCount != null ) {
 							if ( writerCount.getCount() <= 1 ) {
 								try {
+									logger.debug("Index searcher for {} is not cached. Writer count is "
+											+ "decremented to {}; closing writer", indexDirectory, writerCount.getCount() - 1);
+									
 									writerCount.close();
 								} catch (final IOException ioe) {
 									logger.warn("Failed to close Index Writer for {} due to {}", absoluteFile, ioe);
@@ -267,6 +307,9 @@ public class IndexManager implements Closeable {
 									}
 								}
 							} else {
+								logger.debug("Index searcher for {} is not cached. Writer count is decremented "
+										+ "to {}; leaving writer open", indexDirectory, writerCount.getCount() - 1);
+								
 								writerCounts.put(absoluteFile, new IndexWriterCount(writerCount.getWriter(),
 									writerCount.getAnalyzer(), writerCount.getDirectory(), 
 									writerCount.getCount() - 1));
@@ -274,6 +317,7 @@ public class IndexManager implements Closeable {
 						}
 
 						try {
+							logger.debug("Closing Index Searcher for {}", indexDirectory);
 							activeSearcher.close();
 						} catch (final IOException ioe) {
 							logger.warn("Failed to close Index Searcher for {} due to {}", absoluteFile, ioe);
@@ -291,6 +335,8 @@ public class IndexManager implements Closeable {
 	
 	@Override
 	public void close() throws IOException {
+		logger.debug("Closing Index Manager");
+		
 		lock.lock();
 		try {
 			IOException ioe = null;

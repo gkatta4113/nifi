@@ -97,4 +97,9 @@ public class IndexSearch {
         }
     }
 
+    
+    @Override
+    public String toString() {
+    	return "IndexSearcher[" + indexDirectory + "]";
+    }
 }

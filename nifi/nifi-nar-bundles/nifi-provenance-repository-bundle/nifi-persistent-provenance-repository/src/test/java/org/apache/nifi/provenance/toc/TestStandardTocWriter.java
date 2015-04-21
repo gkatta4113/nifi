@@ -20,11 +20,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.util.UUID;
 
 import org.apache.nifi.util.file.FileUtils;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestStandardTocWriter {
@@ -41,24 +39,4 @@ public class TestStandardTocWriter {
         }
     }
     
-    @Test
-    public void testDoNotOverwriteNonEmptyFile() throws IOException {
-        final File tocFile = new File("target/" + UUID.randomUUID().toString() + ".toc");
-        try {
-            assertTrue( tocFile.createNewFile() );
-            
-            try (final StandardTocWriter writer = new StandardTocWriter(tocFile, false, false)) {
-                writer.addBlockOffset(0L);
-                writer.addBlockOffset(34L);
-            }
-            
-            try (final StandardTocWriter writer = new StandardTocWriter(tocFile, false, false)) {
-                Assert.fail("StandardTocWriter attempted to overwrite existing file");
-            } catch (final FileAlreadyExistsException faee) {
-                // expected
-            }
-        } finally {
-            FileUtils.deleteFile(tocFile, false);
-        }
-    }
 }
