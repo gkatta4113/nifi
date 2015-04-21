@@ -141,7 +141,8 @@ public class IndexManager implements Closeable {
 			
 			try {
 				if ( count == null ) {
-					logger.warn("Index Writer {} was returned to IndexManager for {}, but this writer is not known. This could potentially lead to a resource leak", writer, indexingDirectory);
+					logger.warn("Index Writer {} was returned to IndexManager for {}, but this writer is not known. "
+							+ "This could potentially lead to a resource leak", writer, indexingDirectory);
 					writer.close();
 				} else if ( count.getCount() <= 1 ) {
 					// we are finished with this writer.
@@ -185,10 +186,9 @@ public class IndexManager implements Closeable {
 						if ( searcher.isCache() ) {
 							final int refCount = searcher.getSearcher().getIndexReader().getRefCount();
 							if ( refCount <= 0 ) {
-								// if refCount == 0, then the reader has been closed, so we need to discard the
-								// searcher.
-								logger.debug("Reference count for cached Index Searcher {} is currently {}; "
-									+ "removing cached searcher", searcher.getSearcher().getIndexReader(), refCount);
+								// if refCount == 0, then the reader has been closed, so we need to discard the searcher
+								logger.debug("Reference count for cached Index Searcher for {} is currently {}; "
+									+ "removing cached searcher", absoluteFile, refCount);
 								expired.add(searcher);
 								continue;
 							}
