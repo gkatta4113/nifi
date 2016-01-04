@@ -104,6 +104,10 @@ ul.links span.header-link-over {
     General Styles
 */
 
+i.nifi-icon {
+    color: #8ea8b2;
+}
+
 .unselectable {
     -webkit-touch-callout: none;
     -webkit-user-select: none;

@@ -117,7 +117,7 @@ nf.Storage = (function () {
          * not exist, null is returned. If an item exists but cannot be parsed
          * or is malformed/unrecognized, null is returned.
          * 
-         * @param {type} key
+         * @param {string} key
          */
         getItem: function (key) {
             var entry = getEntry(key);

@@ -23,7 +23,6 @@
         <div id="toolbox-right-edge"></div>
     </div>
     <div id="toolbar">
-        <div id="global-controls"></div>
         <div id="utilities-container">
             <div id="utilities-border"></div>
             <div id="utility-buttons">

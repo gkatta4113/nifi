@@ -22,6 +22,7 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <link rel="shortcut icon" href="images/nifi16.ico"/>
         <link rel="stylesheet" href="css/reset.css" type="text/css" />
+        <link rel="stylesheet" href="icon-font/css/nifi-icon-font.css" type="text/css" />
         ${nf.canvas.style.tags}
         <link rel="stylesheet" href="js/codemirror/lib/codemirror.css" type="text/css" />
         <link rel="stylesheet" href="js/codemirror/addon/hint/show-hint.css" type="text/css" />

@@ -206,48 +206,6 @@ nf.Birdseye = (function () {
     return {
         init: function () {
             var birdseye = $('#birdseye');
-            var birdseyeContainer = $('#birdseye-container');
-            $('#birdseye-collapse').click(function () {
-                // update the outline collapse icon
-                if (birdseye.is(':visible')) {
-                    $(this).removeClass('birdseye-expanded-hover').addClass('birdseye-collapsed-hover');
-
-                    // hide the outline
-                    birdseye.hide();
-                    birdseyeContainer.hide();
-                    visible = false;
-
-                    // shift the counts position
-                    $('#controller-counts').css('margin-right', '-13px');
-                } else {
-                    $(this).removeClass('birdseye-collapsed-hover').addClass('birdseye-expanded-hover');
-
-                    // shift the counts position
-                    $('#controller-counts').css('margin-right', '195px');
-
-                    // show the outline
-                    birdseye.show();
-                    birdseyeContainer.show();
-                    visible = true;
-
-                    // refresh the birdseye as it may have changed
-                    refresh(nf.Graph.get());
-                }
-            }).mouseover(function () {
-                // update the outline collapse icon
-                if (birdseye.is(':visible')) {
-                    $(this).removeClass('birdseye-expanded').addClass('birdseye-expanded-hover');
-                } else {
-                    $(this).removeClass('birdseye-collapsed').addClass('birdseye-collapsed-hover');
-                }
-            }).mouseout(function () {
-                // update the outline collapse icon
-                if (birdseye.is(':visible')) {
-                    $(this).removeClass('birdseye-expanded-hover').addClass('birdseye-expanded');
-                } else {
-                    $(this).removeClass('birdseye-collapsed-hover').addClass('birdseye-collapsed');
-                }
-            });
 
             d3.select('#birdseye').append('canvas')
                     .attr('id', 'birdseye-canvas')
@@ -329,6 +287,9 @@ nf.Birdseye = (function () {
                         y: 0
                     })
                     .call(brush);
+
+            //// clear
+            //birdseye.append('<div class="clear"></div>');
         },
         
         /**
@@ -337,6 +298,29 @@ nf.Birdseye = (function () {
         refresh: function () {
             if (visible) {
                 refresh(nf.Graph.get());
+            }
+        },
+
+        /**
+         * Function that needs to be call when the birdseye visibility changes.
+         *
+         * @param {boolean} isVisible
+         */
+        updateBirdseyeVisibility: function (isVisible) {
+            var birdseye = $('#birdseye');
+
+            // update the outline collapse icon
+            if (isVisible) {
+                // show the outline
+                birdseye.show();
+                visible = true;
+
+                // refresh the birdseye as it may have changed
+                refresh(nf.Graph.get());
+            } else {
+                // hide the outline
+                birdseye.hide();
+                visible = false;
             }
         }
     };

@@ -1141,7 +1141,6 @@ nf.Canvas = (function () {
                             nf.CanvasToolbar.init();
                             nf.CanvasToolbox.init();
                             nf.CanvasHeader.init(loginDetails.supportsLogin);
-                            nf.GraphControl.init();
                             nf.Search.init();
                             nf.Settings.init();
                             nf.Actions.init();
@@ -1176,6 +1175,8 @@ nf.Canvas = (function () {
                             nf.RemoteProcessGroupDetails.init();
                             nf.GoTo.init();
                             nf.Graph.init().done(function () {
+                                nf.GraphControl.init();
+
                                 // determine the split between the polling
                                 var pollingSplit = autoRefreshIntervalSeconds / 2;
 
