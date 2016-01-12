@@ -65,6 +65,20 @@ div.graph-control-content {
     margin-bottom: 5px;
 }
 
+/* operate buttons */
+
+#operate-delete {
+    width: 70px;
+}
+
+#operate-delete-text {
+    margin-right: 5px;
+    font-size: 11px;
+    color: #035f8f;
+}
+
+/* general graph control buttons */
+
 div.action-button {
     float: left;
     border: 1px solid #8ea8b2;

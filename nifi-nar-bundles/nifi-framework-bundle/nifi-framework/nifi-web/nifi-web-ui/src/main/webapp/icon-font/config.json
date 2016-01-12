@@ -31,6 +31,12 @@
       "src": "fontawesome"
     },
     {
+      "uid": "f48ae54adfb27d8ada53d0fd9e34ee10",
+      "css": "trash-empty",
+      "code": 59409,
+      "src": "fontawesome"
+    },
+    {
       "uid": "0b2b66e526028a6972d51a6f10281b4b",
       "css": "zoom-in",
       "code": 59396,

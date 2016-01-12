@@ -59,6 +59,7 @@ nf.CanvasToolbar = (function () {
             var paste = $('#operate-paste');
             var group = $('#operate-group');
             var color = $('#operate-color');
+            var del = $('#operate-delete');
 
             // initialize the buttons
             initializeButton(disable, 'disable');
@@ -70,6 +71,7 @@ nf.CanvasToolbar = (function () {
             initializeButton(paste, 'paste');
             initializeButton(group, 'group');
             initializeButton(color, 'fillColor');
+            initializeButton(del, 'delete');
 
             // set up initial states for selection-less items
             if (nf.Common.isDFM()) {
@@ -89,6 +91,7 @@ nf.CanvasToolbar = (function () {
             disableButton(paste);
             disableButton(color);
             disableButton(group);
+            disableButton(del);
 
             // add a clipboard listener if appropriate
             if (nf.Common.isDFM()) {
@@ -113,26 +116,27 @@ nf.CanvasToolbar = (function () {
                 var copy = $('#operate-copy');
                 var group = $('#operate-group');
                 var color = $('#operate-color');
+                var del = $('#operate-delete');
 
                 var selection = nf.CanvasUtils.getSelection();
 
                 // if all selected components are deletable enable the delete button
-                //if (!selection.empty()) {
-                //    var enableDelete = true;
-                //    selection.each(function (d) {
-                //        if (!nf.CanvasUtils.isDeletable(d3.select(this))) {
-                //            enableDelete = false;
-                //            return false;
-                //        }
-                //    });
-                //    if (enableDelete) {
-                //        actions['delete'].enable();
-                //    } else {
-                //        actions['delete'].disable();
-                //    }
-                //} else {
-                //    actions['delete'].disable();
-                //}
+                if (!selection.empty()) {
+                    var enableDelete = true;
+                    selection.each(function (d) {
+                        if (!nf.CanvasUtils.isDeletable(d3.select(this))) {
+                            enableDelete = false;
+                            return false;
+                        }
+                    });
+                    if (enableDelete) {
+                        enableButton(del);
+                    } else {
+                        disableButton(del);
+                    }
+                } else {
+                    disableButton(del);
+                }
 
                 // if there are any copyable components enable the button
                 if (nf.CanvasUtils.isCopyable(selection)) {

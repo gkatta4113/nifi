@@ -115,6 +115,10 @@
                     <div id="operate-color" class="action-button" title="Fill Color">
                         <i class="graph-control-action-icon nifi-icon icon-brush-1"></i>
                     </div>
+                    <div class="button-spacer-large">&nbsp;</div>
+                    <div id="operate-delete" class="action-button" title="Fill Color">
+                        <i class="graph-control-action-icon nifi-icon icon-trash-empty"></i><span id="operate-delete-text">DELETE</span>
+                    </div>
                     <div class="clear"></div>
                 </div>
             </div>
