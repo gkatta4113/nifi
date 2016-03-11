@@ -1,0 +1,106 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#toolbar-container {
+    background-color: #a9bac4;
+}
+
+#logo {
+    width: 200px;
+    height: 50px;
+    float: left;
+    border: 1px solid #000;
+}
+
+#toolbox {
+    width: 400px;
+    height: 56px;
+    float: left;
+    border: 1px solid #000;
+}
+
+#global-administer {
+    width: 400px;
+    height: 50px;
+    border: 1px solid #000;
+}
+
+@media (max-width: 1006px) {
+    #global-administer {
+        float: left;
+        clear: left;
+    }
+}
+
+@media (min-width: 1006px) {
+    #global-administer {
+        float: right;
+    }
+}
+
+#navigation-container {
+}
+
+#flow-status {
+    height: 30px;
+    border: 1px solid #000;
+    position: absolute;
+    padding-left: 10px;
+    padding-right: 10px;
+    left: 0;
+    right: 140px;
+}
+
+#controller-bulletins {
+    height: 30px;
+    border: 1px solid #000;
+    float: right;
+}
+
+#search {
+    height: 30px;
+    border: 1px solid #000;
+    float: right;
+}
+
+#breadcrumbs-container {
+
+}
+
+#breadcrumbs {
+    border: 1px solid #000;
+    height: 30px;
+}
+
+#action-panels {
+    position: absolute;
+    top: 50%;
+    bottom: 50%;
+    left: 0;
+}
+
+div.action-panel {
+    width: 25px;
+    height: 25px;
+    border: 1px solid #000;
+    line-height: 25px;
+    margin-bottom: 5px;
+}
+
+.clear {
+    clear: both;
+}
